@@ -32,7 +32,14 @@ from ..search.genome import Domain, uniform_genome
 from ..search.nsga2 import NSGA2Config, TriDomainNSGA2Optimizer
 from .schema import envelope
 
+import os
+
 RING = 20000
+# Public-deployment guards (env-configurable). A hosted demo endpoint is reachable by anyone,
+# so cap concurrent searches and restrict browser origins to the dashboard's domain.
+MAX_ACTIVE_RUNS = int(os.environ.get("NOMO_MAX_ACTIVE_RUNS", "2"))
+MAX_RUNS_KEPT = int(os.environ.get("NOMO_MAX_RUNS_KEPT", "50"))
+CORS_ORIGINS = [o.strip() for o in os.environ.get("NOMO_CORS_ORIGINS", "*").split(",") if o.strip()]
 SUB_QUEUE = 2048
 
 
@@ -123,7 +130,7 @@ def _budgets(cfg: RunIn, model, hw) -> Budgets:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Nomo telemetry", version="0.2.0")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])
     runs: Dict[str, Run] = {}
     app.state.runs = runs
 
@@ -149,8 +156,20 @@ def create_app() -> FastAPI:
                            for k, f in MODELS.items()},
                 "hardware": {k: {"name": p.name, "provenance": p.provenance} for k, p in PROFILES.items()}}
 
+    @app.get("/healthz")
+    def healthz() -> Dict[str, Any]:
+        return {"ok": True, "active_runs": sum(r.status in ("pending", "running") for r in runs.values())}
+
     @app.post("/runs")
     async def start(cfg: RunIn) -> Dict[str, str]:
+        active = sum(r.status in ("pending", "running") for r in runs.values())
+        if active >= MAX_ACTIVE_RUNS:
+            raise HTTPException(429, f"{active} searches already running (limit {MAX_ACTIVE_RUNS}); try again shortly")
+        while len(runs) >= MAX_RUNS_KEPT:                     # evict oldest finished run (memory bound)
+            done = [k for k, r in runs.items() if r.status not in ("pending", "running")]
+            if not done:
+                break
+            del runs[done[0]]
         if cfg.model not in MODELS:
             raise HTTPException(404, f"unknown model {cfg.model}")
         if cfg.hardware not in PROFILES:

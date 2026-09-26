@@ -28,7 +28,8 @@ export default function Home() {
         setCatalog((await c.json()) as Catalog);
         setRuns((await r.json()) as RunSummary[]);
       } catch {
-        setErr(`cannot reach the Nomo server at ${apiBase()} — start it with \`nomo serve\``);
+        setErr(`cannot reach the Nomo server at ${apiBase()}. Locally: run \`python -m nomo.cli serve\`. ` +
+          `Deployed: set NEXT_PUBLIC_NOMO_API to your backend URL and redeploy.`);
       }
     };
     void load();
@@ -53,7 +54,10 @@ export default function Home() {
       const { run_id } = (await r.json()) as { run_id: string };
       router.push(`/runs/${run_id}`);
     } catch (x) {
-      setErr(String(x));
+      setErr(x instanceof TypeError
+        ? `cannot reach the Nomo server at ${apiBase()}. Locally: run \`python -m nomo.cli serve\`. ` +
+          `Deployed: set NEXT_PUBLIC_NOMO_API to your backend URL and redeploy.`
+        : String(x));
       setBusy(false);
     }
   };
