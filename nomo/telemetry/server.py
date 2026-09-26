@@ -1,46 +1,84 @@
-"""Telemetry server: runs searches in worker threads and streams them over WebSockets.
+"""Nomo backend: runs searches in worker threads, streams them over WebSockets, and logs everything.
 
-    POST /runs                      start a run            -> {run_id}
+Public API
+    GET  /                          service info
+    GET  /healthz                   liveness (used by the host's health check)
+    GET  /catalog                   models and hardware profiles
+    POST /runs                      start a search                       -> {run_id}
     GET  /runs                      list runs
     GET  /runs/{id}                 status + latest generation summary
     POST /runs/{id}/stop            cooperative stop at the next generation boundary
-    GET  /catalog                   available models and hardware profiles
-    WS   /ws/runs/{id}?since=<seq>  live envelopes (replay from ring buffer, or snapshot on gap)
+    WS   /ws/runs/{id}?since=<seq>&client=<id>   live envelopes (replay, or snapshot on gap)
+
+Admin API (header `Authorization: Bearer $NOMO_ADMIN_TOKEN`; disabled when the token is unset)
+    GET  /admin/stats               uptime, runs, users, sockets, request and error counters
+    GET  /admin/logs                ?stream=all|backend|access|users|runs|telemetry|errors
+                                    &limit=&level=&since_ts=&contains=
+    GET  /admin/logs/download       same filters, NDJSON attachment
+    GET  /admin/users               anonymous client registry
+    GET  /admin/runs                every run with config, status, progress and requesting client
+
+Clients identify themselves with header `X-Nomo-Client` (HTTP) or `?client=` (WebSocket); the
+dashboard generates a random id per browser. See nomo/telemetry/observability.py for log schema.
 
 Threading model: the optimizer runs in a daemon thread and calls `Run.publish` through
-loop.call_soon_threadsafe, so all subscriber state is touched only on the event loop.
-Each subscriber has a bounded queue; a slow consumer that overflows it is disconnected
-with close code 1013 and resumes via ?since=, which is lossless while the ring buffer covers it.
+loop.call_soon_threadsafe, so subscriber state is only touched on the event loop. A slow consumer
+that overflows its bounded queue is closed with code 1013 and resumes losslessly via ?since=.
 """
 from __future__ import annotations
 
 import asyncio
+import hmac
+import json
 import math
+import os
+import platform
 import threading
+import time
 import uuid
 from collections import deque
+from contextlib import asynccontextmanager
 from typing import Any, Deque, Dict, List, Optional, Set
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from .. import __version__
 from ..hardware.profiles import PROFILES, get_profile
 from ..models.zoo import MODELS
 from ..search.evaluator import Budgets, NeurosymbolicEvaluator
-from ..search.genome import Domain, uniform_genome
 from ..search.nsga2 import NSGA2Config, TriDomainNSGA2Optimizer
+from . import observability as obs
 from .schema import envelope
 
-import os
+try:                                            # Unix only; the admin stats degrade gracefully on Windows
+    import resource
+except ImportError:  # pragma: no cover
+    resource = None  # type: ignore[assignment]
 
 RING = 20000
-# Public-deployment guards (env-configurable). A hosted demo endpoint is reachable by anyone,
-# so cap concurrent searches and restrict browser origins to the dashboard's domain.
-MAX_ACTIVE_RUNS = int(os.environ.get("NOMO_MAX_ACTIVE_RUNS", "2"))
-MAX_RUNS_KEPT = int(os.environ.get("NOMO_MAX_RUNS_KEPT", "50"))
-CORS_ORIGINS = [o.strip() for o in os.environ.get("NOMO_CORS_ORIGINS", "*").split(",") if o.strip()]
 SUB_QUEUE = 2048
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except ValueError:
+        return default
+
+
+# Public-deployment guards. A hosted endpoint is reachable by anyone.
+MAX_ACTIVE_RUNS = _env_int("NOMO_MAX_ACTIVE_RUNS", 2)
+MAX_RUNS_KEPT = _env_int("NOMO_MAX_RUNS_KEPT", 50)
+MAX_POP = _env_int("NOMO_MAX_POP", 128)
+MAX_GENS = _env_int("NOMO_MAX_GENS", 150)
+MAX_RUNS_PER_CLIENT_HOUR = _env_int("NOMO_MAX_RUNS_PER_CLIENT_HOUR", 30)
+CORS_ORIGINS = [o.strip() for o in os.environ.get("NOMO_CORS_ORIGINS", "*").split(",") if o.strip()]
+ADMIN_TOKEN = os.environ.get("NOMO_ADMIN_TOKEN", "")
+LOG_HEALTH = os.environ.get("NOMO_LOG_HEALTH", "0") == "1"
+GEN_LOG_EVERY = max(1, _env_int("NOMO_LOG_GEN_EVERY", 5))
 
 
 class BudgetIn(BaseModel):
@@ -61,9 +99,16 @@ class RunIn(BaseModel):
     seed: int = 0
 
 
+def _client_ip(req_headers, client) -> str:
+    fwd = req_headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()        # first hop set by the host's proxy
+    return client.host if client else ""
+
+
 class Run:
-    def __init__(self, run_id: str, cfg: RunIn, loop: asyncio.AbstractEventLoop) -> None:
-        self.id, self.cfg, self.loop = run_id, cfg, loop
+    def __init__(self, run_id: str, cfg: RunIn, loop: asyncio.AbstractEventLoop, client_id: str) -> None:
+        self.id, self.cfg, self.loop, self.client_id = run_id, cfg, loop, client_id
         self.seq = 0
         self.ring: Deque[Dict[str, Any]] = deque(maxlen=RING)
         self.subs: Set[asyncio.Queue] = set()
@@ -73,6 +118,10 @@ class Run:
         self.items: Dict[str, dict] = {}
         self.optimizer: Optional[TriDomainNSGA2Optimizer] = None
         self.error: Optional[str] = None
+        self.created_at = time.time()
+        self.finished_at: Optional[float] = None
+        self.envelopes_sent = 0
+        self.log = obs.get("runs")
 
     # called on the event loop
     def publish(self, type_: str, data: dict) -> None:
@@ -86,6 +135,11 @@ class Run:
                 self.items[it["key"]] = it
         elif type_ == "gen.completed":
             self.last_gen = data
+            if data["gen"] % GEN_LOG_EVERY == 0 or data["gen"] == 1:
+                self.log.info("run.progress", extra={
+                    "run_id": self.id, "gen": data["gen"], "hv": round(data["hv"], 5),
+                    "front": len(data["front"]), "unique": data["unique"],
+                    "feasible_fraction": round(data["feasible_fraction"], 3)})
         dead = []
         for q in self.subs:
             try:
@@ -114,10 +168,14 @@ class Run:
         return envelope(self.id, self.seq, "snapshot", {
             "status": self.status, "run": self.started, "items": list(self.items.values()), "last_gen": self.last_gen})
 
-    def summary(self) -> Dict[str, Any]:
-        return {"run_id": self.id, "status": self.status, "seq": self.seq, "config": self.cfg.model_dump(),
-                "last_gen": {k: v for k, v in (self.last_gen or {}).items() if k not in ("population",)},
-                "error": self.error}
+    def summary(self, admin: bool = False) -> Dict[str, Any]:
+        d = {"run_id": self.id, "status": self.status, "seq": self.seq, "config": self.cfg.model_dump(),
+             "last_gen": {k: v for k, v in (self.last_gen or {}).items() if k not in ("population", "front")},
+             "error": self.error, "created_at": self.created_at, "finished_at": self.finished_at}
+        if admin:
+            d.update({"client_id": self.client_id, "subscribers": len(self.subs),
+                      "candidates": len(self.items), "envelopes_sent": self.envelopes_sent})
+        return d
 
 
 def _budgets(cfg: RunIn, model, hw) -> Budgets:
@@ -129,12 +187,76 @@ def _budgets(cfg: RunIn, model, hw) -> Budgets:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Nomo telemetry", version="0.2.0")
-    app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])
-    runs: Dict[str, Run] = {}
-    app.state.runs = runs
+    ring = obs.setup_logging()
+    blog, alog, tlog, rlog = obs.get("backend"), obs.get("access"), obs.get("telemetry"), obs.get("runs")
+    users = obs.UserRegistry()
+    counters: Dict[str, int] = {"requests": 0, "errors_5xx": 0, "errors_4xx": 0, "ws_sessions": 0,
+                                "ws_active": 0, "runs_created": 0, "runs_rejected": 0}
+    per_client_runs: Dict[str, Deque[float]] = {}
 
+    runs: Dict[str, Run] = {}
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+        active = [r.id for r in runs.values() if r.status in ("pending", "running")]
+        for r in runs.values():
+            if r.optimizer is not None:
+                r.optimizer.stop()
+        blog.info("backend.stop", extra={"uptime_s": round(time.time() - obs.STARTED_AT, 1), "interrupted_runs": active})
+
+    app = FastAPI(title="Nomo backend", version=__version__, lifespan=lifespan)
+    app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"],
+                       expose_headers=["X-Request-ID"])
+    app.state.runs, app.state.users, app.state.counters = runs, users, counters
+
+    blog.info("backend.start", extra={
+        "version": __version__, "python": platform.python_version(), "pid": os.getpid(),
+        "config": {"max_active_runs": MAX_ACTIVE_RUNS, "max_runs_kept": MAX_RUNS_KEPT, "max_pop": MAX_POP,
+                   "max_gens": MAX_GENS, "max_runs_per_client_hour": MAX_RUNS_PER_CLIENT_HOUR,
+                   "cors_origins": CORS_ORIGINS, "admin_enabled": bool(ADMIN_TOKEN),
+                   "log_dir": str(obs.file_dir()) if obs.file_dir() else None, "log_ring": obs.RING_SIZE}})
+    if not ADMIN_TOKEN:
+        blog.warning("admin.disabled", extra={"hint": "set NOMO_ADMIN_TOKEN to enable /admin endpoints"})
+    if CORS_ORIGINS == ["*"]:
+        blog.warning("cors.open", extra={"hint": "set NOMO_CORS_ORIGINS to your dashboard origin"})
+
+    # ------------------------------------------------------------------ access log middleware
+    @app.middleware("http")
+    async def access_log(request: Request, call_next):
+        rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+        t0 = time.perf_counter()
+        ip_hash = obs.hash_ip(_client_ip(request.headers, request.client))
+        client_id = users.resolve_id(request.headers.get("x-nomo-client"), ip_hash)
+        request.state.client_id, request.state.request_id, request.state.ip_hash = client_id, rid, ip_hash
+        status = 500
+        try:
+            response = await call_next(request)
+            status = response.status_code
+        except Exception:
+            alog.exception("http.unhandled", extra={"request_id": rid, "path": request.url.path})
+            response = JSONResponse({"detail": "internal error", "request_id": rid}, status_code=500)
+        response.headers["X-Request-ID"] = rid
+        path = request.url.path
+        counters["requests"] += 1
+        if status >= 500:
+            counters["errors_5xx"] += 1
+        elif status >= 400:
+            counters["errors_4xx"] += 1
+        quiet = (path == "/healthz" and not LOG_HEALTH) or request.method == "OPTIONS"
+        if not quiet:
+            users.touch(client_id, ip_hash, request.headers.get("user-agent", ""), request.headers.get("origin", ""))
+            level = 40 if status >= 500 else 30 if status >= 400 else 20
+            alog.log(level, "http.request", extra={
+                "request_id": rid, "method": request.method, "path": path,
+                "query": str(request.url.query)[:300], "status": status,
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 2),
+                "client_id": client_id, "ip_hash": ip_hash, "origin": request.headers.get("origin", "")})
+        return response
+
+    # ------------------------------------------------------------------ search worker
     def worker(run: Run) -> None:
+        t0 = time.perf_counter()
         try:
             model = MODELS[run.cfg.model]()
             hw = get_profile(run.cfg.hardware)
@@ -143,39 +265,82 @@ def create_app() -> FastAPI:
                                           generations=run.cfg.generations, seed=run.cfg.seed), telemetry=run.emit)
             run.optimizer = opt
             run.set_status("running")
-            opt.run()
-            run.set_status("stopped" if opt._stop else "completed")
-        except Exception as exc:  # surfaced to clients, never swallowed
+            rlog.info("run.started", extra={"run_id": run.id, "client_id": run.client_id})
+            res = opt.run()
+            final = "stopped" if opt._stop else "completed"
+            run.finished_at = time.time()
+            run.set_status(final)
+            rec = res.recommended
+            rlog.info(f"run.{final}", extra={
+                "run_id": run.id, "client_id": run.client_id, "wall_s": round(time.perf_counter() - t0, 3),
+                "generations": res.generations_run, "evaluations": res.evaluations, "unique": res.unique,
+                "front": len(res.front), "hv": round(res.hv_history[-1], 5) if res.hv_history else 0.0,
+                "recommended": rec.key if rec else None,
+                "recommended_f": [float(rec.F[0]), float(rec.F[1]), float(rec.accuracy)] if rec else None})
+        except Exception as exc:  # surfaced to clients and to the errors stream, never swallowed
             run.error = f"{type(exc).__name__}: {exc}"
+            run.finished_at = time.time()
             run.set_status("failed")
             run.emit("run.failed", {"error": run.error})
+            rlog.exception("run.failed", extra={"run_id": run.id, "client_id": run.client_id, "error": run.error})
+
+    # ------------------------------------------------------------------ public routes
+    @app.get("/")
+    def root() -> Dict[str, Any]:
+        return {"service": "nomo-backend", "version": __version__, "status": "ok",
+                "uptime_s": round(time.time() - obs.STARTED_AT, 1),
+                "endpoints": ["/healthz", "/catalog", "/runs", "/ws/runs/{run_id}", "/docs"],
+                "limits": {"max_active_runs": MAX_ACTIVE_RUNS, "max_pop": MAX_POP, "max_generations": MAX_GENS}}
+
+    @app.get("/healthz")
+    def healthz() -> Dict[str, Any]:
+        return {"ok": True, "version": __version__,
+                "active_runs": sum(r.status in ("pending", "running") for r in runs.values())}
 
     @app.get("/catalog")
     def catalog() -> Dict[str, Any]:
         return {"models": {k: {"layers": [l.name for l in f().layers], "base_accuracy": f().base_accuracy}
                            for k, f in MODELS.items()},
-                "hardware": {k: {"name": p.name, "provenance": p.provenance} for k, p in PROFILES.items()}}
+                "hardware": {k: {"name": p.name, "provenance": p.provenance} for k, p in PROFILES.items()},
+                "limits": {"max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
-    @app.get("/healthz")
-    def healthz() -> Dict[str, Any]:
-        return {"ok": True, "active_runs": sum(r.status in ("pending", "running") for r in runs.values())}
+    def _reject(status: int, reason: str, client_id: str, **extra) -> HTTPException:
+        counters["runs_rejected"] += 1
+        rlog.warning("run.rejected", extra={"client_id": client_id, "reason": reason, "status": status, **extra})
+        return HTTPException(status, reason)
 
     @app.post("/runs")
-    async def start(cfg: RunIn) -> Dict[str, str]:
+    async def start(cfg: RunIn, request: Request) -> Dict[str, str]:
+        cid = request.state.client_id
+        if cfg.model not in MODELS:
+            raise _reject(404, f"unknown model {cfg.model}", cid)
+        if cfg.hardware not in PROFILES:
+            raise _reject(404, f"unknown hardware {cfg.hardware}", cid)
+        if cfg.pop_size > MAX_POP or cfg.generations > MAX_GENS:
+            raise _reject(422, f"this server allows population <= {MAX_POP} and generations <= {MAX_GENS}", cid,
+                          pop_size=cfg.pop_size, generations=cfg.generations)
         active = sum(r.status in ("pending", "running") for r in runs.values())
         if active >= MAX_ACTIVE_RUNS:
-            raise HTTPException(429, f"{active} searches already running (limit {MAX_ACTIVE_RUNS}); try again shortly")
+            raise _reject(429, f"{active} searches already running (limit {MAX_ACTIVE_RUNS}); try again shortly", cid)
+        hist = per_client_runs.setdefault(cid, deque())
+        now = time.time()
+        while hist and now - hist[0] > 3600:
+            hist.popleft()
+        if len(hist) >= MAX_RUNS_PER_CLIENT_HOUR:
+            raise _reject(429, f"hourly limit of {MAX_RUNS_PER_CLIENT_HOUR} searches reached for this client", cid)
         while len(runs) >= MAX_RUNS_KEPT:                     # evict oldest finished run (memory bound)
             done = [k for k, r in runs.items() if r.status not in ("pending", "running")]
             if not done:
                 break
+            rlog.info("run.evicted", extra={"run_id": done[0]})
             del runs[done[0]]
-        if cfg.model not in MODELS:
-            raise HTTPException(404, f"unknown model {cfg.model}")
-        if cfg.hardware not in PROFILES:
-            raise HTTPException(404, f"unknown hardware {cfg.hardware}")
-        run = Run(uuid.uuid4().hex[:12], cfg, asyncio.get_running_loop())
+        run = Run(uuid.uuid4().hex[:12], cfg, asyncio.get_running_loop(), cid)
         runs[run.id] = run
+        hist.append(now)
+        counters["runs_created"] += 1
+        users.touch(cid, request.state.ip_hash, kind="run", run_id=run.id)
+        rlog.info("run.created", extra={"run_id": run.id, "client_id": cid, "request_id": request.state.request_id,
+                                        "config": cfg.model_dump()})
         threading.Thread(target=worker, args=(run,), daemon=True, name=f"nomo-run-{run.id}").start()
         return {"run_id": run.id}
 
@@ -190,33 +355,47 @@ def create_app() -> FastAPI:
         return runs[run_id].summary()
 
     @app.post("/runs/{run_id}/stop")
-    def stop(run_id: str) -> Dict[str, str]:
+    def stop(run_id: str, request: Request) -> Dict[str, str]:
         run = runs.get(run_id)
         if run is None:
             raise HTTPException(404, "no such run")
         if run.optimizer:
             run.optimizer.stop()
+        rlog.info("run.stop_requested", extra={"run_id": run_id, "client_id": request.state.client_id,
+                                               "owner": run.client_id})
         return {"status": "stopping"}
 
+    # ------------------------------------------------------------------ websocket
     @app.websocket("/ws/runs/{run_id}")
-    async def ws(websocket: WebSocket, run_id: str, since: int = 0) -> None:
+    async def ws(websocket: WebSocket, run_id: str, since: int = 0, client: str = "") -> None:
+        ip_hash = obs.hash_ip(_client_ip(websocket.headers, websocket.client))
+        cid = users.resolve_id(client, ip_hash)
         run = runs.get(run_id)
         if run is None:
+            tlog.warning("ws.not_found", extra={"run_id": run_id, "client_id": cid})
             await websocket.close(code=4404)
             return
         await websocket.accept()
+        users.touch(cid, ip_hash, websocket.headers.get("user-agent", ""), websocket.headers.get("origin", ""), kind="ws")
         q: asyncio.Queue = asyncio.Queue(maxsize=SUB_QUEUE)
-        # replay or snapshot, then subscribe; both happen on the loop so no envelope can slip between
         oldest = run.ring[0]["seq"] if run.ring else run.seq + 1
         if since > run.seq:                       # client is ahead of this server (e.g. restart): resync
-            backlog = [run.snapshot()]
+            backlog, mode = [run.snapshot()], "snapshot"
         elif since and since >= oldest - 1:
-            backlog = [e for e in run.ring if e["seq"] > since]
+            backlog, mode = [e for e in run.ring if e["seq"] > since], "replay"
         elif since == 0 and (not run.ring or oldest == 1):
-            backlog = list(run.ring)
+            backlog, mode = list(run.ring), "full"
         else:
-            backlog = [run.snapshot()]
+            backlog, mode = [run.snapshot()], "snapshot"
         run.subs.add(q)
+        sid = uuid.uuid4().hex[:10]
+        t0 = time.perf_counter()
+        sent, reason = 0, "client_closed"
+        counters["ws_sessions"] += 1
+        counters["ws_active"] += 1
+        tlog.info("ws.open", extra={"session": sid, "run_id": run_id, "client_id": cid, "ip_hash": ip_hash,
+                                    "since": since, "mode": mode, "backlog": len(backlog), "run_seq": run.seq,
+                                    "run_status": run.status})
 
         async def pump_in() -> None:
             try:
@@ -231,6 +410,7 @@ def create_app() -> FastAPI:
         try:
             for env in backlog:
                 await websocket.send_json(env)
+                sent += 1
             while True:
                 get = asyncio.create_task(q.get())
                 done, _ = await asyncio.wait({get, reader}, return_when=asyncio.FIRST_COMPLETED)
@@ -239,14 +419,84 @@ def create_app() -> FastAPI:
                     break
                 env = get.result()
                 await websocket.send_json(env)
+                sent += 1
                 if getattr(q, "put_nowait_overflow", False) and q.empty():
+                    reason = "overflow"
+                    tlog.warning("ws.overflow", extra={"session": sid, "run_id": run_id, "client_id": cid})
                     await websocket.close(code=1013)
                     break
         except (WebSocketDisconnect, RuntimeError):
-            pass
+            reason = "disconnect"
+        except Exception:
+            reason = "error"
+            tlog.exception("ws.error", extra={"session": sid, "run_id": run_id, "client_id": cid})
         finally:
             reader.cancel()
             run.subs.discard(q)
+            run.envelopes_sent += sent
+            counters["ws_active"] -= 1
+            tlog.info("ws.close", extra={"session": sid, "run_id": run_id, "client_id": cid, "reason": reason,
+                                         "sent": sent, "duration_s": round(time.perf_counter() - t0, 2),
+                                         "last_seq_sent": run.seq if sent else since})
+
+    # ------------------------------------------------------------------ admin
+    def require_admin(request: Request) -> None:
+        if not ADMIN_TOKEN:
+            raise HTTPException(403, "admin API disabled: set NOMO_ADMIN_TOKEN on the server")
+        auth = request.headers.get("authorization", "")
+        token = auth[7:] if auth.lower().startswith("bearer ") else ""
+        if not hmac.compare_digest(token.encode(), ADMIN_TOKEN.encode()):
+            blog.warning("admin.denied", extra={"client_id": request.state.client_id, "path": request.url.path,
+                                                "ip_hash": request.state.ip_hash})
+            raise HTTPException(401, "invalid admin token")
+
+    @app.get("/admin/stats", dependencies=[Depends(require_admin)])
+    def admin_stats() -> Dict[str, Any]:
+        by_status: Dict[str, int] = {}
+        for r in runs.values():
+            by_status[r.status] = by_status.get(r.status, 0) + 1
+        ru = resource.getrusage(resource.RUSAGE_SELF) if resource else None
+        return {"version": __version__, "uptime_s": round(time.time() - obs.STARTED_AT, 1),
+                "started_at": obs.STARTED_AT, "pid": os.getpid(),
+                "max_rss_mb": round(ru.ru_maxrss / 1024, 1) if ru else None,
+                "cpu_user_s": round(ru.ru_utime, 2) if ru else None,
+                "runs": {"kept": len(runs), "by_status": by_status}, "counters": dict(counters),
+                "users": {"known": len(users.users), "active_5m": users.active(300), "active_1h": users.active(3600)},
+                "log_records": dict(ring.counts), "log_dir": str(obs.file_dir()) if obs.file_dir() else None,
+                "limits": {"max_active_runs": MAX_ACTIVE_RUNS, "max_runs_kept": MAX_RUNS_KEPT, "max_pop": MAX_POP,
+                           "max_gens": MAX_GENS, "max_runs_per_client_hour": MAX_RUNS_PER_CLIENT_HOUR}}
+
+    def _logs(stream: str, limit: int, level: Optional[str], since_ts: Optional[float],
+              contains: Optional[str]) -> List[Dict[str, Any]]:
+        if stream != "all" and stream not in obs.STREAMS:
+            raise HTTPException(422, f"stream must be 'all' or one of {list(obs.STREAMS)}")
+        return ring.query(stream, limit, level, since_ts, contains)
+
+    @app.get("/admin/logs", dependencies=[Depends(require_admin)])
+    def admin_logs(stream: str = "all", limit: int = Query(200, ge=1, le=5000), level: Optional[str] = None,
+                   since_ts: Optional[float] = None, contains: Optional[str] = None) -> Dict[str, Any]:
+        rows = _logs(stream, limit, level, since_ts, contains)
+        return {"stream": stream, "count": len(rows), "records": rows}
+
+    @app.get("/admin/logs/download", dependencies=[Depends(require_admin)])
+    def admin_logs_download(stream: str = "all", limit: int = Query(5000, ge=1, le=50000),
+                            level: Optional[str] = None, since_ts: Optional[float] = None,
+                            contains: Optional[str] = None) -> PlainTextResponse:
+        rows = _logs(stream, limit, level, since_ts, contains)
+        body = "\n".join(json.dumps(r, default=str) for r in rows) + ("\n" if rows else "")
+        fname = f"nomo-{stream}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.ndjson"
+        return PlainTextResponse(body, media_type="application/x-ndjson",
+                                 headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+    @app.get("/admin/users", dependencies=[Depends(require_admin)])
+    def admin_users() -> Dict[str, Any]:
+        rows = users.snapshot()
+        return {"count": len(rows), "users": rows}
+
+    @app.get("/admin/runs", dependencies=[Depends(require_admin)])
+    def admin_runs() -> Dict[str, Any]:
+        rows = sorted((r.summary(admin=True) for r in runs.values()), key=lambda d: -d["created_at"])
+        return {"count": len(rows), "runs": rows}
 
     return app
 

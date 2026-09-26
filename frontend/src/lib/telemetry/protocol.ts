@@ -134,13 +134,20 @@ export interface Catalog {
   hardware: Record<string, { name: string; provenance: Record<string, string> }>;
 }
 
+/** Hosted backend used when NEXT_PUBLIC_NOMO_API is not set at build time. */
+export const DEFAULT_API = "https://nomo-engine.onrender.com";
+
 export function apiBase(): string {
-  return (process.env.NEXT_PUBLIC_NOMO_API ?? "http://127.0.0.1:8765").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_NOMO_API || DEFAULT_API).replace(/\/$/, "");
 }
 
-export function wsUrl(runId: string, since: number): string {
+export function wsUrl(runId: string, since: number, client?: string): string {
   const base = apiBase().replace(/^http/, "ws");
-  return `${base}/ws/runs/${encodeURIComponent(runId)}${since > 0 ? `?since=${since}` : ""}`;
+  const q = new URLSearchParams();
+  if (since > 0) q.set("since", String(since));
+  if (client) q.set("client", client);
+  const qs = q.toString();
+  return `${base}/ws/runs/${encodeURIComponent(runId)}${qs ? `?${qs}` : ""}`;
 }
 
 export function geneCode(l: LayerWire): string {

@@ -1,6 +1,7 @@
 # Nomo dashboard (Next.js 14 · TypeScript strict · Tailwind · zustand · react-three-fiber)
 
-    cp .env.example .env.local        # NEXT_PUBLIC_NOMO_API=http://127.0.0.1:8765
+    # production builds target https://nomo-engine.onrender.com (.env.production)
+    cp .env.example .env.local        # local dev: NEXT_PUBLIC_NOMO_API=http://127.0.0.1:8765
     npm install
     npm run dev                       # or: npm run build && npm start
     # backend, in another shell:  nomo serve --port 8765
@@ -19,6 +20,8 @@ Layout (architecture rationale: docs/SPEC.md §10)
     src/components/CandidatePanel.tsx   metrics + gene codes of the selected design
     src/app/page.tsx                    catalog-driven run launcher and run list
     src/app/runs/[runId]/page.tsx       live dashboard
+    src/app/admin/page.tsx              logs (6 streams, filters, live tail, NDJSON), users, runs, stats
+    src/lib/api.ts                      client id, fetch wrapper, cold-start wait
 
 Verified: `tsc --noEmit` (strict, noUncheckedIndexedAccess) clean; `next build` clean; headless-Chromium
 end-to-end against a live `nomo serve` (launch -> stream -> completion -> reload/resume) with zero console errors.

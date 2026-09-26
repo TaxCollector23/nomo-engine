@@ -1,13 +1,23 @@
-# Render blueprint: New > Blueprint > select this repo. Then set NOMO_CORS_ORIGINS to your
-# Vercel URL and point the dashboard's NEXT_PUBLIC_NOMO_API at this service's URL.
+# Render Blueprint for the Nomo backend (free plan, Docker runtime).
+# Existing service created by hand? Ignore this file and set the same env vars in the dashboard.
 services:
   - type: web
-    name: nomo-backend
+    name: nomo-engine
     runtime: docker
+    plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
+    autoDeploy: true
     envVars:
-      - key: NOMO_CORS_ORIGINS
+      - key: NOMO_ADMIN_TOKEN          # password for /admin; Render generates a random value
+        generateValue: true
+      - key: NOMO_CORS_ORIGINS         # your Vercel dashboard origin(s), comma-separated
         value: "*"
       - key: NOMO_MAX_ACTIVE_RUNS
         value: "2"
+      - key: NOMO_MAX_POP
+        value: "128"
+      - key: NOMO_MAX_GENS
+        value: "150"
+      - key: NOMO_LOG_LEVEL
+        value: INFO

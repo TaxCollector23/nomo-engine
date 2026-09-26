@@ -1,35 +1,57 @@
-# Deploying a live demo
+# Deploying Nomo v3
 
-Two pieces, two hosts:
+Backend: `https://nomo-engine.onrender.com` (Render, free plan)
+Dashboard: Vercel (Next.js, `frontend/`)
 
-| piece | what it is | where |
+## 1. Update the Render service to v3
+
+Replace the repository contents with this folder, commit, push. Render redeploys automatically
+if auto-deploy is on (otherwise: service → Manual Deploy → Deploy latest commit).
+
+Which runtime is your service using? (Render dashboard → service → Settings)
+
+| runtime | settings |
+|---|---|
+| **Docker** (recommended) | Dockerfile path `./Dockerfile`. Nothing else to set. |
+| **Python 3** | Build command `pip install -r requirements.txt` · Start command `uvicorn nomo.telemetry.server:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=* --no-access-log` |
+
+Health check path (Settings → Health Checks): `/healthz`
+
+## 2. Environment variables (Render → service → Environment)
+
+| variable | set to | why |
 |---|---|---|
-| `frontend/` | Next.js dashboard | Vercel (already deployed) |
-| `nomo` backend | long-running Python process holding WebSockets | any container host with WebSocket support (Render, Railway, Fly.io, Cloud Run, a VM) |
+| `NOMO_ADMIN_TOKEN` | a long random string (password manager) | unlocks `/admin` and the dashboard's admin page. **Unset = admin disabled.** |
+| `NOMO_CORS_ORIGINS` | `https://<your-app>.vercel.app` (comma-separate several) | only your dashboard can call the API from a browser |
+| `NOMO_MAX_ACTIVE_RUNS` | `2` | concurrent searches (free plan has 0.1 CPU) |
+| `NOMO_MAX_POP` / `NOMO_MAX_GENS` | `128` / `150` | per-search size caps (HTTP 422 above) |
+| `NOMO_MAX_RUNS_PER_CLIENT_HOUR` | `30` | per-browser rate limit (HTTP 429) |
+| `NOMO_LOG_LEVEL` | `INFO` | `DEBUG` for more |
+| `NOMO_LOG_GEN_EVERY` | `5` | log search progress every N generations |
+| `NOMO_LOG_RAW_IP` | `0` | `1` stores raw IPs instead of salted hashes (check your privacy obligations first) |
+| `NOMO_LOG_SALT` | optional random string | keeps IP hashes stable across restarts |
 
-Vercel's serverless functions cannot host the backend: searches run for seconds to minutes and
-the telemetry stream is a persistent WebSocket.
+Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.3.0",...}`.
 
-## 1. Backend (example: Render, using `render.yaml`)
-1. Push this repo to GitHub.
-2. Render → New → Blueprint → pick the repo. It builds the `Dockerfile` and health-checks `/healthz`.
-3. When it's live, open `https://<your-service>.onrender.com/catalog`; you should see JSON.
+## 3. Dashboard on Vercel
 
-Any other host: build the `Dockerfile`, expose the port in `$PORT`, run **exactly one instance**
-(runs live in memory; a second replica would not see the first one's runs).
+`frontend/.env.production` already points at `https://nomo-engine.onrender.com`, so a plain
+redeploy works. A `NEXT_PUBLIC_NOMO_API` variable set in Vercel overrides it (for another backend).
+Vercel project settings: Root Directory = `frontend`, framework = Next.js.
+After deploying, set `NOMO_CORS_ORIGINS` on Render to the Vercel URL.
 
-## 2. Connect the dashboard
-1. Vercel → project → Settings → Environment Variables:
-   `NEXT_PUBLIC_NOMO_API = https://<your-service>.onrender.com` (https; the client derives `wss://`).
-2. Redeploy. `NEXT_PUBLIC_*` values are baked in at build time, so a redeploy is required.
-3. Lock the backend to your dashboard: set `NOMO_CORS_ORIGINS=https://<your-vercel-domain>`
-   on the backend (comma-separate several origins).
+Pages: `/` launcher · `/runs/<id>` live search · `/admin` logs, users, runs, stats (needs the token).
 
-## 3. Know the limits
-- **Free tiers sleep.** The first request after idle can take ~30-60 s while the container wakes,
-  and a restart discards in-memory runs. For a pitch, open the page a minute beforehand or use a paid always-on instance.
-- **Public endpoint.** Anyone with the URL can start searches. `NOMO_MAX_ACTIVE_RUNS` (default 2)
-  caps concurrency (extra requests get HTTP 429); `NOMO_MAX_RUNS_KEPT` (default 50) bounds memory.
-  Add auth before sharing the URL widely.
-- **Domain.** The auto-generated `*.vercel.app` name persists with the project; add a custom
-  domain in Vercel → Settings → Domains for a name you control.
+## 4. Free-plan behaviour
+- **Sleeps after ~15 min idle.** The dashboard now shows "waking the server… Ns" and retries for up to
+  2 minutes, so the first visit just waits instead of failing. Open it a minute before a demo.
+- **Restarts wipe memory:** runs, the admin log rings and user registry reset on each deploy/wake.
+  Render's own **Logs** tab keeps the stdout copy of every record (see OBSERVABILITY.md).
+- **0.1 CPU:** a 64×60 search takes tens of seconds instead of ~2 s locally.
+
+## Local development
+    pip install -e ".[server,dev]"
+    python -m nomo.cli serve --port 8765        # backend
+    cd frontend && echo "NEXT_PUBLIC_NOMO_API=http://127.0.0.1:8765" > .env.local && npm install && npm run dev
+
+Alternative free host without a card: `deploy/huggingface/` (Docker Space, port 7860).

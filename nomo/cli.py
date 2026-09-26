@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -89,7 +90,8 @@ def cmd_compile(a: argparse.Namespace) -> int:
 
 def cmd_serve(a: argparse.Namespace) -> int:
     import uvicorn
-    uvicorn.run("nomo.telemetry.server:app", host=a.host, port=a.port, log_level="info")
+    uvicorn.run("nomo.telemetry.server:app", host=a.host, port=a.port, log_level="info",
+                access_log=False, proxy_headers=True, forwarded_allow_ips="*")   # Nomo logs access itself
     return 0
 
 
@@ -117,7 +119,7 @@ def main(argv=None) -> int:
     c.set_defaults(fn=cmd_compile)
     v = sub.add_parser("serve")
     v.add_argument("--host", default="127.0.0.1")
-    v.add_argument("--port", type=int, default=8765)
+    v.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8765)))
     v.set_defaults(fn=cmd_serve)
     a = p.parse_args(argv)
     return a.fn(a)

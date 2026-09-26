@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
+import { api } from "@/lib/api";
 import { apiBase } from "@/lib/telemetry/protocol";
 import { useRunStore } from "@/lib/telemetry/store";
 import { useRunTelemetry } from "@/lib/telemetry/useRunTelemetry";
@@ -19,7 +20,7 @@ export default function RunDashboard({ runId }: { runId: string }) {
   const status = useRunStore((s) => s.status);
   const conn = useRunStore((s) => s.connection);
 
-  const stop = () => fetch(`${apiBase()}/runs/${runId}/stop`, { method: "POST" });
+  const stop = () => api(`/runs/${runId}/stop`, { method: "POST" });
 
   if (conn === "not_found") {
     return (

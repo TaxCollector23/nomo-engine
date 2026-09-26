@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { api, waitForBackend } from "@/lib/api";
 import { apiBase, type Catalog, type RunIn } from "@/lib/telemetry/protocol";
 
 interface RunSummary { run_id: string; status: string; config: RunIn; last_gen: { gen?: number; hv?: number } }
@@ -21,18 +22,31 @@ export default function Home() {
     pop: "64", gens: "60", seed: "0", plastic: "0",
   });
 
+  const [waking, setWaking] = useState<number | null>(null);
+
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
+      const up = await waitForBackend((s) => !cancelled && setWaking(s));
+      if (cancelled) return;
+      setWaking(null);
+      if (!up) {
+        setErr(`the Nomo server at ${apiBase()} did not respond. Locally: run \`python -m nomo.cli serve\`. ` +
+          `Hosted: check the service is deployed, or set NEXT_PUBLIC_NOMO_API and redeploy.`);
+        return;
+      }
       try {
-        const [c, r] = await Promise.all([fetch(`${apiBase()}/catalog`), fetch(`${apiBase()}/runs`)]);
+        const [c, r] = await Promise.all([api("/catalog"), api("/runs")]);
         setCatalog((await c.json()) as Catalog);
         setRuns((await r.json()) as RunSummary[]);
       } catch {
-        setErr(`cannot reach the Nomo server at ${apiBase()}. Locally: run \`python -m nomo.cli serve\`. ` +
-          `Deployed: set NEXT_PUBLIC_NOMO_API to your backend URL and redeploy.`);
+        setErr(`cannot reach the Nomo server at ${apiBase()}`);
       }
     };
     void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -49,12 +63,15 @@ export default function Home() {
         min_plastic_params: Number(form.plastic) || 0 },
     };
     try {
-      const r = await fetch(`${apiBase()}/runs`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error(await r.text());
+      const r = await api("/runs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) {
+        const detail = await r.json().then((j: { detail?: unknown }) => j.detail).catch(() => r.statusText);
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
       const { run_id } = (await r.json()) as { run_id: string };
       router.push(`/runs/${run_id}`);
     } catch (x) {
-      setErr(x instanceof TypeError
+      setErr(x instanceof Error && !(x instanceof TypeError) ? x.message : x instanceof TypeError
         ? `cannot reach the Nomo server at ${apiBase()}. Locally: run \`python -m nomo.cli serve\`. ` +
           `Deployed: set NEXT_PUBLIC_NOMO_API to your backend URL and redeploy.`
         : String(x));
@@ -68,7 +85,15 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-4xl p-8 font-mono">
       <h1 className="text-2xl text-neutral-50">nomo</h1>
-      <p className="mb-8 text-xs text-neutral-500">tri-domain (ANN · SNN · symbolic) hardware-aware NSGA-II</p>
+      <p className="mb-8 flex justify-between text-xs text-neutral-500">
+        <span>tri-domain (ANN · SNN · symbolic) hardware-aware NSGA-II</span>
+        <Link href="/admin" className="hover:text-neutral-200">admin</Link>
+      </p>
+      {waking !== null && (
+        <div className="mb-6 border border-neutral-700 p-3 text-xs text-neutral-400">
+          waking the server… {waking}s (free hosting sleeps when idle; this takes up to a minute)
+        </div>
+      )}
       {err && <div className="mb-6 border border-neutral-600 p-3 text-xs text-neutral-300">{err}</div>}
 
       <form onSubmit={submit} className="grid grid-cols-3 gap-4 border border-neutral-900 p-5">
@@ -118,7 +143,7 @@ export default function Home() {
           <span className="text-[10px] text-neutral-600">
             hardware coefficients are placeholders until calibrated via the measurement LUT (SPEC §0)
           </span>
-          <button disabled={busy} className="bg-neutral-100 px-5 py-2 text-sm text-black hover:bg-white disabled:opacity-40">
+          <button disabled={busy || waking !== null} className="bg-neutral-100 px-5 py-2 text-sm text-black hover:bg-white disabled:opacity-40">
             {busy ? "starting…" : "start search"}
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { clientId } from "../api";
 import { Envelope, isEnvelope, wsUrl } from "./protocol";
 
 export type ConnectionState = "idle" | "connecting" | "open" | "reconnecting" | "closed" | "not_found";
@@ -64,7 +65,7 @@ export class TelemetryClient {
   private open(): void {
     if (this.stopped) return;
     this.o.onState?.(this.attempt === 0 ? "connecting" : "reconnecting");
-    const ws = new WebSocket(wsUrl(this.o.runId, this.last));
+    const ws = new WebSocket(wsUrl(this.o.runId, this.last, clientId()));
     this.ws = ws;
 
     ws.onopen = () => {
