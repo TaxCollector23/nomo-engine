@@ -28,7 +28,10 @@ Logs, users and telemetry: `OBSERVABILITY.md` · admin UI at `<dashboard>/admin`
 | | |
 |---|---|
 | Engine — repo | https://github.com/TaxCollector23/nomo-engine |
-| Engine — live dashboard | https://frontend-gray-ten-c3tj1luab7.vercel.app |
+| Engine — live dashboard | https://frontend-gray-ten-c3tj1luab7.vercel.app/ |
+| Engine — admin panel | https://frontend-gray-ten-c3tj1luab7.vercel.app/admin |
+| Engine — live backend | https://nomo-engine.onrender.com |
+| Main website | https://nomoaiprototype.vercel.app/ |
 | Engine — release | https://github.com/TaxCollector23/nomo-engine/releases/tag/v3-fixed |
 | Prototype — repo | https://github.com/TaxCollector23/nomo-ai |
 

@@ -9,8 +9,8 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: NOMO_ADMIN_TOKEN          # password for /admin; Render generates a random value
-        generateValue: true
+      - key: NOMO_ADMIN_TOKEN          # password for /admin
+        value: goatbergandrangoat
       - key: NOMO_CORS_ORIGINS         # your Vercel dashboard origin(s), comma-separated
         value: "*"
       - key: NOMO_MAX_ACTIVE_RUNS
