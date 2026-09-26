@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel", "pybind11>=2.11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nomo-engine"
+version = "0.2.0"
+description = "Hardware-aware tri-domain (ANN/SNN/symbolic) NAS and neuromorphic compiler"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "h5py>=3.8", "nir>=1.0"]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
+dev = ["pytest>=7", "httpx>=0.26", "fastapi>=0.110"]
+
+[project.scripts]
+nomo = "nomo.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nomo*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
