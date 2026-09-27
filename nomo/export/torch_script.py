@@ -67,6 +67,13 @@ class TorchOps:
     def linear(self, x, W, b):
         return x @ W.T + b
 
+    def operator(self, x, W, b, family):
+        if x.ndim == 4 and W.ndim == 2:
+            return self.torch.einsum("oc,bchw->bohw", W, x) + b.reshape(1, -1, 1, 1)
+        if x.ndim == 3 and W.ndim == 2:
+            return x @ W.T + b
+        return self.linear(x, W, b)
+
     def conv2d(self, x, W, b, stride, pad):
         return self.F.conv2d(x, W, b, stride=stride, padding=pad)
 

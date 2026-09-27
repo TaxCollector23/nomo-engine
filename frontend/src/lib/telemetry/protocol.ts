@@ -163,6 +163,7 @@ export interface RunIn {
   lock_symbolic?: boolean;
   hardware_overrides?: HardwareIn | null;
   preset?: string | null;
+  mode?: string | null;
 }
 
 export interface LayerRow {
@@ -184,6 +185,7 @@ export interface Catalog {
   models: Record<string, { layers: string[]; base_accuracy: number; layer_table: LayerRow[] }>;
   hardware: Record<string, { name: string; provenance: Record<string, string>; defaults: Record<string, number>;
     bits: { continuous: number[]; spiking: number[] } }>;
+  modes?: Record<string, { title: string; summary: string; requirements: string[]; export_tags: string[] }>;
   limits: { max_pop: number; max_generations: number };
 }
 
@@ -201,8 +203,10 @@ export interface UploadReport {
 
 export interface UploadedModel {
   model_id: string; name: string; base_accuracy: number; input_shape: number[];
-  report: UploadReport; layer_table: LayerRow[];
+  report: UploadReport; layer_table: LayerRow[]; calibration?: CalibrationSummary | null;
 }
+
+export interface CalibrationSummary { sample_count: number; input_shape: number[]; aux_shape: number[] | null; source: string }
 
 export interface Capability { label: string; available: boolean; note: string; reason?: string }
 

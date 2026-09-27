@@ -50,6 +50,8 @@ def _layer_dict(model: ModelGraph, i: int, W: np.ndarray, b: np.ndarray, domain:
             "activation": "linear" if domain == "SYM" else spec.activation,
             "W": W, "b": b, "stride": a.get("stride", 1), "padding": a.get("padding", 0),
             "pool": a.get("pool"), "flatten_input": bool(a.get("flatten_input", False)),
+            "architecture_family": a.get("operator_family"),
+            "preserve_spatial": bool(a.get("preserve_spatial", spec.op == "conv2d")),
             "act_bits": 0, "act_amax": 0.0, "coding": None, "T": 0, "lam_in": 0.0, "lam_out": 0.0,
             "w_bits": 32 if domain == "SYM" else 0}
 

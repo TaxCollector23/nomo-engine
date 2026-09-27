@@ -10,9 +10,9 @@ services:
     autoDeploy: true
     envVars:
       - key: NOMO_ADMIN_TOKEN          # password for /admin
-        value: goatbergandrangoat
+        generateValue: true
       - key: NOMO_CORS_ORIGINS         # your Vercel dashboard origin(s), comma-separated
-        value: "*"
+        value: "https://frontend-gray-ten-c3tj1luab7.vercel.app"
       - key: NOMO_MAX_ACTIVE_RUNS
         value: "2"
       - key: NOMO_MAX_POP

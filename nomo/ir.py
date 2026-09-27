@@ -90,6 +90,8 @@ class ModelGraph:
     input_rate: float = 0.2                           # mean encoder spike rate on raw input
     interaction: float = 0.004                        # rho, second-order accuracy interaction
     policy: Optional[object] = None                   # search.policy.SearchPolicy (user locks/toggles)
+    architecture_family: Optional[str] = None         # mlp | cnn | fno | vit | gnn | hybrid
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     @property
     def n(self) -> int:
@@ -131,3 +133,19 @@ def conv2d(name: str, c_in: int, c_out: int, k: int, h: int, w: int, stride: int
     return LayerSpec(name=name, op="conv2d", fan_in=c_in * h * w, out_neurons=c_out * oh * ow,
                      macs=params * oh * ow, params=params + c_out,
                      weight_shape=(c_out, c_in, k, k), attrs=attrs, **kw)
+
+
+def operator_block(name: str, family: str, input_shape: Tuple[int, ...], output_shape: Tuple[int, ...],
+                   macs: int, params: int, weight_shape: Tuple[int, ...] = (), **kw) -> LayerSpec:
+    """Create an architecture-level block without flattening its geometry.
+
+    Operator-family adapters may provide a backend-specific lowering later.  The
+    search engine can still reason about the block today while the ``attrs``
+    contract keeps spatial, token, or graph dimensions explicit.
+    """
+    attrs = dict(kw.pop("attrs", {}))
+    attrs.update({"in_shape": tuple(input_shape), "out_shape": tuple(output_shape),
+                  "preserve_spatial": True, "operator_family": family})
+    return LayerSpec(name=name, op=family, fan_in=int(np.prod(input_shape)),
+                     out_neurons=int(np.prod(output_shape)), macs=int(macs), params=int(params),
+                     weight_shape=tuple(weight_shape), attrs=attrs, **kw)

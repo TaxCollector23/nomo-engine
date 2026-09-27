@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ..ir import LayerSensitivity, LayerSpec, ModelGraph, conv2d, dense
+from ..ir import LayerSensitivity, LayerSpec, ModelGraph, conv2d, dense, operator_block
 
 Weights = Dict[str, Tuple[np.ndarray, np.ndarray]]
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -133,6 +133,28 @@ class _ChainBuilder:
         if self.layers:
             last = self.layers[-1]
             self.layers[-1] = LayerSpec(**{**last.__dict__, "activation": act})
+
+    def add_operator(self, name: Optional[str], family: str, W: np.ndarray, b: Optional[np.ndarray],
+                     output_shape: Tuple[int, ...], activation: str = "linear", metadata: Optional[dict] = None) -> None:
+        """Add a channel/token/feature-preserving operator block.
+
+        Operator blocks keep their rank and geometry in the IR.  A 2-D weight
+        matrix is applied independently at each spatial/token position by the
+        runtime adapter; no implicit flattening is introduced.
+        """
+        input_shape = tuple(self.shape)
+        feature_axis = 0 if len(input_shape) >= 3 else len(input_shape) - 1
+        if len(input_shape) < 1 or W.ndim != 2 or W.shape[1] != input_shape[feature_axis]:
+            raise IngestError(f"operator '{name}' needs a [out_features, in_features] channel/token matrix")
+        nm = self._name(name, family)
+        out_shape = tuple(int(v) for v in output_shape)
+        positions = int(np.prod(input_shape[1:])) if len(input_shape) >= 3 else int(input_shape[0]) if len(input_shape) == 2 else 1
+        params = int(W.size + W.shape[0])
+        spec = operator_block(nm, family, input_shape, out_shape, positions * int(W.shape[0]) * int(W.shape[1]),
+                              params, tuple(W.shape), activation=activation, attrs=metadata or {})
+        self.layers.append(spec)
+        self.weights[nm] = (W.astype(np.float64), (b if b is not None else np.zeros(W.shape[0])).astype(np.float64))
+        self.shape = out_shape
 
     def build(self, name: str, base_accuracy: float) -> ModelGraph:
         if not self.layers:
@@ -295,14 +317,35 @@ def parse_json_graph(data: bytes, name: Optional[str] = None,
                 synthetic.append(L.get("name") or f"layer {i}")
             b = np.asarray(L["bias"], float) if "bias" in L else np.zeros(oc)
             cb.add_conv(L.get("name"), W, b, int(L.get("stride", 1)), int(L.get("padding", k // 2)), act, L.get("pool"))
+        elif op in ("fourier", "fno", "attention", "vit_attention", "message_passing", "gnn"):
+            family = "fno" if op in ("fourier", "fno") else "vit" if op in ("attention", "vit_attention") else "gnn"
+            in_features = cb.shape[0] if len(cb.shape) >= 3 else cb.shape[-1]
+            out_shape = tuple(L.get("out_shape", cb.shape))
+            out_features = out_shape[0] if len(out_shape) >= 3 else out_shape[-1]
+            if "weights" in L:
+                W = np.asarray(L["weights"], float)
+            else:
+                W = rng.normal(0, np.sqrt(2 / max(1, in_features)), (out_features, in_features))
+                synthetic.append(L.get("name") or f"layer {i}")
+            b = np.asarray(L["bias"], float) if "bias" in L else np.zeros(out_features)
+            attrs = dict(L.get("metadata", {}), spectral_modes=L.get("spectral_modes"),
+                         sequence_length=L.get("sequence_length"), graph_edges=L.get("graph_edges"))
+            cb.add_operator(L.get("name"), family, W, b, out_shape, act, attrs)
+            rep.assumptions.append(f"{family.upper()} operator block retained spatial/token/graph geometry; backend lowering is adapter-based")
         else:
             raise IngestError(f"layer {i}: unsupported op '{op}' (use 'dense' or 'conv2d')")
     if synthetic:
         rep.weights_source = "synthetic" if len(synthetic) == len(doc["layers"]) else "partial"
         rep.assumptions.append(f"no weights given for {', '.join(synthetic)}: random (He) weights were generated, so "
                                "exports are structurally correct but those layers are untrained")
-    return _finish(cb, name or doc.get("name", "uploaded_model"),
-                   base_accuracy if base_accuracy is not None else doc.get("base_accuracy", 90.0), rep)
+    out = _finish(cb, name or doc.get("name", "uploaded_model"),
+                  base_accuracy if base_accuracy is not None else doc.get("base_accuracy", 90.0), rep)
+    out[0].architecture_family = doc.get("architecture_family") or ("fno" if any(l.op == "fno" for l in out[0].layers)
+                                                                      else "vit" if any(l.op == "vit" for l in out[0].layers)
+                                                                      else "gnn" if any(l.op == "gnn" for l in out[0].layers)
+                                                                      else None)
+    out[0].metadata.update({"operator_schema": "nomo.operator/1"})
+    return out
 
 
 # ---------------------------------------------------------------------------

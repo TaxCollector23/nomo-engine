@@ -1,9 +1,9 @@
-# Deploying Nomo v4
+# Deploying Nomo v5
 
 Backend: `https://nomo-engine.onrender.com` (Render, free plan)
 Dashboard: Vercel (Next.js, `frontend/`)
 
-## 1. Update the Render service to v4
+## 1. Update the Render service to v5
 
 Replace the repository contents with this folder, commit, push. Render redeploys automatically
 if auto-deploy is on (otherwise: service → Manual Deploy → Deploy latest commit).
@@ -42,10 +42,23 @@ New in v4 (all optional):
 | `NOMO_MAX_UPLOAD_MB` | `50` | largest accepted upload |
 | `NOMO_DISABLE_COREML` | `1` to switch off | frees memory if the server is ever short; the Core ML option then shows as unavailable |
 
-Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.4.0",...}`.
+Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.5.0",...}` after Render has deployed the release commit.
 
-**Python-runtime services** (not Docker) must also install the new export packages; `requirements.txt`
-already lists `onnx`, `reportlab` and `coremltools`.
+**Python-runtime services** (not Docker) must also install the export packages; `requirements.txt`
+lists `onnx`, `reportlab`, `pyyaml`, and optional Core ML tooling. Core ML `.mlpackage` generation
+requires the native ML-storage extension; on Linux the API reports that format as unavailable when it is
+not present.
+
+## 2.5 v5 API and release path
+
+- `POST /models/{id}/calibration?filename=calibration.npz` accepts 100–500 finite input tensors. Use
+  `.npz` keys `inputs`/`X`/`x`/`data`, plus `aux`/`A`/`metadata` when a model has guard metadata.
+- `GET /runs/{id}/workbench` returns the six-level `nomo.workbench/1` state. `POST /runs/{id}/workbench/targets`
+  reweights the cached feasible candidates and records the new target weights.
+- `POST /runs/{id}/export` accepts `{ "key": "recommended", "formats": ["enterprise", "pdf", "c11"],
+  "archive": "zip" }` or `"tar.gz"`.
+- `nomo-cli pipeline --config nomo.yaml --out release.tar.gz` runs search, optional calibration-driven PTQ,
+  and the same structured release builder offline.
 
 ## 3. Dashboard on Vercel
 
@@ -54,7 +67,8 @@ redeploy works. A `NEXT_PUBLIC_NOMO_API` variable set in Vercel overrides it (fo
 Vercel project settings: Root Directory = `frontend`, framework = Next.js.
 After deploying, set `NOMO_CORS_ORIGINS` on Render to the Vercel URL.
 
-Pages: `/` launcher · `/runs/<id>` live search · `/admin` logs, users, runs, stats (needs the token).
+Pages: `/` launcher · `/runs/<id>` live search, Workbench, and exports · `/admin` logs, users, runs, stats
+(needs the token).
 
 ## 4. Free-plan behaviour
 - **Sleeps after ~15 min idle.** The dashboard now shows "waking the server… Ns" and retries for up to

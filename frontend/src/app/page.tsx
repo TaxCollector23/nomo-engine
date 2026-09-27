@@ -7,11 +7,12 @@ import { useEffect, useMemo, useState } from "react";
 import HardwarePanel from "@/components/launcher/HardwarePanel";
 import LayerLockTable from "@/components/launcher/LayerLockTable";
 import UploadDrop from "@/components/launcher/UploadDrop";
+import CalibrationDrop from "@/components/launcher/CalibrationDrop";
 import { Button, Disclosure, NumberField, Slider, Term, Toggle } from "@/components/ui";
 import { api, waitForBackend } from "@/lib/api";
 import { MODEL_BLURB } from "@/lib/models";
 import { PRESET_ORDER, applyPreset, defaultConfig, startRun } from "@/lib/runConfig";
-import { apiBase, type Catalog, type LayerRow, type Preset, type RunIn, type SearchIn, type UploadedModel } from "@/lib/telemetry/protocol";
+import { apiBase, type CalibrationSummary, type Catalog, type LayerRow, type Preset, type RunIn, type SearchIn, type UploadedModel } from "@/lib/telemetry/protocol";
 
 interface RunSummary { run_id: string; status: string; config: RunIn; created_at: number }
 
@@ -56,6 +57,7 @@ export default function Home() {
   const [presets, setPresets] = useState<Record<string, Preset> | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [uploads, setUploads] = useState<UploadedModel[]>([]);
+  const [calibrations, setCalibrations] = useState<Record<string, CalibrationSummary>>({});
   const [cfg, setCfg] = useState<RunIn>(defaultConfig());
   const [waking, setWaking] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -180,6 +182,10 @@ export default function Home() {
               </ul>
             </div>
           )}
+          <CalibrationDrop modelId={cfg.model} current={upload?.calibration ?? calibrations[cfg.model]} onAttached={(calibration) => {
+            setCalibrations((all) => ({ ...all, [cfg.model]: calibration }));
+            if (upload) setUploads((us) => us.map((u) => u.model_id === upload.model_id ? { ...u, calibration } : u));
+          }} />
         </Step>
 
         <Step n={2} title="Choose a chip" aside="Energy and speed are estimated for this hardware.">
@@ -211,6 +217,15 @@ export default function Home() {
             <p className="mt-3 text-sm text-ink-muted">{presets[cfg.preset]!.notes}</p>
           )}
           {!cfg.preset && <p className="mt-3 text-sm text-ink-muted">Custom settings.</p>}
+          {catalog?.modes && <label className="mt-4 block max-w-xl">
+            <span className="mb-1 block text-sm font-bold">Operational mode</span>
+            <select value={cfg.mode ?? ""} onChange={(e) => setCfg((c) => ({ ...c, preset: null, mode: e.target.value || null }))}
+              className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm">
+              <option value="">General co-design</option>
+              {Object.entries(catalog.modes).map(([id, mode]) => <option key={id} value={id}>{mode.title}</option>)}
+            </select>
+            {cfg.mode && catalog.modes[cfg.mode] && <span className="mt-1 block text-sm text-ink-muted">{catalog.modes[cfg.mode]!.summary}</span>}
+          </label>}
         </Step>
 
         <Step n={4} title="Fine-tune" aside="Optional. The defaults work well.">

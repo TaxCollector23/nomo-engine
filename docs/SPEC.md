@@ -1,6 +1,9 @@
-# Nomo Engine — Technical Specification v0.4
+# Nomo Engine — Technical Specification v0.5
 
-Scope: tri-domain (continuous / spiking / symbolic) hardware-aware architecture search, cost modelling, and compilation to NIR and bare-metal C11. Section numbers are referenced from code docstrings.
+Scope: tri-domain (continuous / spiking / symbolic) hardware-aware architecture search, calibration-aware
+post-training quantisation, structured software/RTL release packaging, and compilation to NIR and bare-metal
+C11. Section numbers are referenced from code docstrings. The v5 implementation boundary is detailed in
+[`docs/ENTERPRISE.md`](ENTERPRISE.md).
 
 ## §0 Status, provenance and non-claims
 

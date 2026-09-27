@@ -60,6 +60,16 @@ class NumpyOps:
     def linear(self, x, W, b):
         return x @ W.T + b
 
+    def operator(self, x, W, b, family):
+        # Channel/token-preserving adapter.  It deliberately never flattens a
+        # spatial or sequence tensor; family-specific spectral/graph metadata is
+        # carried in the plan for specialized backends.
+        if x.ndim == 4 and W.ndim == 2:
+            return self.np.einsum("oc,bchw->bohw", W, x) + b.reshape(1, -1, 1, 1)
+        if x.ndim == 3 and W.ndim == 2:
+            return x @ W.T + b
+        return self.linear(x, W, b)
+
     def conv2d(self, x, W, b, stride, pad):
         # process two samples at a time: keeps the unfolded patches small (memory-bounded servers)
         if x.shape[0] > 2:
@@ -98,6 +108,8 @@ class NumpyOps:
 def _op(ops, L, x):
     if L["op"] == "conv2d":
         return ops.conv2d(x, L["W"], L["b"], int(L["stride"]), int(L["padding"]))
+    if L["op"] in ("fno", "vit", "gnn", "attention", "message_passing"):
+        return ops.operator(x, L["W"], L["b"], L["op"])
     if L.get("flatten_input") and len(x.shape) > 2:
         x = ops.flatten(x)
     return ops.linear(x, L["W"], L["b"])

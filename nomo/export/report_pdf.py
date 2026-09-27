@@ -66,6 +66,9 @@ def _styles():
         "body": base,
         "small": ParagraphStyle("sm", parent=base, fontSize=8, leading=10.5, textColor=GREY),
         "cell": ParagraphStyle("c", parent=base, fontSize=8, leading=10),
+        "badge": ParagraphStyle("badge", parent=base, fontName=FONT_BOLD, fontSize=10, leading=13,
+                                 textColor=colors.HexColor("#8a1c1c"), backColor=colors.HexColor("#ffe4e4"),
+                                 borderColor=colors.HexColor("#c43d3d"), borderWidth=0.8, borderPadding=5),
     }
 
 
@@ -150,6 +153,7 @@ def build_pdf(ctx: Dict[str, Any]) -> bytes:
     ev, model, hw = ctx["eval"], ctx["model"], ctx["hw"]
     cost = ev.cost
     base = ctx["baseline"]
+    evidence = ctx.get("evidence") or {}
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
                             bottomMargin=16 * mm, title=f"Nomo design brief: {model.name}", author="Nomo")
@@ -161,6 +165,9 @@ def build_pdf(ctx: Dict[str, Any]) -> bytes:
               Spacer(1, 6 * mm), Paragraph("Summary", S["h"])]
     for line in ctx.get("explanation", []):
         story.append(Paragraph(line, S["body"]))
+    if str(ctx.get("weights_source", "")).lower().startswith("synthetic"):
+        story.append(Spacer(1, 3 * mm))
+        story.append(Paragraph("DEMO WEIGHTS — this package contains generated or untrained weights. Metrics are not a claim about a trained model.", S["badge"]))
     story.append(Spacer(1, 3 * mm))
     rows = [["", "all-continuous baseline", "chosen design", "change"],
             ["Energy per inference", _si(base["energy_j"], "J"), _si(cost.energy_j, "J"), _pct(cost.energy_j, base["energy_j"])],
@@ -169,6 +176,15 @@ def build_pdf(ctx: Dict[str, Any]) -> bytes:
              f"{base['accuracy']:.2f} %", f"{ev.accuracy:.2f} %", f"{ev.accuracy - base['accuracy']:+.2f} pts"],
             ["Meets all budgets", "", "yes" if ev.feasible else f"no (violation {ev.cv:.2f})", ""]]
     story.append(_table(rows, [45 * mm, 42 * mm, 42 * mm, 30 * mm]))
+    story += [Spacer(1, 4 * mm), Paragraph("Evidence ledger", S["h"])]
+    proxy = evidence.get("zero_shot_sensitivity_proxies", {})
+    empirical = evidence.get("empirical_validation_results", {})
+    story.append(_table([
+        ["source", "status", "what it means"],
+        ["Zero-shot sensitivity proxies", proxy.get("status", "estimated"), "search accuracy and layer penalties; not a test-set measurement"],
+        ["Empirical validation", empirical.get("status", "not_available"), empirical.get("source", "no calibration/test data attached")],
+        ["Weights", "synthetic/demo" if str(ctx.get("weights_source", "")).lower().startswith("synthetic") else "uploaded", str(ctx.get("weights_source", "unknown"))],
+    ], [48 * mm, 30 * mm, 101 * mm]))
     story += [Spacer(1, 4 * mm), Paragraph("Trade-off map", S["h"]),
               _pareto_chart(ctx["cloud"], ev.key, {"key": "_base", "f": [base["energy_j"], base["latency_s"], base["accuracy"]]}),
               Paragraph("Each dot is a design the search evaluated. Outlined dots are the best trade-offs (no other design is "
@@ -209,6 +225,19 @@ def build_pdf(ctx: Dict[str, Any]) -> bytes:
     rows = [["component", "energy", "share", ""]] + [
         [k, _si(v, "J"), f"{100 * v / max(cost.energy_j, 1e-30):.1f} %", _bar(v / max(cost.energy_j, 1e-30))] for k, v in parts]
     story.append(_table(rows, [58 * mm, 30 * mm, 22 * mm, 52 * mm]))
+    neu = evidence.get("neuromorphic_efficiency", {})
+    story += [Paragraph("Neuromorphic efficiency", S["h"])]
+    if neu.get("available"):
+        nrows = [["layer", "T", "spike sparsity", "dense FP32 ops", "ops saved"]]
+        for item in neu.get("layers", []):
+            if item.get("available"):
+                nrows.append([item.get("layer", "-"), str(item.get("timesteps", "-")),
+                              f"{float(item.get('spike_sparsity_pct', 0)):.2f}%",
+                              f"{float(item.get('dense_fp32_ops', 0)):.0f}", f"{float(item.get('ops_saved', 0)):.0f}"])
+        story.append(_table(nrows, [38 * mm, 15 * mm, 33 * mm, 38 * mm, 40 * mm]))
+        story.append(Paragraph("These are exact event counts over the attached calibration tensors under the stated TTFS model; they are not measured silicon energy.", S["small"]))
+    else:
+        story.append(Paragraph("No TTFS layer is present in the selected design, so no spike-sparsity or operation-savings claim is emitted.", S["small"]))
     if cost.crossings:
         rows = [["crossing", "values", "timesteps", "payload", "energy", "time"]] + [
             [f"{c.src} → {c.dst}", str(c.values), str(c.timesteps or "-"), f"{c.payload_bytes:.0f} B ({c.payload_kind})",

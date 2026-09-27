@@ -18,6 +18,7 @@ import FilterBar from "./FilterBar";
 import LayerInspector from "./LayerInspector";
 import PartitionGraph from "./PartitionGraph";
 import RunHUD from "./RunHUD";
+import WorkbenchDrawer from "./WorkbenchDrawer";
 import { DomainChip } from "./ui";
 
 // WebGL must not render on the server
@@ -65,6 +66,9 @@ export default function RunDashboard({ runId }: { runId: string }) {
           )}
           <button onClick={() => setDrawer(drawer === "copilot" ? null : "copilot")} aria-pressed={drawer === "copilot"}
             className="rounded-md border border-line-strong px-3 py-1.5 text-sm font-bold hover:border-ink">Ask Copilot</button>
+          <button onClick={() => setDrawer(drawer === "workbench" ? null : "workbench")} aria-pressed={drawer === "workbench"} disabled={!done}
+            title={done ? undefined : "Available when the search finishes"}
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm font-bold hover:border-ink disabled:opacity-40">Workbench</button>
           <button onClick={() => setDrawer(drawer === "export" ? null : "export")} aria-pressed={drawer === "export"} disabled={!done}
             title={done ? undefined : "Available when the search finishes"}
             className="rounded-md bg-ink px-3 py-1.5 text-sm font-bold text-white hover:bg-ink-soft disabled:opacity-40">Export</button>
@@ -102,6 +106,7 @@ export default function RunDashboard({ runId }: { runId: string }) {
                 onClose={() => setDrawer(null)} />
             )}
             {drawer === "export" && <ExportDrawer runId={runId} detail={detail} onClose={() => setDrawer(null)} />}
+            {drawer === "workbench" && <WorkbenchDrawer runId={runId} onClose={() => setDrawer(null)} />}
           </div>
         )}
       </div>

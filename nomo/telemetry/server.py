@@ -54,6 +54,7 @@ from pydantic import BaseModel, Field
 from .. import __version__
 from ..hardware.profiles import PROFILES, get_profile
 from ..hardware.custom import HardwareOverrides, apply_overrides
+from ..modes import get_mode, mode_catalog, validate_mode
 from ..models.zoo import MODELS, synthetic_weights
 from ..search.evaluator import Budgets, NeurosymbolicEvaluator
 from ..search.policy import intrinsic_domains, parse_policy, validate_policy
@@ -147,11 +148,19 @@ class RunIn(BaseModel):
     lock_symbolic: bool = False
     hardware_overrides: Optional[HardwareIn] = None
     preset: Optional[str] = None                   # informational: which preset the UI applied
+    mode: Optional[str] = None                     # low_power_neuromorphic | hard_realtime | radiation_hardened | on_chip_learning
 
 
 class ExportIn(BaseModel):
     key: str
     formats: List[str]
+    archive: str = Field("zip", pattern="^(zip|tar\\.gz)$")
+
+
+class WorkbenchTargetsIn(BaseModel):
+    energy: float = Field(1.0, gt=0)
+    latency: float = Field(1.0, gt=0)
+    accuracy: float = Field(1.0, gt=0)
 
 
 class CopilotIn(BaseModel):
@@ -184,7 +193,7 @@ class Run:
         self.log = obs.get("runs")
         self.ctx = None                              # export.bundle.RunContext, set by the worker
         self.warnings: List[str] = []
-        self.prepared: Optional[tuple] = None        # (model, weights, weights_source, hw, assumptions)
+        self.prepared: Optional[tuple] = None        # (model, weights, weights_source, hw, assumptions, policy, calibration)
 
     # called on the event loop
     def publish(self, type_: str, data: dict) -> None:
@@ -261,7 +270,10 @@ def layer_table(model) -> List[Dict[str, Any]]:
                     "weight_shape": list(spec.weight_shape or ()), "weight_kb_int8": round(spec.params / 1024, 1),
                     "can_be": [d.name for d in intrinsic_domains(spec)],
                     "in_shape": list(spec.attrs.get("in_shape", ())) or None,
-                    "out_shape": list(spec.attrs.get("pooled_shape", spec.attrs.get("out_shape", ()))) or None})
+                    "out_shape": list(spec.attrs.get("pooled_shape", spec.attrs.get("out_shape", ()))) or None,
+                    "preserve_spatial": bool(spec.attrs.get("preserve_spatial", spec.op == "conv2d")),
+                    "quantization_sensitivity": {"weight": spec.sensitivity.q_w, "activation": spec.sensitivity.q_a,
+                                                   "rate": spec.sensitivity.c_rate, "ttfs": spec.sensitivity.c_ttfs}})
     return out
 
 
@@ -285,11 +297,19 @@ def create_app() -> FastAPI:
 
     runs: Dict[str, Run] = {}
     uploads: Dict[str, Dict[str, Any]] = {}
+    calibrations: Dict[str, Dict[str, Any]] = {}
     export_lock = threading.Lock()                 # exports are memory-heavy: one at a time
 
     def prepare(cfg: RunIn):
         """Resolve model/weights/hardware and apply the policy. Raises HTTPException(4xx) with reasons."""
         assumptions: List[str] = []
+        try:
+            mode = get_mode(cfg.mode)
+            mode_warnings = validate_mode(cfg.mode, period_s=cfg.budgets.period_s,
+                                          min_plastic_params=cfg.budgets.min_plastic_params,
+                                          allow_spiking=cfg.search.allow_spiking)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
         if cfg.model in MODELS:
             model = MODELS[cfg.model]()
             weights, wsrc = synthetic_weights(model), "synthetic (untrained demo weights for the built-in model)"
@@ -302,6 +322,11 @@ def create_app() -> FastAPI:
         else:
             raise HTTPException(404, f"unknown model '{cfg.model}' (uploaded models are kept for a limited time; "
                                      "upload it again)")
+        calibration = calibrations.get(cfg.model)
+        if calibration:
+            assumptions.append(f"uploaded calibration tensors: {calibration['report']['sample_count']} samples; PTQ ranges are data-driven")
+        elif mode is not None and mode.id == "hard_realtime":
+            assumptions.append("hard real-time mode has no hardware-in-the-loop measurement attached")
         if cfg.hardware not in PROFILES:
             raise HTTPException(404, f"unknown hardware {cfg.hardware}")
         hw = get_profile(cfg.hardware)
@@ -327,7 +352,7 @@ def create_app() -> FastAPI:
         model.policy = policy
         if srch.asf_weights is not None and (len(srch.asf_weights) != 3 or any(w <= 0 for w in srch.asf_weights)):
             raise HTTPException(422, "asf_weights needs three positive numbers (energy, latency, accuracy)")
-        return model, weights, wsrc, hw, assumptions, rep.warnings, policy
+        return model, weights, wsrc, hw, assumptions, rep.warnings + mode_warnings, policy, calibration
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -392,7 +417,7 @@ def create_app() -> FastAPI:
         t0 = time.perf_counter()
         try:
             from ..export.bundle import RunContext
-            model, weights, wsrc, hw, assumptions, policy = run.prepared
+            model, weights, wsrc, hw, assumptions, policy, calibration = run.prepared
             s_ = run.cfg.search
             ev = NeurosymbolicEvaluator(model, hw, _budgets(run.cfg, model, hw))
             opt = TriDomainNSGA2Optimizer(model, hw, ev, NSGA2Config(
@@ -401,8 +426,10 @@ def create_app() -> FastAPI:
                 hv_window=s_.patience, asf_weights=tuple(s_.asf_weights) if s_.asf_weights else None), telemetry=run.emit)
             settings = run.cfg.model_dump()
             settings["policy"] = policy.to_dict([l.name for l in model.layers])
+            calibration_data = calibration["data"] if calibration else None
             run.ctx = RunContext(model, weights, wsrc, hw, ev, settings, assumptions + run.warnings,
-                                 opt.archive_front, opt.recommend)
+                                 opt.archive_front, opt.recommend, calibration_data=calibration_data,
+                                 calibration_report=calibration["report"] if calibration else None)
             run.optimizer = opt
             run.set_status("running")
             rlog.info("run.started", extra={"run_id": run.id, "client_id": run.client_id})
@@ -429,8 +456,9 @@ def create_app() -> FastAPI:
     def root() -> Dict[str, Any]:
         return {"service": "nomo-backend", "version": __version__, "status": "ok",
                 "uptime_s": round(time.time() - obs.STARTED_AT, 1),
-                "endpoints": ["/healthz", "/catalog", "/presets", "/models/upload", "/runs", "/ws/runs/{run_id}",
-                              "/runs/{id}/designs/{key}", "/runs/{id}/export", "/runs/{id}/copilot", "/docs"],
+                "endpoints": ["/healthz", "/catalog", "/presets", "/models/upload", "/models/{id}/calibration", "/runs",
+                              "/ws/runs/{run_id}", "/runs/{id}/designs/{key}", "/runs/{id}/workbench",
+                              "/runs/{id}/export", "/runs/{id}/copilot", "/docs"],
                 "limits": {"max_active_runs": MAX_ACTIVE_RUNS, "max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
     @app.get("/healthz")
@@ -445,6 +473,8 @@ def create_app() -> FastAPI:
                 "hardware": {k: {"name": p.name, "provenance": p.provenance, "defaults": _hw_defaults(p),
                                  "bits": {"continuous": list(p.ann_bits), "spiking": list(p.snn_w_bits)}}
                              for k, p in PROFILES.items()},
+                "modes": mode_catalog(),
+                "workbench": {"format": "nomo.workbench/1", "levels": 6},
                 "limits": {"max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
     def _reject(status: int, reason: str, client_id: str, **extra) -> HTTPException:
@@ -456,7 +486,7 @@ def create_app() -> FastAPI:
     async def start(cfg: RunIn, request: Request) -> Dict[str, Any]:
         cid = request.state.client_id
         try:
-            model, weights, wsrc, hw, assumptions, warnings, policy = prepare(cfg)
+            model, weights, wsrc, hw, assumptions, warnings, policy, calibration = prepare(cfg)
         except HTTPException as exc:
             raise _reject(exc.status_code, exc.detail, cid)
         if cfg.pop_size > MAX_POP or cfg.generations > MAX_GENS:
@@ -478,7 +508,7 @@ def create_app() -> FastAPI:
             rlog.info("run.evicted", extra={"run_id": done[0]})
             del runs[done[0]]
         run = Run(uuid.uuid4().hex[:12], cfg, asyncio.get_running_loop(), cid)
-        run.prepared = (model, weights, wsrc, hw, assumptions, policy)
+        run.prepared = (model, weights, wsrc, hw, assumptions, policy, calibration)
         run.warnings = warnings
         runs[run.id] = run
         hist.append(now)
@@ -541,31 +571,67 @@ def create_app() -> FastAPI:
         while len(uploads) >= MAX_UPLOADS:
             uploads.pop(next(iter(uploads)))
         spec_layers, name, acc, ishape = model.layers, model.name, model.base_accuracy, model.input_shape
+        architecture_family, model_metadata = model.architecture_family, dict(model.metadata)
 
-        def build(spec_layers=spec_layers, name=name, acc=acc, ishape=ishape):
+        def build(spec_layers=spec_layers, name=name, acc=acc, ishape=ishape,
+                  architecture_family=architecture_family, model_metadata=model_metadata):
             from ..ir import ModelGraph
-            return ModelGraph(name=name, input_shape=ishape, layers=list(spec_layers), base_accuracy=acc)
+            return ModelGraph(name=name, input_shape=ishape, layers=list(spec_layers), base_accuracy=acc,
+                              architecture_family=architecture_family, metadata=dict(model_metadata))
 
         uploads[mid] = {"build": build, "weights": weights, "report": rep.to_dict(), "client_id": cid,
                         "weights_source": {"file": "uploaded file",
                                            "partial": "uploaded file (some layers had no weights: random weights generated)",
                                            }.get(rep.weights_source, "synthetic (the uploaded graph had no weights)"),
-                        "created_at": time.time()}
+                        "created_at": time.time(), "architecture_family": architecture_family}
         rlog.info("model.uploaded", extra={"client_id": cid, "model_id": mid, "upload_name": filename,
                                            "bytes": len(data), "layers": rep.layers, "format": rep.source_format})
         return {"model_id": mid, "name": name, "base_accuracy": acc, "input_shape": list(ishape),
-                "report": rep.to_dict(), "layer_table": layer_table(model)}
+                "report": rep.to_dict(), "layer_table": layer_table(model), "calibration": None}
+
+    @app.post("/models/{model_id}/calibration")
+    async def upload_calibration(model_id: str, request: Request,
+                                 filename: str = Query("calibration.npz", max_length=200)) -> Dict[str, Any]:
+        """Attach 100–500 calibration tensors used by PTQ and export validation."""
+        from ..runtime.ptq import parse_calibration_bytes
+        if model_id in MODELS:
+            model = MODELS[model_id]()
+        elif model_id in uploads:
+            model = uploads[model_id]["build"]()
+        else:
+            raise HTTPException(404, "unknown model")
+        data = await request.body()
+        if not data:
+            raise HTTPException(400, "empty calibration upload")
+        if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+            raise HTTPException(413, f"calibration is larger than this server's {MAX_UPLOAD_MB} MB limit")
+        n_aux = max([model.constraints[s.constraint_id].n_aux for s in model.guard_sites] or [0])
+        try:
+            cal = await asyncio.to_thread(parse_calibration_bytes, filename, data, model.input_shape, n_aux)
+        except ValueError as exc:
+            rlog.warning("calibration.upload_rejected", extra={"client_id": request.state.client_id,
+                                                                   "model_id": model_id, "reason": str(exc)})
+            raise HTTPException(422, str(exc))
+        report = cal.to_dict()
+        calibrations[model_id] = {"data": (cal.inputs, cal.aux), "report": report,
+                                   "client_id": request.state.client_id, "created_at": time.time()}
+        rlog.info("calibration.uploaded", extra={"client_id": request.state.client_id, "model_id": model_id,
+                                                   "upload_name": filename, "samples": cal.sample_count})
+        return {"model_id": model_id, "calibration": report,
+                "message": "Calibration attached. PTQ ranges will be selected for each design at export time."}
 
     @app.get("/models/{model_id}")
     def get_model(model_id: str) -> Dict[str, Any]:
         if model_id in MODELS:
             m = MODELS[model_id]()
             return {"model_id": model_id, "name": m.name, "base_accuracy": m.base_accuracy,
-                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": None}
+                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": None,
+                    "calibration": calibrations.get(model_id, {}).get("report")}
         if model_id in uploads:
             m = uploads[model_id]["build"]()
             return {"model_id": model_id, "name": m.name, "base_accuracy": m.base_accuracy,
-                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": uploads[model_id]["report"]}
+                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": uploads[model_id]["report"],
+                    "calibration": calibrations.get(model_id, {}).get("report")}
         raise HTTPException(404, "unknown model")
 
     def _ctx_and_eval(run_id: str, key: Optional[str]):
@@ -595,15 +661,52 @@ def create_app() -> FastAPI:
         return {"design": design_json(ctx, ev), "summary": summarize(ctx, ev).to_dict(),
                 "capabilities": capabilities(ctx, ev)}
 
+    @app.get("/workbench/schema")
+    def workbench_schema() -> Dict[str, Any]:
+        from ..workbench import schema
+        return schema()
+
+    @app.get("/runs/{run_id}/workbench")
+    def workbench(run_id: str, key: str = "recommended", energy_weight: float = Query(1.0, gt=0),
+                  latency_weight: float = Query(1.0, gt=0), accuracy_weight: float = Query(1.0, gt=0)) -> Dict[str, Any]:
+        from ..workbench import build_state
+        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key)
+        ctx.ptq_report_for(ev)
+        return build_state(ctx.model, ev, plan=ctx.plan(ev), ptq_report=ctx.calibration_report,
+                           hitl=ctx.hitl_measurement,
+                           target_weights=(energy_weight, latency_weight, accuracy_weight),
+                           mode=ctx.settings.get("mode"), hardware=ctx.hw)
+
+    @app.post("/runs/{run_id}/workbench/targets")
+    def workbench_targets(run_id: str, body: WorkbenchTargetsIn) -> Dict[str, Any]:
+        from ..workbench import build_state, select_candidate
+        run = runs.get(run_id)
+        if run is None:
+            raise HTTPException(404, "no such run")
+        if run.ctx is None or run.status in ("pending", "running"):
+            raise HTTPException(409, "the search is still running; wait for it to finish")
+        ctx = run.ctx
+        ev = select_candidate((e for e in ctx.evaluator.cache.values() if e.feasible),
+                              (body.energy, body.latency, body.accuracy))
+        if ev is None:
+            raise HTTPException(404, "no feasible design matches the requested target weights")
+        ctx.ptq_report_for(ev)
+        state = build_state(ctx.model, ev, plan=ctx.plan(ev), ptq_report=ctx.calibration_report,
+                            hitl=ctx.hitl_measurement,
+                            target_weights=(body.energy, body.latency, body.accuracy),
+                            mode=ctx.settings.get("mode"), hardware=ctx.hw)
+        state["selected_design_key"] = ev.key
+        return state
+
     @app.post("/runs/{run_id}/export")
     def export(run_id: str, body: ExportIn, request: Request) -> Response:
-        from ..export.bundle import build_bundle
+        from ..export.bundle import build_archive
         run, ctx, ev = _ctx_and_eval(run_id, body.key)
         t0 = time.perf_counter()
         if not export_lock.acquire(timeout=120):
             raise HTTPException(503, "the server is busy preparing another export; try again in a minute")
         try:
-            data, manifest = build_bundle(ctx, ev, body.formats)
+            data, manifest = build_archive(ctx, ev, body.formats, body.archive)
         except ValueError as exc:
             raise HTTPException(422, str(exc))
         finally:
@@ -614,8 +717,9 @@ def create_app() -> FastAPI:
         rlog.info("run.exported", extra={"run_id": run_id, "client_id": request.state.client_id, "key": ev.key,
                                          "formats": body.formats, "bytes": len(data), "skipped": manifest["skipped"],
                                          "errors": manifest["errors"], "wall_s": round(time.perf_counter() - t0, 3)})
-        return Response(data, media_type="application/zip", headers={
-            "Content-Disposition": f'attachment; filename="{manifest["root"]}.zip"',
+        is_tar = manifest.get("format") == "tar.gz"
+        return Response(data, media_type="application/gzip" if is_tar else "application/zip", headers={
+            "Content-Disposition": f'attachment; filename="{manifest["root"]}.tar.gz"' if is_tar else f'attachment; filename="{manifest["root"]}.zip"',
             "X-Nomo-Manifest": json.dumps({"files": manifest["files"], "skipped": manifest["skipped"]})[:7000],
             "Access-Control-Expose-Headers": "Content-Disposition, X-Nomo-Manifest"})
 

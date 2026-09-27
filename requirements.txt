@@ -8,5 +8,6 @@ uvicorn[standard]>=0.27
 pydantic>=2
 onnx>=1.15
 reportlab>=4.0
+pyyaml>=6.0
 # Core ML export (optional: without it the Core ML option shows as unavailable, with the reason)
 coremltools>=8.0

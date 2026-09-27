@@ -18,10 +18,14 @@ Layout (architecture rationale: docs/SPEC.md §10)
     src/components/PartitionGraph.tsx   SVG layered layout of the execution stream, labelled crossings
     src/components/RunHUD.tsx           status, HV sparkline, adaptive-pursuit operator probabilities
     src/components/CandidatePanel.tsx   metrics + gene codes of the selected design
-    src/app/page.tsx                    catalog-driven run launcher and run list
+    src/app/page.tsx                    catalog-driven run launcher, mode picker, calibration upload, and run list
     src/app/runs/[runId]/page.tsx       live dashboard
     src/app/admin/page.tsx              logs (6 streams, filters, live tail, NDJSON), users, runs, stats
     src/lib/api.ts                      client id, fetch wrapper, cold-start wait
 
-Verified: `tsc --noEmit` (strict, noUncheckedIndexedAccess) clean; `next build` clean; headless-Chromium
+    src/components/WorkbenchDrawer.tsx  six-level topology/partition/hardware/RTL/floorplan inspector
+    src/components/launcher/CalibrationDrop.tsx  100–500 tensor calibration upload and PTQ provenance
+
+Verified: `tsc --noEmit` (strict, noUncheckedIndexedAccess) clean; `next build` clean; the Workbench and
+calibration surfaces are catalog-driven and call the v5 API contracts. Headless-Chromium
 end-to-end against a live `nomo serve` (launch -> stream -> completion -> reload/resume) with zero console errors.

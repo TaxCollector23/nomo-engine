@@ -95,6 +95,71 @@ def cmd_serve(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pipeline(a: argparse.Namespace) -> int:
+    """Run search + calibration + structured release export from nomo.yaml."""
+    from .config import load_config, search_settings, section
+    from .export.bundle import FORMATS, RunContext, build_archive
+    from .modes import get_mode
+
+    doc = load_config(a.config)
+    model_id = str(doc.get("model", "attitude_policy"))
+    hardware_id = str(doc.get("hardware", "akd1500"))
+    if model_id in MODELS:
+        model, weights, weights_source = MODELS[model_id](), synthetic_weights(MODELS[model_id]()), "synthetic (untrained demo weights)"
+    else:
+        from .ingest import ingest
+        p = Path(model_id)
+        if not p.exists():
+            raise SystemExit(f"pipeline model '{model_id}' is not a built-in model or readable file")
+        model, weights, rep = ingest(p.name, p.read_bytes(), float(doc.get("base_accuracy", 90.0)))
+        weights_source = "uploaded file" if rep.weights_source == "file" else f"{rep.weights_source} weights from {p.name}"
+    hw = get_profile(hardware_id)
+    bdoc = section(doc, "budgets")
+    budgets = Budgets(e_max_j=float(bdoc.get("energy_j", math.inf)),
+                      l_max_s=float(bdoc.get("latency_s", math.inf)),
+                      acc_min=float(bdoc.get("accuracy_min", model.base_accuracy - float(bdoc.get("accuracy_drop_max", 4.0)))),
+                      period_max_s=float(bdoc.get("period_s", math.inf)),
+                      min_plastic_params=int(bdoc.get("min_plastic_params", 0)))
+    sdoc = search_settings(doc)
+    ev = NeurosymbolicEvaluator(model, hw, budgets)
+    opt = TriDomainNSGA2Optimizer(model, hw, ev, NSGA2Config(
+        pop_size=int(sdoc.get("pop_size", 32)), generations=int(sdoc.get("generations", 8)),
+        seed=int(sdoc.get("seed", 0)), asf_weights=tuple(sdoc.get("asf_weights", (1, 1, 1)))), telemetry=None)
+    result = opt.run()
+    if result.recommended is None:
+        raise SystemExit("pipeline search produced no recommended design")
+    calibration_data = None
+    calibration_report = None
+    if doc.get("calibration"):
+        from .runtime.ptq import parse_calibration_bytes
+        cp = Path(str(doc["calibration"]))
+        cal = parse_calibration_bytes(cp.name, cp.read_bytes(), model.input_shape,
+                                      max([model.constraints[s.constraint_id].n_aux for s in model.guard_sites] or [0]))
+        calibration_data, calibration_report = (cal.inputs, cal.aux), cal.to_dict()
+    settings = {"config_file": str(a.config), **doc, "mode": doc.get("mode", get_mode(doc.get("mode")).id if doc.get("mode") else None)}
+    ctx = RunContext(model, weights, weights_source, hw, ev, settings,
+                     ["pipeline executed by nomo.yaml"], opt.archive_front, opt.recommend,
+                     calibration_data=calibration_data, calibration_report=calibration_report)
+    formats = list(section(doc, "export").get("formats", FORMATS))
+    archive = str(section(doc, "export").get("archive", "tar.gz"))
+    out = Path(a.out)
+    data, manifest = build_archive(ctx, result.recommended, formats, archive)
+    out.write_bytes(data)
+    print(f"recommended {result.recommended.key}")
+    print(f"{archive} release package: {out} ({len(data)} bytes)")
+    if manifest["skipped"]:
+        print("skipped: " + "; ".join(f"{k}: {v}" for k, v in manifest["skipped"].items()), file=sys.stderr)
+    return 0
+
+
+def cmd_hitl(a: argparse.Namespace) -> int:
+    from .hardware.hitl import HITLClient, HITLTarget
+    measurement = HITLClient(HITLTarget(a.target, a.endpoint, a.token, a.timeout)).benchmark(
+        a.artifact, metadata={"device": a.device}, repeats=a.repeats)
+    print(json.dumps(measurement.to_dict(), indent=2))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="nomo")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -121,6 +186,20 @@ def main(argv=None) -> int:
     v.add_argument("--host", default="127.0.0.1")
     v.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8765)))
     v.set_defaults(fn=cmd_serve)
+    pz = sub.add_parser("pipeline", help="run a complete search and structured release from nomo.yaml")
+    pz.add_argument("--config", required=True, help="declarative nomo.yaml")
+    pz.add_argument("--out", default="nomo_enterprise_release.tar.gz")
+    pz.set_defaults(fn=cmd_pipeline)
+    h = sub.add_parser("hitl", help="send an exported artifact to a trusted benchmark agent")
+    h.add_argument("benchmark", nargs="?", default="benchmark")
+    h.add_argument("--endpoint", required=True, help="benchmark agent base URL")
+    h.add_argument("--target", default="remote-edge")
+    h.add_argument("--artifact", required=True)
+    h.add_argument("--device", default="unknown")
+    h.add_argument("--token")
+    h.add_argument("--timeout", type=float, default=30.0)
+    h.add_argument("--repeats", type=int, default=20)
+    h.set_defaults(fn=cmd_hitl)
     a = p.parse_args(argv)
     return a.fn(a)
 

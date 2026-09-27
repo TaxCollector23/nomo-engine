@@ -62,6 +62,7 @@ def float_forward(model: ModelGraph, weights: Weights, genome: Genome, X: np.nda
 class CompileOptions:
     percentile: float = 99.99
     leak_shift: int = 0                  # 0: integrate-and-fire (exact rate conversion); k>0: LIF with tau = 2^k dt
+    activation_amax: Optional[Sequence[float]] = None  # selected ranges from runtime/ptq.py
 
 
 def _amax(a: np.ndarray, pct: float) -> float:
@@ -78,7 +79,12 @@ def compile_qgraph(model: ModelGraph, weights: Weights, genome: Genome, calib_X:
     opts = opts or CompileOptions()
     acts = float_forward(model, weights, genome, calib_X, calib_aux, apply_guards=True)
     pre = float_forward(model, weights, genome, calib_X, calib_aux, apply_guards=False)
-    A = [_amax(a, opts.percentile) for a in acts]
+    if opts.activation_amax is not None:
+        if len(opts.activation_amax) != len(acts):
+            raise ValueError(f"activation_amax has {len(opts.activation_amax)} edges; expected {len(acts)}")
+        A = [max(float(v), 1e-8) for v in opts.activation_amax]
+    else:
+        A = [_amax(a, opts.percentile) for a in acts]
     s = [a / 127.0 for a in A]
 
     stages: list = []

@@ -1,11 +1,13 @@
-# Nomo Engine — v4 (v0.4)
+# Nomo Engine — v5 (v0.5)
 
-Supersedes **v3 - fixed**. v4 adds user model upload, per-layer control, presets, six export formats
-(PDF, PyTorch, ONNX, Core ML, NIR, C11), and Nomo Copilot on a rebuilt dashboard.
+Supersedes **v4**. v5 adds a calibration-aware post-training quantisation path, a native integer
+deployment driver, a six-level hardware/software workbench, architecture-family adapters, operational
+modes, RTL/Chisel/EDA release artifacts, and hardware-in-the-loop measurement boundaries.
 
 Tri-domain (continuous / spiking / symbolic) hardware-aware architecture search and compiler.
 Upload a model, pick a chip and a goal, and Nomo finds the best trade-offs between energy, latency and
-accuracy, explains them, and exports the chosen design to PyTorch, ONNX, Core ML, NIR, C11 and a PDF brief.
+accuracy, explains them, and exports the chosen design to a structured package containing model metadata,
+runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an executive PDF brief.
 
 - Plain-English guide for users: `GUIDE.md`
 - Full math and design: `docs/SPEC.md`
@@ -13,15 +15,16 @@ accuracy, explains them, and exports the chosen design to PyTorch, ONNX, Core ML
 - Logs and admin: `OBSERVABILITY.md`
 
 ## Setup
-    pip install -e ".[server,coreml,dev]"
+    pip install -e ".[server,dev]"                    # add [coreml] on a supported Apple environment
     python setup.py build_ext --inplace     # optional C++ kernel; skipped automatically if no compiler
-    pytest -q                               # 97 tests (+1 that runs only where PyTorch is installed)
+    pytest -q --ignore=tests/test_v4.py               # platform-independent suite
 
 ## Use
     nomo serve --port 8765                                  # API + live telemetry
     cd frontend && npm install && npm run dev               # dashboard at http://localhost:3000
     nomo search  --model attitude_policy --hardware akd1500 --out run.json
     nomo compile --model attitude_policy --hardware akd1500 --genome run.json --out build/
+    nomo-cli pipeline --config nomo.yaml.example --out release.tar.gz
 
 ## Live deployment
 
@@ -34,7 +37,28 @@ accuracy, explains them, and exports the chosen design to PyTorch, ONNX, Core ML
 | Engine — repo | https://github.com/TaxCollector23/nomo-engine |
 | Prototype — repo | https://github.com/TaxCollector23/nomo-ai |
 
-## What's new in v0.4
+## What's new in v0.5
+
+- **Calibration + PTQ:** attach 100–500 `.npz`, `.npy`, or JSON tensors from the launcher/API. MSE and
+  KL threshold selection is recorded per activation edge and used by integer export; labels are retained
+  as provenance but never turned into an accuracy claim automatically.
+- **Native integer deployment:** the canonical `runtime/deploy_model.py` uses integer accumulators,
+  Q16.16 guard math, deterministic saturation, and embedded golden vectors. It is emitted only when the
+  selected graph has a supported integer lowering; otherwise the package makes the float reference driver
+  explicit.
+- **Six-level Workbench:** system topology, domain partitioning, hardware graph, cycle-emulation boundary,
+  RTL, and silicon floorplan views are available at `GET /runs/{id}/workbench`. Candidate target weights
+  can be changed without silently changing the recorded run.
+- **Architecture families:** FNO, ViT/attention, and GNN/message-passing JSON graph blocks preserve their
+  spatial, token, or graph contracts. Backends that do not yet lower a family report the limitation instead
+  of flattening it invisibly.
+- **Hardware release artifacts:** structured exports include SystemVerilog PE/core modules, Chisel boundary,
+  generic Yosys/OpenROAD scripts, CMake, a SystemC integration boundary, and proxy PPA marked as proxy.
+- **Operational modes and HITL:** low-power neuromorphic, hard real-time, radiation-hardened, and on-chip
+  learning contracts are catalogued and carried into manifests. `nomo hitl` accepts a trusted benchmark-agent
+  result; no arbitrary remote shell execution is part of the protocol.
+
+## What's retained from v0.4
 - **Your own models:** upload `.onnx`, PyTorch `state_dict` (`.pt/.pth`, read without executing code) or a
   `nomo.graph/1` JSON graph. Layer shapes, sizes, compute and possible domains are extracted automatically.
 - **Control:** per-layer locks on domain and weight precision (hard invariants), domain toggles
@@ -50,23 +74,31 @@ accuracy, explains them, and exports the chosen design to PyTorch, ONNX, Core ML
   with crossing badges and lock-and-rerun, export and Copilot drawers.
 
 ## Verification
-- `pytest -q`: 97 pass. v4 tests cover policy/pins (repair idempotence under policy, 200 random genomes),
-  crossing penalty and threshold, hardware overrides, presets, ONNX ingestion vs ONNX Runtime (< 1e-5),
-  malicious-pickle refusal, every export format end to end (PyTorch self-check, stock `nir.read`, ONNX
-  sections vs reference, C example compiled and run), Copilot, and the new API endpoints.
-- Frontend: strict `tsc`, `next build`, and a headless-browser session (upload, lock, search, inspect,
-  Copilot, export download) against a live server.
+- The platform-independent suite passes with `pytest -q --ignore=tests/test_v4.py`; the v4 full-bundle test
+  additionally needs the native Core ML ML-storage extension. On Linux it is reported as unavailable when
+  that extension is missing; run the Core ML export test on supported macOS tooling.
+- Frontend: strict `tsc --noEmit` and `next build` pass after the workbench and calibration UI changes.
+- Existing v4 coverage still exercises policy/pins, repair idempotence, crossing penalties, hardware
+  overrides, presets, ONNX ingestion, safe checkpoint loading, export self-checks, Copilot, and API routes.
 - Memory: worst case measured (camera model search + all formats in one export) peaks at 382 MB, under
   Render's 512 MB; exports are serialised one at a time.
 
-## Limits (read before quoting numbers)
+## Evidence boundaries and limits (read before quoting numbers)
 - Energy/latency coefficients are **placeholders** unless you enter your chip's numbers.
 - Accuracy is an **estimate** from per-layer sensitivities, not a measurement; uploaded models use default
   sensitivities.
+- PTQ calibration measures runtime ranges and quantisation/reconstruction fidelity. It does **not** promote
+  task accuracy without labeled evaluation and an oracle result.
+- PPA, thermal density, cycle count, cache behavior, and power are proxy values until the generated design is
+  synthesized, simulated, or measured through the HITL benchmark protocol.
+- Built-in model weights are synthetic demo weights. Upload trained weights before making model-quality claims.
+- FNO/ViT/GNN blocks preserve their graph contracts but only backends listed in their architecture profile
+  are enabled; unsupported lowerings are included as explicit `.unavailable.txt` notes in the package.
 - The PyTorch path of `deploy_model.py` was not executed in the build environment (PyTorch unavailable);
   the script verifies itself on first run (`--check`). Its numpy path is tested.
 - Core ML packages are built and structurally validated on Linux; running them needs macOS/iOS.
 - `.pt/.pth` uploads: weights-only `state_dict`; structure is inferred (ReLU between layers, stride 1).
   The `.pt` tests use files synthesised in PyTorch's format; a real-PyTorch test runs where torch exists.
 - Not modelled: phase coding, FP16. Not implemented: branching/residual graphs, grouped convolutions,
-  surrogate-gradient fine-tuning, multi-chip partitioning, TTFS/conv C11 lowering, MLIR/microTVM output.
+  surrogate-gradient fine-tuning, multi-chip partitioning, TTFS/conv C11 lowering, full operator-family
+  ONNX/Core ML lowering, MLIR/microTVM output, and closed-loop silicon PPA without a target measurement.
