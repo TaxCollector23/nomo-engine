@@ -287,3 +287,18 @@ def emit_test_harness(qg: QGraph, X_i8: np.ndarray, AUX_q16: np.ndarray, prefix:
   return bad;
 }}
 """)
+
+
+def emit_c11_single_header(qg: QGraph, prefix: str = "nomo") -> str:
+    """Header-only (stb-style) form of `emit_c11`: include `nomo_model.h` anywhere; in exactly one
+    .c file write `#define NOMO_MODEL_IMPLEMENTATION` before the include to compile the kernels."""
+    em = emit_c11(qg, prefix)
+    P = prefix.upper()
+    decl = em.header
+    end = f"#endif\n"
+    assert decl.rstrip().endswith("#endif")
+    decl_body = decl[: decl.rstrip().rfind("#endif")]
+    impl = em.source.replace(f'#include "{prefix}_model.h"\n', "")
+    return (decl_body
+            + f"\n#ifdef {P}_MODEL_IMPLEMENTATION\n/* ---- implementation (compile in exactly one translation unit) ---- */\n"
+            + impl + f"#endif /* {P}_MODEL_IMPLEMENTATION */\n" + end)

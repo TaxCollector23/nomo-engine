@@ -8,7 +8,7 @@ single units by the ingestion frontend (torch.fx tracing) before search.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -52,6 +52,9 @@ class LayerSpec:
     sensitivity: LayerSensitivity = field(default_factory=LayerSensitivity)
     base_rate: float = 0.12      # mean spike probability per neuron per timestep
     transient: float = 0.6       # kappa in r(t) = r (1 + kappa e^{-t/tau})
+    attrs: Dict[str, Any] = field(default_factory=dict, compare=False, hash=False)
+    # geometry for exporters: conv {in_shape, out_shape, kernel, stride, padding};
+    # dense {flatten_input}; either {pool: {type: max|avg|global_avg, kernel, stride}}
 
     @property
     def spiking_admissible(self) -> bool:
@@ -86,6 +89,7 @@ class ModelGraph:
     substitutes: Dict[str, object] = field(default_factory=dict)   # id -> LinearODESubstitute
     input_rate: float = 0.2                           # mean encoder spike rate on raw input
     interaction: float = 0.004                        # rho, second-order accuracy interaction
+    policy: Optional[object] = None                   # search.policy.SearchPolicy (user locks/toggles)
 
     @property
     def n(self) -> int:
@@ -117,9 +121,13 @@ def dense(name: str, n_in: int, n_out: int, **kw) -> LayerSpec:
                      weight_shape=(n_out, n_in), **kw)
 
 
-def conv2d(name: str, c_in: int, c_out: int, k: int, h: int, w: int, stride: int = 1, **kw) -> LayerSpec:
-    oh, ow = -(-h // stride), -(-w // stride)
+def conv2d(name: str, c_in: int, c_out: int, k: int, h: int, w: int, stride: int = 1,
+           padding: Optional[int] = None, **kw) -> LayerSpec:
+    pad = k // 2 if padding is None else padding
+    oh, ow = (h + 2 * pad - k) // stride + 1, (w + 2 * pad - k) // stride + 1
     params = c_in * c_out * k * k
+    attrs = dict(kw.pop("attrs", {}))
+    attrs.update({"in_shape": (c_in, h, w), "out_shape": (c_out, oh, ow), "kernel": k, "stride": stride, "padding": pad})
     return LayerSpec(name=name, op="conv2d", fan_in=c_in * h * w, out_neurons=c_out * oh * ow,
                      macs=params * oh * ow, params=params + c_out,
-                     weight_shape=(c_out, c_in, k, k), **kw)
+                     weight_shape=(c_out, c_in, k, k), attrs=attrs, **kw)

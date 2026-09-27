@@ -190,16 +190,17 @@ def repair(g: Genome, model: ModelGraph, hw: SiliconProfile) -> Genome:
     n = model.n
     L = list(g.layers)
 
-    # I1 domain admissibility
-    for i, (gene, spec) in enumerate(zip(L, model.layers)):
-        d = gene.domain
-        if d == Domain.SYM and spec.symbolic_substitute is None:
-            d = Domain.ANN
-        if d == Domain.SNN and not spec.spiking_admissible:
-            d = Domain.ANN
+    from .policy import admissible_domains, allowed_codings   # local import: policy imports this module
+    policy = getattr(model, "policy", None)
+    codings = allowed_codings(model)
+
+    # I1 domain admissibility (intrinsic capability intersected with the user policy; pins are absolute)
+    for i, gene in enumerate(L):
+        allowed = admissible_domains(i, model)
+        d = gene.domain if gene.domain in allowed else allowed[0]
         if d != gene.domain:
-            L[i] = default_gene(d, hw, T=gene.timesteps or 8,
-                                coding=gene.coding if gene.coding != Coding.NONE else Coding.RATE)
+            c = gene.coding if gene.coding in codings else codings[0]
+            L[i] = default_gene(d, hw, T=gene.timesteps or 8, coding=c)
 
     # I2 precision ladders and per-domain field hygiene
     for i, gene in enumerate(L):
@@ -211,6 +212,15 @@ def repair(g: Genome, model: ModelGraph, hw: SiliconProfile) -> Genome:
             coding = gene.coding if gene.coding != Coding.NONE else Coding.RATE
             L[i] = LayerGene(Domain.SNN, snap(gene.w_bits, hw.snn_w_bits), snap(gene.a_bits, hw.snn_mem_bits),
                              coding, snap(gene.timesteps or 8, hw.timesteps), gene.plastic)
+    # I2b precision pins override the search (validated against the ladders by validate_policy)
+    if policy is not None:
+        for i, pin in policy.pins:
+            gene = L[i]
+            if gene.domain == Domain.ANN:
+                L[i] = replace(gene, w_bits=pin.w_bits if pin.w_bits in hw.ann_bits else gene.w_bits,
+                               a_bits=pin.a_bits if pin.a_bits in hw.ann_bits else gene.a_bits)
+            elif gene.domain == Domain.SNN and pin.w_bits in hw.snn_w_bits:
+                L[i] = replace(gene, w_bits=pin.w_bits)
 
     # I3 an SNN segment shares one clock: homogenise (coding, T) by majority vote, ties -> larger T
     tmp = Genome(tuple(L))
@@ -222,6 +232,8 @@ def repair(g: Genome, model: ModelGraph, hw: SiliconProfile) -> Genome:
             k = (L[i].coding, L[i].timesteps)
             votes[k] = votes.get(k, 0) + 1
         coding, T = max(votes, key=lambda k: (votes[k], k[1]))
+        if coding not in codings:                         # user restricted the spike codings
+            coding = codings[0]
         if coding == Coding.TTFS and T < TTFS_MIN_T:    # TTFS needs >= 2 bits of spike-time resolution
             T = min([t for t in hw.timesteps if t >= TTFS_MIN_T] or [max(hw.timesteps)])
         for i in range(seg.start, seg.end + 1):
@@ -234,9 +246,10 @@ def repair(g: Genome, model: ModelGraph, hw: SiliconProfile) -> Genome:
         a, b = L[i - 1], L[i]
         if a.domain == Domain.ANN and b.domain == Domain.SNN and b.a_bits < a.a_bits + 2:
             wanted = [m for m in hw.snn_mem_bits if m >= a.a_bits + 2]
+            pinned_a = policy is not None and policy.pin(i - 1) is not None and policy.pin(i - 1).a_bits is not None
             if wanted:
                 L[i] = replace(b, a_bits=min(wanted))
-            else:
+            elif not pinned_a:
                 cap = max(hw.snn_mem_bits) - 2
                 L[i - 1] = replace(a, a_bits=max([x for x in hw.ann_bits if x <= cap] or [min(hw.ann_bits)]))
     tmp = Genome(tuple(L))

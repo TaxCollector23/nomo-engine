@@ -8,6 +8,12 @@ Public API
     GET  /runs                      list runs
     GET  /runs/{id}                 status + latest generation summary
     POST /runs/{id}/stop            cooperative stop at the next generation boundary
+    GET  /presets                   one-click optimisation presets
+    GET  /models/{id}               layer table of a built-in or uploaded model
+    POST /models/upload?filename=&base_accuracy=&input_shape=   raw file body (.onnx/.pt/.pth/.json)
+    GET  /runs/{id}/designs/{key}   one design: layers, metrics, summary, export capabilities
+    POST /runs/{id}/export          {key, formats[]} -> zip download
+    POST /runs/{id}/copilot         {question, key?} -> grounded answer + one-click actions
     WS   /ws/runs/{id}?since=<seq>&client=<id>   live envelopes (replay, or snapshot on gap)
 
 Admin API (header `Authorization: Bearer $NOMO_ADMIN_TOKEN`; disabled when the token is unset)
@@ -42,13 +48,16 @@ from typing import Any, Deque, Dict, List, Optional, Set
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
 from .. import __version__
 from ..hardware.profiles import PROFILES, get_profile
-from ..models.zoo import MODELS
+from ..hardware.custom import HardwareOverrides, apply_overrides
+from ..models.zoo import MODELS, synthetic_weights
 from ..search.evaluator import Budgets, NeurosymbolicEvaluator
+from ..search.policy import intrinsic_domains, parse_policy, validate_policy
+from ..search.presets import PRESETS
 from ..search.nsga2 import NSGA2Config, TriDomainNSGA2Optimizer
 from . import observability as obs
 from .schema import envelope
@@ -77,6 +86,8 @@ MAX_GENS = _env_int("NOMO_MAX_GENS", 150)
 MAX_RUNS_PER_CLIENT_HOUR = _env_int("NOMO_MAX_RUNS_PER_CLIENT_HOUR", 30)
 CORS_ORIGINS = [o.strip() for o in os.environ.get("NOMO_CORS_ORIGINS", "*").split(",") if o.strip()]
 ADMIN_TOKEN = os.environ.get("NOMO_ADMIN_TOKEN", "")
+MAX_UPLOADS = _env_int("NOMO_MAX_UPLOADS", 20)
+MAX_UPLOAD_MB = _env_int("NOMO_MAX_UPLOAD_MB", 50)
 LOG_HEALTH = os.environ.get("NOMO_LOG_HEALTH", "0") == "1"
 GEN_LOG_EVERY = max(1, _env_int("NOMO_LOG_GEN_EVERY", 5))
 
@@ -90,13 +101,62 @@ class BudgetIn(BaseModel):
     min_plastic_params: int = 0
 
 
+class SearchIn(BaseModel):
+    allow_continuous: bool = True
+    allow_spiking: bool = True
+    allow_symbolic: bool = True
+    codings: List[str] = ["rate", "ttfs"]
+    crossing_penalty: float = Field(0.0, ge=0.0, le=10.0)
+    crossing_min_saving_pct: float = Field(0.0, ge=0.0, le=95.0)
+    p_crossover: float = Field(0.9, ge=0.0, le=1.0)
+    p_mutation: float = Field(1.0, ge=0.0, le=1.0)
+    archive_capacity: int = Field(0, ge=0, le=1000)
+    patience: int = Field(12, ge=2, le=1000, description="generations without hypervolume gain before stopping")
+    asf_weights: Optional[List[float]] = Field(None, description="recommendation weights (energy, latency, accuracy)")
+
+
+class PinIn(BaseModel):
+    domain: Optional[str] = None                   # ANN | SNN | SYM
+    w_bits: Optional[Any] = None                   # int or INT16/INT8/INT4/INT2/BINARY
+    a_bits: Optional[Any] = None
+
+
+class HardwareIn(BaseModel):
+    mac_energy_pj: Optional[float] = None
+    sop_energy_pj: Optional[float] = None
+    neuron_energy_pj: Optional[float] = None
+    sram_kb_per_core: Optional[float] = None
+    neurons_per_core: Optional[int] = None
+    n_cores: Optional[int] = None
+    bus_bandwidth_gbs: Optional[float] = None
+    routing_latency_us: Optional[float] = None
+    timestep_us: Optional[float] = None
+    static_power_mw: Optional[float] = None
+    clock_mhz: Optional[float] = None
+
+
 class RunIn(BaseModel):
-    model: str = "attitude_policy"
+    model: str = "attitude_policy"                 # built-in name or an uploaded model id ("upload:...")
     hardware: str = "akd1500"
     budgets: BudgetIn = BudgetIn(accuracy_drop_max=4.0)
     pop_size: int = Field(64, ge=8, le=1024)
     generations: int = Field(60, ge=1, le=5000)
     seed: int = 0
+    search: SearchIn = SearchIn()
+    pins: Dict[str, PinIn] = {}
+    lock_symbolic: bool = False
+    hardware_overrides: Optional[HardwareIn] = None
+    preset: Optional[str] = None                   # informational: which preset the UI applied
+
+
+class ExportIn(BaseModel):
+    key: str
+    formats: List[str]
+
+
+class CopilotIn(BaseModel):
+    question: str = Field(..., min_length=1, max_length=1000)
+    key: Optional[str] = None
 
 
 def _client_ip(req_headers, client) -> str:
@@ -122,6 +182,9 @@ class Run:
         self.finished_at: Optional[float] = None
         self.envelopes_sent = 0
         self.log = obs.get("runs")
+        self.ctx = None                              # export.bundle.RunContext, set by the worker
+        self.warnings: List[str] = []
+        self.prepared: Optional[tuple] = None        # (model, weights, weights_source, hw, assumptions)
 
     # called on the event loop
     def publish(self, type_: str, data: dict) -> None:
@@ -171,7 +234,8 @@ class Run:
     def summary(self, admin: bool = False) -> Dict[str, Any]:
         d = {"run_id": self.id, "status": self.status, "seq": self.seq, "config": self.cfg.model_dump(),
              "last_gen": {k: v for k, v in (self.last_gen or {}).items() if k not in ("population", "front")},
-             "error": self.error, "created_at": self.created_at, "finished_at": self.finished_at}
+             "error": self.error, "created_at": self.created_at, "finished_at": self.finished_at,
+             "warnings": self.warnings}
         if admin:
             d.update({"client_id": self.client_id, "subscribers": len(self.subs),
                       "candidates": len(self.items), "envelopes_sent": self.envelopes_sent})
@@ -183,7 +247,32 @@ def _budgets(cfg: RunIn, model, hw) -> Budgets:
     acc_min = b.accuracy_min if b.accuracy_min is not None else (
         model.base_accuracy - b.accuracy_drop_max if b.accuracy_drop_max is not None else 0.0)
     return Budgets(e_max_j=b.energy_j or math.inf, l_max_s=b.latency_s or math.inf, acc_min=acc_min,
-                   period_max_s=b.period_s or math.inf, min_plastic_params=b.min_plastic_params)
+                   period_max_s=b.period_s or math.inf, min_plastic_params=b.min_plastic_params,
+                   crossing_penalty=cfg.search.crossing_penalty,
+                   crossing_min_saving_pct=cfg.search.crossing_min_saving_pct)
+
+
+def layer_table(model) -> List[Dict[str, Any]]:
+    """Per-layer facts for the UI: shapes, size, compute, and which domains the layer can take."""
+    out = []
+    for spec in model.layers:
+        out.append({"name": spec.name, "op": spec.op, "activation": spec.activation, "params": spec.params,
+                    "macs": spec.macs, "fan_in": spec.fan_in, "fan_out": spec.out_neurons,
+                    "weight_shape": list(spec.weight_shape or ()), "weight_kb_int8": round(spec.params / 1024, 1),
+                    "can_be": [d.name for d in intrinsic_domains(spec)],
+                    "in_shape": list(spec.attrs.get("in_shape", ())) or None,
+                    "out_shape": list(spec.attrs.get("pooled_shape", spec.attrs.get("out_shape", ()))) or None})
+    return out
+
+
+def _hw_defaults(p) -> Dict[str, float]:
+    """Current values of every editable hardware parameter, in the units the UI uses."""
+    return {"mac_energy_pj": p.ann_cost(8, 8)[0] * 1e12, "sop_energy_pj": p.sop_energy(4) * 1e12,
+            "neuron_energy_pj": p.snn_e_neuron * 1e12, "sram_kb_per_core": p.syn_mem_bits_per_core / 8192,
+            "neurons_per_core": p.neurons_per_core, "n_cores": p.n_cores,
+            "bus_bandwidth_gbs": (p.links[0].bw_bytes_per_s / 1e9) if p.links else 0.0,
+            "routing_latency_us": (p.links[0].lat_s * 1e6) if p.links else 0.0,
+            "timestep_us": p.snn_t_step_min * 1e6, "static_power_mw": p.p_static_w * 1e3, "clock_mhz": p.clock_hz / 1e6}
 
 
 def create_app() -> FastAPI:
@@ -195,6 +284,50 @@ def create_app() -> FastAPI:
     per_client_runs: Dict[str, Deque[float]] = {}
 
     runs: Dict[str, Run] = {}
+    uploads: Dict[str, Dict[str, Any]] = {}
+    export_lock = threading.Lock()                 # exports are memory-heavy: one at a time
+
+    def prepare(cfg: RunIn):
+        """Resolve model/weights/hardware and apply the policy. Raises HTTPException(4xx) with reasons."""
+        assumptions: List[str] = []
+        if cfg.model in MODELS:
+            model = MODELS[cfg.model]()
+            weights, wsrc = synthetic_weights(model), "synthetic (untrained demo weights for the built-in model)"
+        elif cfg.model in uploads:
+            up = uploads[cfg.model]
+            model, weights, wsrc = up["build"](), up["weights"], up["weights_source"]
+            assumptions += up["report"]["assumptions"]
+            assumptions.append("uploaded model: per-layer accuracy sensitivities use Nomo's default estimates, "
+                               "not measurements of your network")
+        else:
+            raise HTTPException(404, f"unknown model '{cfg.model}' (uploaded models are kept for a limited time; "
+                                     "upload it again)")
+        if cfg.hardware not in PROFILES:
+            raise HTTPException(404, f"unknown hardware {cfg.hardware}")
+        hw = get_profile(cfg.hardware)
+        if cfg.hardware_overrides is not None:
+            try:
+                hw = apply_overrides(hw, HardwareOverrides(**cfg.hardware_overrides.model_dump()))
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(422, str(exc))
+        pins = {k: v.model_dump() for k, v in cfg.pins.items()}
+        if cfg.lock_symbolic:
+            for spec in model.layers:
+                if spec.symbolic_substitute and spec.name not in pins:
+                    pins[spec.name] = {"domain": "SYM"}
+        srch = cfg.search
+        try:
+            policy = parse_policy(model, {"continuous": srch.allow_continuous, "spiking": srch.allow_spiking,
+                                          "symbolic": srch.allow_symbolic}, srch.codings, pins)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        rep = validate_policy(model, hw, policy)
+        if not rep.ok:
+            raise HTTPException(422, " ".join(rep.errors))
+        model.policy = policy
+        if srch.asf_weights is not None and (len(srch.asf_weights) != 3 or any(w <= 0 for w in srch.asf_weights)):
+            raise HTTPException(422, "asf_weights needs three positive numbers (energy, latency, accuracy)")
+        return model, weights, wsrc, hw, assumptions, rep.warnings, policy
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -207,7 +340,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Nomo backend", version=__version__, lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"],
-                       expose_headers=["X-Request-ID"])
+                       expose_headers=["X-Request-ID", "Content-Disposition", "X-Nomo-Manifest"])
     app.state.runs, app.state.users, app.state.counters = runs, users, counters
 
     blog.info("backend.start", extra={
@@ -258,11 +391,18 @@ def create_app() -> FastAPI:
     def worker(run: Run) -> None:
         t0 = time.perf_counter()
         try:
-            model = MODELS[run.cfg.model]()
-            hw = get_profile(run.cfg.hardware)
+            from ..export.bundle import RunContext
+            model, weights, wsrc, hw, assumptions, policy = run.prepared
+            s_ = run.cfg.search
             ev = NeurosymbolicEvaluator(model, hw, _budgets(run.cfg, model, hw))
-            opt = TriDomainNSGA2Optimizer(model, hw, ev, NSGA2Config(pop_size=run.cfg.pop_size,
-                                          generations=run.cfg.generations, seed=run.cfg.seed), telemetry=run.emit)
+            opt = TriDomainNSGA2Optimizer(model, hw, ev, NSGA2Config(
+                pop_size=run.cfg.pop_size, generations=run.cfg.generations, seed=run.cfg.seed,
+                p_crossover=s_.p_crossover, p_mutation=s_.p_mutation, archive_capacity=s_.archive_capacity,
+                hv_window=s_.patience, asf_weights=tuple(s_.asf_weights) if s_.asf_weights else None), telemetry=run.emit)
+            settings = run.cfg.model_dump()
+            settings["policy"] = policy.to_dict([l.name for l in model.layers])
+            run.ctx = RunContext(model, weights, wsrc, hw, ev, settings, assumptions + run.warnings,
+                                 opt.archive_front, opt.recommend)
             run.optimizer = opt
             run.set_status("running")
             rlog.info("run.started", extra={"run_id": run.id, "client_id": run.client_id})
@@ -289,7 +429,8 @@ def create_app() -> FastAPI:
     def root() -> Dict[str, Any]:
         return {"service": "nomo-backend", "version": __version__, "status": "ok",
                 "uptime_s": round(time.time() - obs.STARTED_AT, 1),
-                "endpoints": ["/healthz", "/catalog", "/runs", "/ws/runs/{run_id}", "/docs"],
+                "endpoints": ["/healthz", "/catalog", "/presets", "/models/upload", "/runs", "/ws/runs/{run_id}",
+                              "/runs/{id}/designs/{key}", "/runs/{id}/export", "/runs/{id}/copilot", "/docs"],
                 "limits": {"max_active_runs": MAX_ACTIVE_RUNS, "max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
     @app.get("/healthz")
@@ -299,9 +440,11 @@ def create_app() -> FastAPI:
 
     @app.get("/catalog")
     def catalog() -> Dict[str, Any]:
-        return {"models": {k: {"layers": [l.name for l in f().layers], "base_accuracy": f().base_accuracy}
-                           for k, f in MODELS.items()},
-                "hardware": {k: {"name": p.name, "provenance": p.provenance} for k, p in PROFILES.items()},
+        return {"models": {k: {"layers": [l.name for l in f().layers], "base_accuracy": f().base_accuracy,
+                               "layer_table": layer_table(f())} for k, f in MODELS.items()},
+                "hardware": {k: {"name": p.name, "provenance": p.provenance, "defaults": _hw_defaults(p),
+                                 "bits": {"continuous": list(p.ann_bits), "spiking": list(p.snn_w_bits)}}
+                             for k, p in PROFILES.items()},
                 "limits": {"max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
     def _reject(status: int, reason: str, client_id: str, **extra) -> HTTPException:
@@ -310,12 +453,12 @@ def create_app() -> FastAPI:
         return HTTPException(status, reason)
 
     @app.post("/runs")
-    async def start(cfg: RunIn, request: Request) -> Dict[str, str]:
+    async def start(cfg: RunIn, request: Request) -> Dict[str, Any]:
         cid = request.state.client_id
-        if cfg.model not in MODELS:
-            raise _reject(404, f"unknown model {cfg.model}", cid)
-        if cfg.hardware not in PROFILES:
-            raise _reject(404, f"unknown hardware {cfg.hardware}", cid)
+        try:
+            model, weights, wsrc, hw, assumptions, warnings, policy = prepare(cfg)
+        except HTTPException as exc:
+            raise _reject(exc.status_code, exc.detail, cid)
         if cfg.pop_size > MAX_POP or cfg.generations > MAX_GENS:
             raise _reject(422, f"this server allows population <= {MAX_POP} and generations <= {MAX_GENS}", cid,
                           pop_size=cfg.pop_size, generations=cfg.generations)
@@ -335,6 +478,8 @@ def create_app() -> FastAPI:
             rlog.info("run.evicted", extra={"run_id": done[0]})
             del runs[done[0]]
         run = Run(uuid.uuid4().hex[:12], cfg, asyncio.get_running_loop(), cid)
+        run.prepared = (model, weights, wsrc, hw, assumptions, policy)
+        run.warnings = warnings
         runs[run.id] = run
         hist.append(now)
         counters["runs_created"] += 1
@@ -342,7 +487,7 @@ def create_app() -> FastAPI:
         rlog.info("run.created", extra={"run_id": run.id, "client_id": cid, "request_id": request.state.request_id,
                                         "config": cfg.model_dump()})
         threading.Thread(target=worker, args=(run,), daemon=True, name=f"nomo-run-{run.id}").start()
-        return {"run_id": run.id}
+        return {"run_id": run.id, "warnings": warnings}
 
     @app.get("/runs")
     def list_runs() -> List[Dict[str, Any]]:
@@ -364,6 +509,125 @@ def create_app() -> FastAPI:
         rlog.info("run.stop_requested", extra={"run_id": run_id, "client_id": request.state.client_id,
                                                "owner": run.client_id})
         return {"status": "stopping"}
+
+    # ------------------------------------------------------------------ v4: presets, uploads, designs, export, copilot
+    @app.get("/presets")
+    def presets() -> Dict[str, Any]:
+        return PRESETS
+
+    @app.post("/models/upload")
+    async def upload_model(request: Request, filename: str = Query(..., max_length=200),
+                           base_accuracy: float = Query(90.0, gt=0, le=100),
+                           input_shape: Optional[str] = Query(None, description="e.g. 3,32,32")) -> Dict[str, Any]:
+        from ..ingest import IngestError, ingest
+        cid = request.state.client_id
+        data = await request.body()
+        if not data:
+            raise HTTPException(400, "empty upload")
+        if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+            raise HTTPException(413, f"file is larger than this server's {MAX_UPLOAD_MB} MB limit")
+        shape = None
+        if input_shape:
+            try:
+                shape = tuple(int(v) for v in input_shape.replace("x", ",").split(",") if v.strip())
+            except ValueError:
+                raise HTTPException(422, "input_shape must look like 3,32,32")
+        try:
+            model, weights, rep = await asyncio.to_thread(ingest, filename, data, base_accuracy, shape)
+        except IngestError as exc:
+            rlog.warning("model.upload_rejected", extra={"client_id": cid, "upload_name": filename, "reason": str(exc)})
+            raise HTTPException(422, str(exc))
+        mid = "upload:" + uuid.uuid4().hex[:10]
+        while len(uploads) >= MAX_UPLOADS:
+            uploads.pop(next(iter(uploads)))
+        spec_layers, name, acc, ishape = model.layers, model.name, model.base_accuracy, model.input_shape
+
+        def build(spec_layers=spec_layers, name=name, acc=acc, ishape=ishape):
+            from ..ir import ModelGraph
+            return ModelGraph(name=name, input_shape=ishape, layers=list(spec_layers), base_accuracy=acc)
+
+        uploads[mid] = {"build": build, "weights": weights, "report": rep.to_dict(), "client_id": cid,
+                        "weights_source": {"file": "uploaded file",
+                                           "partial": "uploaded file (some layers had no weights: random weights generated)",
+                                           }.get(rep.weights_source, "synthetic (the uploaded graph had no weights)"),
+                        "created_at": time.time()}
+        rlog.info("model.uploaded", extra={"client_id": cid, "model_id": mid, "upload_name": filename,
+                                           "bytes": len(data), "layers": rep.layers, "format": rep.source_format})
+        return {"model_id": mid, "name": name, "base_accuracy": acc, "input_shape": list(ishape),
+                "report": rep.to_dict(), "layer_table": layer_table(model)}
+
+    @app.get("/models/{model_id}")
+    def get_model(model_id: str) -> Dict[str, Any]:
+        if model_id in MODELS:
+            m = MODELS[model_id]()
+            return {"model_id": model_id, "name": m.name, "base_accuracy": m.base_accuracy,
+                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": None}
+        if model_id in uploads:
+            m = uploads[model_id]["build"]()
+            return {"model_id": model_id, "name": m.name, "base_accuracy": m.base_accuracy,
+                    "input_shape": list(m.input_shape), "layer_table": layer_table(m), "report": uploads[model_id]["report"]}
+        raise HTTPException(404, "unknown model")
+
+    def _ctx_and_eval(run_id: str, key: Optional[str]):
+        run = runs.get(run_id)
+        if run is None:
+            raise HTTPException(404, "no such run")
+        if run.status in ("pending", "running"):
+            raise HTTPException(409, "the search is still running; wait for it to finish or press Stop")
+        if run.ctx is None:
+            raise HTTPException(409, "this run has no results")
+        ctx = run.ctx
+        if key is None:
+            ev = ctx.recommend_fn()
+            if ev is None:
+                raise HTTPException(404, "no design met the budgets")
+        else:
+            ev = ctx.evaluator.cache.get(key)
+            if ev is None:
+                raise HTTPException(404, "unknown design key for this run")
+        return run, ctx, ev
+
+    @app.get("/runs/{run_id}/designs/{key:path}")
+    def design(run_id: str, key: str) -> Dict[str, Any]:
+        from ..copilot import summarize
+        from ..export.bundle import capabilities, design_json
+        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key)
+        return {"design": design_json(ctx, ev), "summary": summarize(ctx, ev).to_dict(),
+                "capabilities": capabilities(ctx, ev)}
+
+    @app.post("/runs/{run_id}/export")
+    def export(run_id: str, body: ExportIn, request: Request) -> Response:
+        from ..export.bundle import build_bundle
+        run, ctx, ev = _ctx_and_eval(run_id, body.key)
+        t0 = time.perf_counter()
+        if not export_lock.acquire(timeout=120):
+            raise HTTPException(503, "the server is busy preparing another export; try again in a minute")
+        try:
+            data, manifest = build_bundle(ctx, ev, body.formats)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        finally:
+            ctx._plans.clear()                     # plans hold full weight copies: free them between exports
+            import gc
+            gc.collect()
+            export_lock.release()
+        rlog.info("run.exported", extra={"run_id": run_id, "client_id": request.state.client_id, "key": ev.key,
+                                         "formats": body.formats, "bytes": len(data), "skipped": manifest["skipped"],
+                                         "errors": manifest["errors"], "wall_s": round(time.perf_counter() - t0, 3)})
+        return Response(data, media_type="application/zip", headers={
+            "Content-Disposition": f'attachment; filename="{manifest["root"]}.zip"',
+            "X-Nomo-Manifest": json.dumps({"files": manifest["files"], "skipped": manifest["skipped"]})[:7000],
+            "Access-Control-Expose-Headers": "Content-Disposition, X-Nomo-Manifest"})
+
+    @app.post("/runs/{run_id}/copilot")
+    def copilot(run_id: str, body: CopilotIn, request: Request) -> Dict[str, Any]:
+        from ..copilot import answer
+        run, ctx, ev = _ctx_and_eval(run_id, body.key)
+        ans = answer(ctx, ev, ctx.front_fn(), ctx.recommend_fn(), body.question)
+        rlog.info("copilot.answer", extra={"run_id": run_id, "client_id": request.state.client_id,
+                                           "question": body.question[:200], "source": ans.source,
+                                           "actions": [a["type"] for a in ans.actions]})
+        return ans.to_dict()
 
     # ------------------------------------------------------------------ websocket
     @app.websocket("/ws/runs/{run_id}")

@@ -11,8 +11,8 @@ WORKDIR /home/user/app
 COPY --chown=user pyproject.toml setup.py README.md ./
 COPY --chown=user csrc ./csrc
 COPY --chown=user nomo ./nomo
-RUN pip install --no-cache-dir --user pybind11 && pip install --no-cache-dir --user ".[server]"
+RUN pip install --no-cache-dir --user pybind11 && pip install --no-cache-dir --user ".[server,coreml]"
 
-ENV PORT=7860 NOMO_MAX_ACTIVE_RUNS=2 NOMO_LOG_DIR=/tmp/nomo-logs PYTHONUNBUFFERED=1
+ENV PORT=7860 MALLOC_ARENA_MAX=2 NOMO_MAX_ACTIVE_RUNS=2 NOMO_LOG_DIR=/tmp/nomo-logs PYTHONUNBUFFERED=1
 EXPOSE 7860
 CMD ["sh", "-c", "uvicorn nomo.telemetry.server:app --host 0.0.0.0 --port ${PORT} --workers 1 --proxy-headers --forwarded-allow-ips=* --no-access-log"]

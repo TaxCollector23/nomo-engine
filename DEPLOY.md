@@ -1,9 +1,9 @@
-# Deploying Nomo v3
+# Deploying Nomo v4
 
 Backend: `https://nomo-engine.onrender.com` (Render, free plan)
 Dashboard: Vercel (Next.js, `frontend/`)
 
-## 1. Update the Render service to v3
+## 1. Update the Render service to v4
 
 Replace the repository contents with this folder, commit, push. Render redeploys automatically
 if auto-deploy is on (otherwise: service → Manual Deploy → Deploy latest commit).
@@ -31,7 +31,21 @@ Health check path (Settings → Health Checks): `/healthz`
 | `NOMO_LOG_RAW_IP` | `0` | `1` stores raw IPs instead of salted hashes (check your privacy obligations first) |
 | `NOMO_LOG_SALT` | optional random string | keeps IP hashes stable across restarts |
 
-Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.3.0",...}`.
+New in v4 (all optional):
+
+| variable | set to | why |
+|---|---|---|
+| `MALLOC_ARENA_MAX` | `2` (already set in the Dockerfile) | keeps memory use low with worker threads |
+| `NOMO_ANTHROPIC_API_KEY` | an Anthropic API key | Copilot phrases answers with Claude (paid, per use). Unset = free built-in answers |
+| `NOMO_COPILOT_MODEL` | default `claude-haiku-4-5-20251001` | model used when the key is set |
+| `NOMO_MAX_UPLOADS` | `20` | uploaded models kept in memory (oldest dropped first) |
+| `NOMO_MAX_UPLOAD_MB` | `50` | largest accepted upload |
+| `NOMO_DISABLE_COREML` | `1` to switch off | frees memory if the server is ever short; the Core ML option then shows as unavailable |
+
+Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.4.0",...}`.
+
+**Python-runtime services** (not Docker) must also install the new export packages; `requirements.txt`
+already lists `onnx`, `reportlab` and `coremltools`.
 
 ## 3. Dashboard on Vercel
 
@@ -47,7 +61,11 @@ Pages: `/` launcher · `/runs/<id>` live search · `/admin` logs, users, runs, s
   2 minutes, so the first visit just waits instead of failing. Open it a minute before a demo.
 - **Restarts wipe memory:** runs, the admin log rings and user registry reset on each deploy/wake.
   Render's own **Logs** tab keeps the stdout copy of every record (see OBSERVABILITY.md).
-- **0.1 CPU:** a 64×60 search takes tens of seconds instead of ~2 s locally.
+- **0.1 CPU:** a 64×60 search takes tens of seconds instead of ~2 s locally. Exporting the camera model in
+  every format takes about 4 s locally, so expect up to a minute on the free plan.
+- **512 MB memory:** measured worst case is 382 MB (camera search plus all export formats). Exports run one at
+  a time; a second export waits up to 2 minutes, then gets a "server is busy" message.
+- **Uploaded models live in memory,** so a restart forgets them: users re-upload after the server wakes.
 
 ## Local development
     pip install -e ".[server,dev]"

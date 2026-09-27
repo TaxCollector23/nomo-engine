@@ -55,3 +55,8 @@ export function ticks(lo: number, hi: number, isLog: boolean, n = 4): { at: numb
     return { at: (i / n) * 2 - 1, label: isLog ? 10 ** t : t };
   });
 }
+
+/** True when a design is inside the user's trade-off filters. */
+export function passesFilter(it: EvalItem, f: { eMax: number | null; lMax: number | null; accMin: number | null }): boolean {
+  return (f.eMax === null || it.f[0] <= f.eMax) && (f.lMax === null || it.f[1] <= f.lMax) && (f.accMin === null || it.f[2] >= f.accMin);
+}

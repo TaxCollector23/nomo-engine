@@ -120,6 +120,37 @@ export interface BudgetIn {
   min_plastic_params?: number;
 }
 
+export interface SearchIn {
+  allow_continuous: boolean;
+  allow_spiking: boolean;
+  allow_symbolic: boolean;
+  codings: ("rate" | "ttfs")[];
+  crossing_penalty: number;
+  crossing_min_saving_pct: number;
+  p_crossover: number;
+  p_mutation: number;
+  archive_capacity: number;
+  patience: number;
+  asf_weights: [number, number, number] | null;
+}
+
+export type Precision = "INT16" | "INT8" | "INT4" | "INT2" | "BINARY";
+export interface PinIn { domain?: "ANN" | "SNN" | "SYM" | null; w_bits?: Precision | number | null; a_bits?: Precision | number | null }
+
+export interface HardwareIn {
+  mac_energy_pj?: number | null;
+  sop_energy_pj?: number | null;
+  neuron_energy_pj?: number | null;
+  sram_kb_per_core?: number | null;
+  neurons_per_core?: number | null;
+  n_cores?: number | null;
+  bus_bandwidth_gbs?: number | null;
+  routing_latency_us?: number | null;
+  timestep_us?: number | null;
+  static_power_mw?: number | null;
+  clock_mhz?: number | null;
+}
+
 export interface RunIn {
   model: string;
   hardware: string;
@@ -127,12 +158,79 @@ export interface RunIn {
   pop_size: number;
   generations: number;
   seed: number;
+  search?: SearchIn;
+  pins?: Record<string, PinIn>;
+  lock_symbolic?: boolean;
+  hardware_overrides?: HardwareIn | null;
+  preset?: string | null;
+}
+
+export interface LayerRow {
+  name: string;
+  op: string;
+  activation: string;
+  params: number;
+  macs: number;
+  fan_in: number;
+  fan_out: number;
+  weight_shape: number[];
+  weight_kb_int8: number;
+  can_be: ("ANN" | "SNN" | "SYM")[];
+  in_shape: number[] | null;
+  out_shape: number[] | null;
 }
 
 export interface Catalog {
-  models: Record<string, { layers: string[]; base_accuracy: number }>;
-  hardware: Record<string, { name: string; provenance: Record<string, string> }>;
+  models: Record<string, { layers: string[]; base_accuracy: number; layer_table: LayerRow[] }>;
+  hardware: Record<string, { name: string; provenance: Record<string, string>; defaults: Record<string, number>;
+    bits: { continuous: number[]; spiking: number[] } }>;
+  limits: { max_pop: number; max_generations: number };
 }
+
+export interface Preset {
+  label: string;
+  summary: string;
+  notes: string;
+  settings: { budgets: BudgetIn; search: Partial<SearchIn>; lock_symbolic?: boolean };
+}
+
+export interface UploadReport {
+  source_format: string; layers: number; params: number; macs: number;
+  weights_source: string; assumptions: string[]; dropped_ops: string[];
+}
+
+export interface UploadedModel {
+  model_id: string; name: string; base_accuracy: number; input_shape: number[];
+  report: UploadReport; layer_table: LayerRow[];
+}
+
+export interface Capability { label: string; available: boolean; note: string; reason?: string }
+
+export interface DesignLayer {
+  name: string; op: string; domain: "ANN" | "SNN" | "SYM"; w_bits: number; a_bits: number;
+  coding: string | null; timesteps: number | null; plastic: boolean;
+  energy_j: number | null; memory_bytes: number | null; cores: number | null; params: number; macs: number;
+}
+
+export interface DesignDetail {
+  design: {
+    design_key: string; model: string; hardware: { id: string; name: string; provenance: Record<string, string> };
+    metrics: { energy_j: number; latency_s: number; accuracy_pct: number; accuracy_source: string; feasible: boolean;
+      domain_crossings: number; cores_used: number; memory_bytes: number };
+    baseline_all_continuous: { energy_j: number; latency_s: number; accuracy: number };
+    layers: DesignLayer[]; weights_source: string; assumptions: string[];
+  };
+  summary: CopilotAnswer;
+  capabilities: Record<string, Capability>;
+}
+
+export type CopilotAction =
+  | { type: "select"; key: string; label: string }
+  | { type: "rerun"; settings: Partial<RunIn>; label: string }
+  | { type: "apply_preset"; preset: string; label: string }
+  | { type: "ask"; text: string; label: string };
+
+export interface CopilotAnswer { text: string; facts: Record<string, unknown>; actions: CopilotAction[]; source: "rules" | "llm" }
 
 /** Hosted backend used when NEXT_PUBLIC_NOMO_API is not set at build time. */
 export const DEFAULT_API = "https://nomo-engine.onrender.com";

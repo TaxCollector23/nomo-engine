@@ -47,7 +47,8 @@ def run_to_completion(c, cid="browser-abc123"):
 
 def test_root_and_health(client):
     r = client.get("/").json()
-    assert r["service"] == "nomo-backend" and r["version"] == "0.3.0"
+    import nomo
+    assert r["service"] == "nomo-backend" and r["version"] == nomo.__version__
     assert client.get("/healthz").json()["ok"]
     assert client.get("/healthz").headers["x-request-id"]
 

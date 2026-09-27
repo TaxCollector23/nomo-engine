@@ -24,11 +24,19 @@ export interface RunState {
   pinned: boolean;
   error: string | null;
   lastSeq: number;
+  /** trade-off filters: hide designs above an energy/latency limit or below an accuracy floor (null = off) */
+  filter: { eMax: number | null; lMax: number | null; accMin: number | null };
+  /** layer index opened in the inspector (clicked in the design graph) */
+  inspect: number | null;
+  drawer: "copilot" | "export" | null;
 
   reset: (runId: string) => void;
   ingest: (batch: Envelope[]) => void;
   setConnection: (s: ConnectionState, detail?: string) => void;
   select: (key: string | null, byUser?: boolean) => void;
+  setFilter: (f: Partial<RunState["filter"]>) => void;
+  setInspect: (i: number | null) => void;
+  setDrawer: (d: RunState["drawer"]) => void;
 }
 
 const empty = (runId: string | null) => ({
@@ -48,6 +56,9 @@ const empty = (runId: string | null) => ({
   pinned: false,
   error: null,
   lastSeq: 0,
+  filter: { eMax: null, lMax: null, accMin: null },
+  inspect: null,
+  drawer: null as RunState["drawer"],
 });
 
 function applyGen(s: RunState, g: GenCompleted): void {
@@ -75,6 +86,12 @@ export const useRunStore = create<RunState>((set, get) => ({
   setConnection: (connection, connectionDetail) => set({ connection, connectionDetail }),
 
   select: (selectedKey, byUser = true) => set({ selectedKey, pinned: byUser && selectedKey !== null }),
+
+  setFilter: (f) => set((s) => ({ filter: { ...s.filter, ...f }, version: s.version + 1 })),
+
+  setInspect: (inspect) => set({ inspect }),
+
+  setDrawer: (drawer) => set({ drawer }),
 
   ingest: (batch) => {
     if (!batch.length) return;

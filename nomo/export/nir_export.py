@@ -179,8 +179,23 @@ def to_nir_strict(g: NomoGraph):
         elif n.type == "IF":
             nodes[name] = nir.IF(r=p["r"], v_threshold=p["v_threshold"], v_reset=p["v_reset"], metadata=md)
             rename[name] = (name, name)
+        elif n.type == "Conv2d":
+            nodes[name] = nir.Conv2d(input_shape=tuple(int(v) for v in p["input_shape"]), weight=p["weight"],
+                                     stride=tuple(int(v) for v in p["stride"]), padding=tuple(int(v) for v in p["padding"]),
+                                     dilation=(1, 1), groups=1, bias=p["bias"], metadata=md)
+            rename[name] = (name, name)
+        elif n.type == "Flatten":
+            nodes[name] = nir.Flatten(input_type={"input": np.asarray(p["input_shape"])}, start_dim=0, end_dim=-1,
+                                      metadata=md)
+            rename[name] = (name, name)
+        elif n.type == "AvgPool2d":
+            nodes[name] = nir.AvgPool2d(kernel_size=np.asarray(p["kernel_size"]), stride=np.asarray(p["stride"]),
+                                        padding=np.asarray([0, 0]), metadata=md)
+            rename[name] = (name, name)
+        elif n.type == "nomo.MaxPool2d":
+            raise TypeError("NIR has no max-pooling primitive; this design can only be exported as extended NIR")
         elif n.type == "nomo.SpikeEncoder":
-            N = int(np.asarray(p["shape"])[0])
+            N = tuple(int(v) for v in np.atleast_1d(p["shape"]))
             md.update({"nomo.op": "SpikeEncoder", "nomo.timesteps": int(p["timesteps"]),
                        "nomo.q.theta_int": int(p["theta"]), "nomo.q.in_scale": float(p["in_scale"])})
             nodes[f"{name}_scale"] = nir.Scale(scale=np.full(N, 1.0 / float(p["lam"]), np.float32), metadata=md)
@@ -189,7 +204,7 @@ def to_nir_strict(g: NomoGraph):
             extra_edges.append((f"{name}_scale", f"{name}_if"))
             rename[name] = (f"{name}_scale", f"{name}_if")
         elif n.type == "nomo.SpikeDecoder":
-            N = int(np.asarray(p["shape"])[0])
+            N = tuple(int(v) for v in np.atleast_1d(p["shape"]))
             md.update({"nomo.op": "SpikeDecoder", "nomo.timesteps": int(p["timesteps"]), "nomo.out_format": str(p["out_format"]),
                        "nomo.q.m0": int(p["m0"]), "nomo.q.shift": int(p["shift"]), "nomo.q.k_q16": int(p["k_q16"])})
             nodes[f"{name}_int"] = nir.I(r=np.full(N, 1.0 / dt, np.float32), metadata=md)
@@ -197,7 +212,7 @@ def to_nir_strict(g: NomoGraph):
             extra_edges.append((f"{name}_int", f"{name}_scale"))
             rename[name] = (f"{name}_int", f"{name}_scale")
         elif n.type == "nomo.SymbolicConstraint":
-            N = int(np.asarray(p["shape"])[0])
+            N = int(np.prod(np.atleast_1d(p["shape"])))
             md.update({"nomo.op": "SymbolicConstraint", "nomo.constraint_json": str(p["constraint_json"]),
                        "nomo.n_aux": int(p["n_aux"])})
             nodes[f"{name}_pre"] = nir.Output(output_type={"output": np.array([N])}, metadata={**md, "nomo.pair": f"{name}_post"})

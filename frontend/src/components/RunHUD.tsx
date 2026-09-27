@@ -2,87 +2,70 @@
 
 import { useRunStore } from "@/lib/telemetry/store";
 
-function Sparkline({ values, height = 44 }: { values: number[]; height?: number }) {
-  if (values.length < 2) return <div style={{ height }} className="font-mono text-[10px] text-neutral-600">—</div>;
+import { Term } from "./ui";
+
+function Sparkline({ values, height = 40 }: { values: number[]; height?: number }) {
+  if (values.length < 2) return <div style={{ height }} className="text-2xs text-ink-faint">Starts after round 2</div>;
   const w = 220;
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const span = hi - lo || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${height - 2 - ((v - lo) / span) * (height - 4)}`);
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="block">
-      <polyline points={pts.join(" ")} fill="none" stroke="#fafafa" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
+    <svg width="100%" height={height} viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="block" aria-hidden>
+      <polyline points={pts.join(" ")} fill="none" stroke="#2F5BEA" strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
-function Stat({ k, v }: { k: string; v: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500">{k}</div>
-      <div className="text-sm text-neutral-100">{v}</div>
-    </div>
-  );
-}
+const OP_NAMES: Record<string, string> = {
+  segment_aligned: "combine whole sections", precision_uniform: "combine precisions", domain_flip: "change a layer's style",
+  boundary_shift: "move a style boundary", precision_step: "change one precision", precision_cascade: "change a run of precisions",
+  timestep: "change spike steps", coding_swap: "switch spike code", plasticity: "toggle on-chip learning",
+  guard_impl: "move the safety guard",
+};
 
+/** Search progress in plain words, with the technical view one click away. */
 export default function RunHUD() {
   const run = useRunStore((s) => s.run);
   const status = useRunStore((s) => s.status);
   const conn = useRunStore((s) => s.connection);
-  const detail = useRunStore((s) => s.connectionDetail);
   const lastGen = useRunStore((s) => s.lastGen);
   const hv = useRunStore((s) => s.hv);
   const error = useRunStore((s) => s.error);
   const nFront = useRunStore((s) => s.front.size);
-  const CROSSOVERS = new Set(["segment_aligned", "precision_uniform"]);
-  const all = Object.entries(lastGen?.operators ?? {}).sort((a, b) => b[1] - a[1]);
-  const groups: [string, [string, number][]][] = [
-    ["crossover", all.filter(([n]) => CROSSOVERS.has(n))],
-    ["mutation", all.filter(([n]) => !CROSSOVERS.has(n))],
-  ];
-
+  const ops = Object.entries(lastGen?.operators ?? {}).sort((a, b) => b[1] - a[1]);
+  const statusWord = { pending: "Starting", running: "Searching", completed: "Finished", stopped: "Stopped", failed: "Failed" }[status];
   return (
-    <div className="space-y-5 font-mono">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs text-neutral-400">{run ? `${run.model} → ${run.hardware}` : "…"}</div>
-          <div className="text-lg text-neutral-50">{status}</div>
-        </div>
-        <span className={`rounded border px-2 py-0.5 text-[10px] ${conn === "open" ? "border-neutral-300 text-neutral-200" : "border-neutral-700 text-neutral-500"}`}
-          title={detail}>
-          ws {conn}
-        </span>
+        <h2 className="font-bold">{statusWord}</h2>
+        {conn !== "open" && status === "running" && <span className="text-2xs text-ink-muted">reconnecting…</span>}
       </div>
-      {error && <div className="border border-neutral-500 p-2 text-xs text-neutral-200">{error}</div>}
-      <div className="grid grid-cols-2 gap-3">
-        <Stat k="generation" v={`${lastGen?.gen ?? 0} / ${run?.generations ?? "?"}`} />
-        <Stat k="front" v={String(nFront)} />
-        <Stat k="unique evals" v={(lastGen?.unique ?? 0).toLocaleString()} />
-        <Stat k="feasible" v={`${((lastGen?.feasible_fraction ?? 0) * 100).toFixed(0)}%`} />
-      </div>
+      {error && <p role="alert" className="rounded-md bg-cross-tint p-2 text-sm">{error}</p>}
+      <p className="text-sm text-ink-soft">
+        Round {lastGen?.gen ?? 0} of {run?.generations ?? "?"}. {(lastGen?.unique ?? 0).toLocaleString()} different designs tried,
+        {" "}{nFront} best trade-offs so far, {Math.round((lastGen?.feasible_fraction ?? 0) * 100)}% of the current round within your limits.
+      </p>
       <div>
-        <div className="mb-1 flex justify-between text-[10px] uppercase tracking-wider text-neutral-500">
-          <span>hypervolume (archive)</span><span className="text-neutral-300">{(lastGen?.hv ?? 0).toFixed(4)}</span>
+        <div className="mb-1 flex justify-between text-2xs text-ink-muted">
+          <Term k="hypervolume">Search quality</Term><span>levels off when finished</span>
         </div>
         <Sparkline values={hv.map((p) => p.hv)} />
       </div>
-      <div>
-        <div className="mb-1 text-[10px] uppercase tracking-wider text-neutral-500">operator selection (adaptive pursuit, %)</div>
-        {groups.map(([gname, ops]) => (
-          <div key={gname} className="mb-2 space-y-1">
-            <div className="text-[9px] uppercase text-neutral-600">{gname}</div>
-            {ops.map(([name, p]) => (
-              <div key={name} className="flex items-center gap-2 text-[10px] text-neutral-400">
-                <span className="w-28 truncate">{name}</span>
-                <div className="h-1.5 flex-1 bg-neutral-900">
-                  <div className="h-full bg-neutral-200 transition-[width] duration-300" style={{ width: `${Math.min(100, p * 100)}%` }} />
-                </div>
-                <span className="w-8 text-right">{(p * 100).toFixed(0)}</span>
-              </div>
+      {ops.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-ink-muted">What the search is trying most</summary>
+          <ul className="mt-2 space-y-1">
+            {ops.slice(0, 6).map(([n, p]) => (
+              <li key={n} className="flex items-center gap-2 text-2xs text-ink-muted">
+                <span className="w-40 truncate">{OP_NAMES[n] ?? n}</span>
+                <span className="h-1.5 flex-1 rounded bg-paper"><span className="block h-full rounded bg-ann" style={{ width: `${Math.min(100, p * 100)}%` }} /></span>
+              </li>
             ))}
-          </div>
-        ))}
-      </div>
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

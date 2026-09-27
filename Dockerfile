@@ -7,9 +7,9 @@ WORKDIR /app
 COPY pyproject.toml setup.py README.md ./
 COPY csrc ./csrc
 COPY nomo ./nomo
-RUN pip install --no-cache-dir pybind11 && pip install --no-cache-dir ".[server]"
+RUN pip install --no-cache-dir pybind11 && pip install --no-cache-dir ".[server,coreml]"
 
-ENV PORT=8765 \
+ENV PORT=8765 MALLOC_ARENA_MAX=2 \
     NOMO_LOG_DIR=/tmp/nomo-logs \
     NOMO_MAX_ACTIVE_RUNS=2 \
     PYTHONUNBUFFERED=1

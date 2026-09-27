@@ -81,7 +81,7 @@ def perception_cnn() -> ModelGraph:
         conv2d("conv3", 64, 128, 3, 32, 32, 2, sensitivity=S(q_w=0.3, q_a=0.3, c_rate=0.6, c_ttfs=0.8), base_rate=0.06),
         conv2d("conv4", 128, 128, 3, 16, 16, 1, sensitivity=S(q_w=0.25, q_a=0.25, c_rate=0.5, c_ttfs=0.7), base_rate=0.06),
         conv2d("conv5", 128, 256, 3, 16, 16, 2, sensitivity=S(q_w=0.25, q_a=0.25, c_rate=0.5, c_ttfs=0.7), base_rate=0.05),
-        dense("fc1", 256 * 8 * 8, 256, sensitivity=S(q_w=0.3, q_a=0.3, c_rate=0.7, c_ttfs=0.9), base_rate=0.08),
+        dense("fc1", 256 * 8 * 8, 256, attrs={"flatten_input": True}, sensitivity=S(q_w=0.3, q_a=0.3, c_rate=0.7, c_ttfs=0.9), base_rate=0.08),
         dense("fc2", 256, 11, activation="linear", sensitivity=S(q_w=0.8, q_a=0.7, c_rate=1.8, c_ttfs=2.2), base_rate=0.12),
     ]
     return ModelGraph(name="perception_cnn", input_shape=(2, 128, 128), layers=layers, base_accuracy=95.6,
@@ -97,6 +97,11 @@ def synthetic_weights(model: ModelGraph, seed: int = 0):
     rng = np.random.default_rng(seed)
     out = {}
     for spec in model.layers:
+        if spec.op == "conv2d":
+            c_out, c_in, k, _ = spec.weight_shape
+            W = rng.normal(0.0, np.sqrt(2.0 / (c_in * k * k)), size=spec.weight_shape)
+            out[spec.name] = (W, rng.normal(0.0, 0.05, size=c_out))
+            continue
         if spec.op != "dense":
             continue
         n_out, n_in = spec.weight_shape

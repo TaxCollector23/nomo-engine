@@ -1,4 +1,4 @@
-# Nomo Engine — Technical Specification v0.2
+# Nomo Engine — Technical Specification v0.4
 
 Scope: tri-domain (continuous / spiking / symbolic) hardware-aware architecture search, cost modelling, and compilation to NIR and bare-metal C11. Section numbers are referenced from code docstrings.
 
@@ -14,6 +14,8 @@ Scope: tri-domain (continuous / spiking / symbolic) hardware-aware architecture 
 | NIR strict export | Loads in stock `nir` 1.0.8 `nir.read(type_check=True)` (tested). |
 | NIR extended export | Custom `nomo.*` node types; stock `nir.read` rejects unknown types by design (verified: `AssertionError`). |
 | MLIR / "snn-mlir" / microTVM | **Not emitted.** No maintained public dialect named `snn-mlir` is known to us, and microTVM has been deprecated upstream. We ship (a) a direct C11 backend (verified) and (b) a lowering-ready integer manifest with a documented mapping onto upstream MLIR dialects (§7.4). An MLIR emitter is on the roadmap and must be validated with `mlir-opt` before release. |
+| Model ingestion (§12.1) | ONNX parser checked against ONNX Runtime (< 1e-5). `.pt` loader tested on files synthesised in PyTorch's zip/pickle layout (PyTorch not installable in the build environment); a real-torch test runs where torch exists. Uploaded models use default sensitivities (accuracy is less reliable than for zoo models). |
+| Float exports (§12.5) | PyTorch script numpy path == reference (0 error); PyTorch path statically linted and self-checking, **not executed in CI**. ONNX == reference to ~1e-7 (dense) / one quantisation step on 0.35% of conv outputs (float32 ties). Core ML built and reloaded structurally; **not executed** (needs macOS). |
 | C11 lowering coverage | Dense chains; ANN `a_bits = 8`, `w_bits ≤ 8`; rate-coded (L)IF with `w_bits ∈ {1..8}`, `v_bits ≤ 24`; symbolic linear substitutes; box / thrust / rotational guards. TTFS, conv, 16-bit activations and plasticity runtimes raise `UnsupportedLowering` (explicit, never approximated). |
 
 ---
@@ -279,6 +281,88 @@ Envelope: `{v, run_id, seq, ts, type, data}`, with `seq` dense and strictly incr
 
 ---
 
+## §12 v4 additions
+
+Code docstrings refer to the numbers below (§1.1a, §1.3b, §2.4, §3.10, §6.4, §7.5–7.7, §10.3–10.4).
+
+### §12.1 (= §1.1a) Model ingestion
+`nomo.ingest.ingest(filename, bytes, base_accuracy, input_shape)` returns `(ModelGraph, weights, IngestReport)`.
+Graphs must be sequential chains. ONNX: Gemm, MatMul(+Add), Conv (group 1, square kernel, equal stride/pad,
+dilation 1), Relu, BatchNormalization (folded: W' = W·γ/√(σ²+ε), b' = (b−μ)·γ/√(σ²+ε) + β), MaxPool /
+AveragePool (square, unpadded) and GlobalAveragePool (folded into the preceding conv as `attrs.pool`),
+Flatten / Reshape / Identity / Dropout / Squeeze (no-ops; dense layers flatten), trailing
+Softmax / LogSoftmax / Sigmoid (dropped, reported). Branching is rejected with a reason. `.pt/.pth`: a
+whitelisting unpickler admits only `OrderedDict`, `torch._utils._rebuild_tensor_v2 / _rebuild_parameter`
+and typed storages; any other global aborts before execution. Structure is inferred from weight order
+(2-D → Linear, 4-D → Conv2d, ReLU between layers, stride 1, same padding) and reported as assumptions.
+JSON `nomo.graph/1`: see module docstring; missing weights are He-initialised and reported.
+`LayerSpec.attrs` carries geometry (in/out shape, kernel, stride, padding, pool, flatten_input).
+
+### §12.2 (= §2.4) Search policy
+`SearchPolicy(allow ⊆ {ANN, SNN, SYM}, codings ⊆ {RATE, TTFS}, pins: layer → Pin(domain?, w_bits?, a_bits?))`
+is attached as `ModelGraph.policy`. Admissible domains of layer i = intrinsic(i) ∩ allow, or {pin.domain};
+if the intersection is empty the layer keeps its only intrinsic domain (reported as a warning). `repair`
+projects every genome onto the policy: I1 uses the admissible set; I2b overwrites pinned bit widths; I3 maps
+a disallowed segment coding to the first allowed one; I4 never lowers a pinned ANN activation width. The
+projection preserves idempotence (tested on 200 random genomes). `validate_policy` rejects unsatisfiable
+pins (domain not intrinsic, bit width not on the chip's ladder) before a run starts. Precisions offered:
+INT16, INT8, INT4, INT2, BINARY. FP16 is not modelled (integer cost model). Phase coding is not modelled.
+With tight policies the space can be smaller than the population; initialisation then pads with repeats.
+
+### §12.3 (= §1.3b) Crossing penalty and minimum saving
+Let k be the number of domain crossings excluding those adjacent to mandatory guards. The ranked objectives
+become F_E = E(1 + Ck) and F_L = L(1 + Ck); reported values stay E and L. With threshold θ > 0 and k > 0,
+the constraint g_X = (θ − 100·max(1 − E/E_ref, 1 − L/L_ref))/100 ≤ 0 applies, where E_ref, L_ref are the
+all-continuous design (independent of the policy). Also new in `NSGA2Config`: `p_mutation` (a crossover child
+is mutated with this probability; clones always), `archive_capacity` (front truncated by crowding distance),
+`asf_weights` (recommendation weights, energy/latency/accuracy).
+
+### §12.4 (= §3.10) Hardware overrides
+`HardwareOverrides` → `apply_overrides(profile)`: energy per 8×8 MAC and per 4-bit SOP rescale the whole
+precision tables (relative costs preserved); neuron energy, SRAM per core, neurons per core, core count,
+timestep, static power set directly; bus bandwidth and routing latency set every link; clock scales all
+throughputs by f/f_nominal (energy per op unchanged, first-order CMOS). Changed fields get provenance "user".
+Nominal clocks are placeholders (Loihi 2 1 GHz, AKD1500 300 MHz, edge GPU 1.3 GHz).
+
+### §12.5 (= §6.4, §7.5, §7.6) Execution plan and exporters
+`export.plan.build_plan` produces the float plan every exporter uses: fake-quantised weights (per tensor,
+symmetric; 1-bit = sign·mean|W|; stored float32, exact since values have ≤ 16 bits), ANN activation
+fake-quantisation (round-half-up, clip ±(2^(b−1)−1)), spiking thresholds λ from the 99.9th percentile of
+calibration activations, chained within a segment. `export.hybrid_runtime` executes it; it is stdlib-only
+and embedded verbatim in `deploy_model.py`, with backends NumpyOps (tested) and TorchOps (in the script).
+SNN semantics: rate = explicit timesteps, signed Σ∆ encoder, IF with reset by subtraction, decode
+count·λ/T; TTFS = two-phase time-to-first-spike, equivalent in discrete time to quantising each ReLU output to
+T time bins (closed form). Fidelity vs full precision (drone model, AKD1500 ladder): continuous r = 0.99;
+rate w4/T16 0.77 (matches the integer compiler's 0.78); TTFS w4/T16 0.76.
+Exporters: ONNX (opset 17, IR 8, `checker.full_check`) and Core ML (MIL builder, FLOAT32, iOS 16) per
+maximal continuous section, guards emitted as Gather/Min/Max/Where (ONNX) or slice/select (Core ML); float
+NIR for any design (Conv2d, Flatten, AvgPool2d, IF with Nomo metadata; strict unless max pooling is present);
+integer NIR and header-only C11 (`NOMO_MODEL_IMPLEMENTATION`, stb style) where §8 lowering applies; PDF brief
+(reportlab, embedded Liberation Sans, OFL).
+
+### §12.6 (= §7.7) Bundles and capabilities
+`export.bundle.capabilities` reports per format `available` / `reason` / `note`; `build_bundle` writes a zip
+with README, `design.json` and the selected formats; a failing format is reported and never blocks the others.
+
+### §12.7 (= §10.3) Presets
+`search.presets.PRESETS` are plain run settings (budgets, toggles, codings, crossing parameters, ASF weights,
+`lock_symbolic`). Presets never alter chip coefficients; a lower clock is *not* applied by Battery Saver
+because, with fixed static power, it raises energy per inference in this model.
+
+### §12.8 (= §10.4) Copilot
+Tools: `summarize`, `why_layer` (re-evaluates the genome with the layer moved to each intrinsic alternative,
+ignoring toggles but keeping other pins), `reach_target` (best-accuracy feasible archive member meeting the
+target, else a re-run proposal with a tightened budget and shifted ASF weights), `explain_front`, `glossary`.
+`answer` routes by intent rules; with `NOMO_ANTHROPIC_API_KEY` the tool facts and a draft are sent to Claude
+for phrasing only, and any API failure falls back to the rule answer. Actions: select, rerun, apply_preset, ask.
+
+### §12.9 API additions
+`GET /presets`, `POST /models/upload` (raw body; query filename, base_accuracy, input_shape),
+`GET /models/{id}`, `GET /runs/{id}/designs/{key|recommended}`, `POST /runs/{id}/export {key, formats}`,
+`POST /runs/{id}/copilot {question, key?}`. `POST /runs` accepts `search`, `pins`, `lock_symbolic`,
+`hardware_overrides`, `preset`; policy errors return 422 with the reason. Design, export and Copilot
+endpoints return 409 while a run is still searching. Exports are serialised by a lock.
+
 ## §11 Roadmap
 In priority order:
 
@@ -290,3 +374,6 @@ In priority order:
 6. An MLIR emitter validated by `mlir-opt`.
 7. NSGA-III reference directions once more than three objectives are added (e.g. peak memory, safety margin).
 8. A process-pool evaluator.
+9. Branching graph support (residual / multi-input) in ingestion and all exporters.
+10. Surrogate-gradient fine-tuning after partitioning, and multi-chip / bus partitioning.
+11. Phase coding and FP16 cost classes.

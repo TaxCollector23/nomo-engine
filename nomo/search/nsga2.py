@@ -36,6 +36,9 @@ class NSGA2Config:
     hv_tol: float = 1e-4
     oracle_per_generation: int = 0       # true accuracy evaluations per generation (multi-fidelity)
     log_axes: tuple = (0, 1)
+    p_mutation: float = 1.0              # probability of mutating a crossover child (clones always mutate)
+    archive_capacity: int = 0            # 0 = unbounded; else keep the most spread-out front members
+    asf_weights: Optional[tuple] = None  # recommendation weights (energy, latency, accuracy); None = equal
 
 
 @dataclass
@@ -88,16 +91,26 @@ class TriDomainNSGA2Optimizer:
         uniq: Dict[str, Genome] = {}
         for s in seeds:
             uniq.setdefault(s.key, s)
-        while len(uniq) < self.cfg.pop_size:
+        attempts = 0
+        while len(uniq) < self.cfg.pop_size and attempts < 50 * self.cfg.pop_size:
             g = self.random_genome()
             uniq.setdefault(g.key, g)
-        return list(uniq.values())[: self.cfg.pop_size]
+            attempts += 1
+        pop = list(uniq.values())[: self.cfg.pop_size]
+        # user locks/toggles can leave fewer distinct designs than the population size:
+        # pad with repeats (evaluations are cached, so repeats cost nothing) instead of looping forever
+        k = 0
+        while len(pop) < self.cfg.pop_size:
+            pop.append(pop[k % len(uniq)])
+            k += 1
+        return pop
 
     def random_genome(self) -> Genome:
         m, hw = self.model, self.hw
         L = []
-        for spec in m.layers:
-            doms = [Domain.ANN] + ([Domain.SNN] if spec.spiking_admissible else []) + ([Domain.SYM] if spec.symbolic_substitute else [])
+        from .policy import admissible_domains
+        for i, spec in enumerate(m.layers):
+            doms = admissible_domains(i, m)
             d = doms[int(self.rng.integers(len(doms)))]
             base = default_gene(d, hw, T=int(self.rng.choice(hw.timesteps)),
                                 coding=Coding.TTFS if self.rng.random() < 0.25 else Coding.RATE)
@@ -154,7 +167,13 @@ class TriDomainNSGA2Optimizer:
             return []
         F = np.stack([e.F for e in feas])
         mask = nondominated_mask(F)
-        return sorted([e for e, k in zip(feas, mask) if k], key=lambda e: e.F[1])
+        front = [e for e, k in zip(feas, mask) if k]
+        cap = self.cfg.archive_capacity
+        if cap and len(front) > cap:                    # keep the most spread-out members
+            Ff = np.stack([e.F for e in front])
+            cd = crowding_distance(normalise(Ff, Ff.min(0), Ff.max(0), self.cfg.log_axes))
+            front = [front[i] for i in np.argsort(-cd, kind="stable")[:cap]]
+        return sorted(front, key=lambda e: e.F[1])
 
     def _hv(self, front: List[Evaluation]) -> float:
         if not front or self._box is None:
@@ -164,6 +183,8 @@ class TriDomainNSGA2Optimizer:
         return hv3d(Fn, np.array([1.1, 1.1, 1.1]))
 
     def recommend(self, weights: Optional[np.ndarray] = None) -> Optional[Evaluation]:
+        if weights is None and self.cfg.asf_weights is not None:
+            weights = np.asarray(self.cfg.asf_weights, float)
         front = self.archive_front()
         if front:
             F = np.stack([e.F for e in front])
@@ -183,7 +204,10 @@ class TriDomainNSGA2Optimizer:
         else:
             child = p1.genome
         mo = self.m_ops.sample(self.rng)
-        child = MUTATIONS[mo](child, self.model, self.hw, self.rng)
+        if xo is None or self.rng.random() < cfg.p_mutation:
+            child = MUTATIONS[mo](child, self.model, self.hw, self.rng)
+        else:
+            mo = "none"
         tries = 0
         while (child.key in seen or child.key in self.ev.cache) and tries < cfg.max_retries:
             mo = self.m_ops.sample(self.rng)
@@ -238,8 +262,9 @@ class TriDomainNSGA2Optimizer:
                 if xo:
                     xo_off[xo] = xo_off.get(xo, 0) + 1
                     xo_sur[xo] = xo_sur.get(xo, 0) + (key in survivors)
-                mo_off[mo] = mo_off.get(mo, 0) + 1
-                mo_sur[mo] = mo_sur.get(mo, 0) + (key in survivors)
+                if mo in MUTATIONS:
+                    mo_off[mo] = mo_off.get(mo, 0) + 1
+                    mo_sur[mo] = mo_sur.get(mo, 0) + (key in survivors)
             self.x_ops.update(xo_off, xo_sur)
             self.m_ops.update(mo_off, mo_sur)
 

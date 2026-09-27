@@ -20,6 +20,14 @@ Every log record is one JSON object with these core fields:
 
 `/healthz` hits are not logged (Render polls it constantly); set `NOMO_LOG_HEALTH=1` to include them.
 
+### New in v4 (stream `runs`)
+| event | when | key fields |
+|---|---|---|
+| `model.uploaded` | a model file was parsed | client_id, model_id, upload_name, bytes, layers, format |
+| `model.upload_rejected` | a file could not be used | client_id, upload_name, reason |
+| `run.exported` | an export zip was produced | run_id, client_id, key, formats, bytes, skipped, errors, wall_s |
+| `copilot.answer` | Copilot answered | run_id, client_id, question (first 200 chars), source (rules / llm), actions |
+
 ## Where to read them
 
 1. **Dashboard → /admin** (token = `NOMO_ADMIN_TOKEN`): filter by stream, level and text; live tail;

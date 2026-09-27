@@ -76,6 +76,7 @@ class SiliconProfile:
     units: Dict[str, str]                # {"ANN": unit, "SNN": unit, "SYM": unit}
     links: Tuple[Link, ...]
     provenance: Dict[str, str] = field(default_factory=lambda: {"*": "placeholder"})
+    clock_hz: float = 1e9                # nominal clock the throughput figures refer to (placeholder)
 
     def ann_cost(self, w: int, a: int) -> Tuple[float, float]:
         key = (w, a) if (w, a) in self.ann_e_mac else min(self.ann_e_mac, key=lambda k: abs(k[0] - w) + abs(k[1] - a))
@@ -109,7 +110,7 @@ LOIHI2 = SiliconProfile(
     p_static_w=0.08, ann_mem_bytes=2 * 1024 ** 3,
     ann_bits=(8, 16), snn_w_bits=(1, 2, 4, 8), snn_mem_bits=(16, 24), timesteps=(2, 4, 8, 16, 32),
     plasticity="any", fused_guard=False,
-    units={"ANN": "host_cpu", "SNN": "nc_mesh", "SYM": "embedded_x86"},
+    units={"ANN": "host_cpu", "SNN": "nc_mesh", "SYM": "embedded_x86"}, clock_hz=1.0e9,
     links=(
         Link("nc_mesh", "embedded_x86", 2.0e9, 2e-12, 1e-6),
         Link("embedded_x86", "host_cpu", 0.12e9, 60e-12, 50e-6),     # host I/O path
@@ -131,7 +132,7 @@ AKD1500 = SiliconProfile(
     p_static_w=0.05, ann_mem_bytes=512 * 1024 ** 2,
     ann_bits=(8,), snn_w_bits=(1, 2, 4), snn_mem_bits=(16,), timesteps=(1, 2, 4, 8, 16),
     plasticity="final_layer", fused_guard=False,
-    units={"ANN": "host_mcu", "SNN": "npu", "SYM": "host_mcu"},
+    units={"ANN": "host_mcu", "SNN": "npu", "SYM": "host_mcu"}, clock_hz=0.3e9,
     links=(
         Link("npu", "pcie", 1.0e9, 15e-12, 3e-6),
         Link("pcie", "host_mcu", 1.0e9, 15e-12, 3e-6),
@@ -153,7 +154,7 @@ EDGE_GPU = SiliconProfile(
     p_static_w=4.0, ann_mem_bytes=8 * 1024 ** 3,
     ann_bits=(8, 16), snn_w_bits=(4, 8), snn_mem_bits=(16, 24), timesteps=(2, 4, 8, 16),
     plasticity="any", fused_guard=True,
-    units={"ANN": "sm", "SNN": "sm", "SYM": "cpu"},
+    units={"ANN": "sm", "SNN": "sm", "SYM": "cpu"}, clock_hz=1.3e9,
     links=(
         Link("sm", "unified_mem", 60e9, 4e-12, 1e-6),
         Link("unified_mem", "cpu", 30e9, 6e-12, 2e-6),

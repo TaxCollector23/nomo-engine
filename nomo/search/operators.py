@@ -64,13 +64,8 @@ def precision_uniform_crossover(p1: Genome, p2: Genome, model: ModelGraph, hw: S
 # ---------------------------------------------------------------------------
 
 def _admissible(i: int, model: ModelGraph) -> List[Domain]:
-    spec = model.layers[i]
-    doms = [Domain.ANN]
-    if spec.spiking_admissible:
-        doms.append(Domain.SNN)
-    if spec.symbolic_substitute:
-        doms.append(Domain.SYM)
-    return doms
+    from .policy import admissible_domains
+    return admissible_domains(i, model)
 
 
 def domain_flip(g: Genome, model: ModelGraph, hw: SiliconProfile, rng: Rng) -> Genome:

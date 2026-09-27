@@ -37,6 +37,8 @@ class Budgets:
     acc_min: float = 0.0
     period_max_s: float = math.inf
     min_plastic_params: int = 0
+    crossing_penalty: float = 0.0          # C: F_E, F_L scaled by (1 + C k), k = domain switches (SPEC 1.3b)
+    crossing_min_saving_pct: float = 0.0   # theta: a design with switches must beat all-continuous by >= theta %
 
 
 @dataclass
@@ -59,7 +61,8 @@ class Evaluation:
         return self.cv == 0.0
 
     def to_wire(self) -> dict:
-        return {"key": self.key, "f": [float(self.F[0]), float(self.F[1]), float(self.accuracy)],
+        # "f" reports true physical energy/latency; F (used for ranking) may include the crossing penalty
+        return {"key": self.key, "f": [float(self.cost.energy_j), float(self.cost.latency_s), float(self.accuracy)],
                 "cv": float(self.cv), "feasible": self.feasible, "rank": int(self.rank),
                 "acc_src": self.accuracy_source, "genome": self.genome.to_wire(),
                 "crossings": len(self.cost.crossings), "cores": self.cost.cores_used}
@@ -154,6 +157,7 @@ class NeurosymbolicEvaluator:
         self.oracle_results: Dict[str, float] = {}
         self._proxy_at_oracle: Dict[str, float] = {}
         self.n_calls = 0
+        self._reference: Optional[CostReport] = None
 
     # -------------------------------------------------------------- core
     def evaluate(self, g: Genome) -> Evaluation:
@@ -185,8 +189,14 @@ class NeurosymbolicEvaluator:
             "cores": (cost.cores_used / hw.n_cores - 1.0) if not hw.snn_dense else -1.0,
             "plasticity": ((b.min_plastic_params - plastic) / b.min_plastic_params) if b.min_plastic_params else -1.0,
         }
+        switches = self.domain_switches(g)
+        if b.crossing_min_saving_pct > 0 and switches > 0:
+            ref = self.reference_cost()
+            saving = 100.0 * max(1.0 - cost.energy_j / ref.energy_j, 1.0 - cost.latency_s / ref.latency_s)
+            gv["crossing_saving"] = (b.crossing_min_saving_pct - saving) / 100.0
         cv = float(sum(max(0.0, v) for v in gv.values()))
-        F = np.array([cost.energy_j, cost.latency_s, 100.0 - acc], dtype=np.float64)
+        mult = 1.0 + b.crossing_penalty * switches
+        F = np.array([cost.energy_j * mult, cost.latency_s * mult, 100.0 - acc], dtype=np.float64)
         metrics = {
             "plastic_params": float(plastic),
             "crossings": float(len(cost.crossings)),
@@ -194,8 +204,28 @@ class NeurosymbolicEvaluator:
             "measured_energy_fraction": cost.measured_energy_fraction,
             "frame_period_s": cost.frame_period_s,
             "memory_bytes": cost.memory_bytes,
+            "domain_switches": float(switches),
         }
         return Evaluation(g, g.key, F, cv, gv, acc, src, terms, cost, metrics)
+
+    def domain_switches(self, g: Genome) -> int:
+        """Domain crossings excluding those into/out of mandatory safety guards (guards are not a
+        partitioning choice, so they are never penalised)."""
+        stream = g.stages()
+        n = 0
+        for c in g.crossings(self.model):
+            touches_guard = any(0 <= e < len(stream) and stream[e].kind == "guard" for e in (c.edge, c.edge + 1))
+            n += not touches_guard
+        return n
+
+    def reference_cost(self) -> CostReport:
+        """All-continuous design (the baseline), independent of the user policy."""
+        if self._reference is None:
+            from .genome import GuardGene, default_gene
+            ref = Genome(tuple(default_gene(Domain.ANN, self.hw) for _ in self.model.layers),
+                         tuple(GuardGene(s.after_layer) for s in self.model.guard_sites))
+            self._reference = self.cost_model.evaluate(ref)
+        return self._reference
 
     def rebudget(self, budgets: Budgets) -> None:
         """Re-score every cached candidate against new budgets without re-running cost models."""
