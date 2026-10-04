@@ -6,6 +6,7 @@ import { innerPack, type DomainId, type Settings } from "./registry";
 import type { Evaluated, Result } from "./search";
 import { summary } from "./explain";
 import type { Planner } from "./search";
+import { uncertaintyForPlan } from "./uncertainty";
 
 export interface ExportFile {
   id: string;
@@ -31,15 +32,23 @@ function csvEscape(v: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function rowsToCsv(pack: Pack, evs: Evaluated[]): string {
+function rowsToCsv(pack: Pack, evs: Evaluated[], uncertainty: Result["uncertainty"]): string {
   const vars = pack.variables().map((v) => v.name);
-  const objs = pack.objectives().map((o) => o.name);
+  const objectives = pack.objectives();
+  const objs = objectives.map((o) => o.name);
   const cons = evs.length ? Object.keys(evs[0]!.metrics.constraints) : [];
-  const head = [...vars, ...objs, "feasible", ...cons.map((c) => `constraint_${c}`), "description"];
+  const intervalHead = objectives.flatMap((o) => [`${o.name}_median`, `${o.name}_interval90_low`, `${o.name}_interval90_high`, `${o.name}_probability_best`]);
+  const head = [...vars, ...objs, ...intervalHead, "uncertainty_method", "posterior_sample_count", "feasible", ...cons.map((c) => `constraint_${c}`), "description"];
   const lines = [head.join(",")];
   for (const e of evs) {
     const feas = Object.values(e.metrics.constraints).every((x) => x <= 0);
-    lines.push([...vars.map((v) => e.plan[v]), ...objs.map((o) => e.metrics.objectives[o]), feas,
+    const u = uncertaintyForPlan(uncertainty, e.plan);
+    const uncertaintyValues = objectives.flatMap((o) => {
+      const q = u?.objectives[o.name];
+      return [q?.median, q?.low, q?.high, u?.probabilityBest[o.name]];
+    });
+    lines.push([...vars.map((v) => e.plan[v]), ...objs.map((o) => e.metrics.objectives[o]), ...uncertaintyValues,
+      uncertainty ? uncertainty.method : "unavailable", uncertainty?.sampleCount ?? "", feas,
       ...cons.map((c) => e.metrics.constraints[c]), pack.describe(e.plan)].map(csvEscape).join(","));
   }
   return lines.join("\n") + "\n";
@@ -67,7 +76,12 @@ export function tradeoffSvg(pack: Pack, res: Result, selected: Evaluated | null)
   const X = (v: number) => pl + ((lg(v) - x0) / (x1 - x0 || 1)) * (W - pl - pr);
   const Y = (v: number) => H - pb - ((lg(v) - y0) / (y1 - y0 || 1)) * (H - pb - pt);
   const dots = pts.map((e) => `<circle cx="${X(e.metrics.objectives[ox!.name]!).toFixed(1)}" cy="${Y(e.metrics.objectives[oy!.name]!).toFixed(1)}" r="2" fill="#bdb4a8"/>`).join("");
-  const front = res.front.map((e) => `<circle cx="${X(e.metrics.objectives[ox!.name]!).toFixed(1)}" cy="${Y(e.metrics.objectives[oy!.name]!).toFixed(1)}" r="4.5" fill="#11100e"/>`).join("");
+  const front = res.front.map((e) => {
+    const x = X(e.metrics.objectives[ox!.name]!), y = Y(e.metrics.objectives[oy!.name]!);
+    const u = uncertaintyForPlan(res.uncertainty, e.plan);
+    const xi = u?.objectives[ox!.name], yi = u?.objectives[oy!.name];
+    return `${xi ? `<line x1="${X(xi.low).toFixed(1)}" x2="${X(xi.high).toFixed(1)}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#8f4638" opacity=".35"/>` : ""}${yi ? `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y(yi.low).toFixed(1)}" y2="${Y(yi.high).toFixed(1)}" stroke="#8f4638" opacity=".35"/>` : ""}<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="#11100e"/>`;
+  }).join("");
   const sel = selected ? `<circle cx="${X(selected.metrics.objectives[ox!.name]!).toFixed(1)}" cy="${Y(selected.metrics.objectives[oy!.name]!).toFixed(1)}" r="9" fill="none" stroke="#11100e" stroke-width="1.6"/>` : "";
   const ticks = [0, 0.5, 1].map((f) => {
     const vx = 10 ** (x0 + f * (x1 - x0)), vy = 10 ** (y0 + f * (y1 - y0));
@@ -150,7 +164,7 @@ const REFERENCES = `@inproceedings{narayanan2021megatron, title={Efficient Large
 function methodsText(domain: DomainId, pack: Pack): string {
   const cal = pack.calibration;
   if (domain === "llm_training") {
-    return `Training plans were generated with Nomo Planner (${ENGINE_VERSION}). For each candidate layout (GPU count; tensor, pipeline and data parallel sizes; ZeRO stage; activation recomputation; micro-batch size; matmul precision) the planner computes per-GPU memory from exact parameter counts, mixed-precision Adam state (16 bytes/parameter, sharded per ZeRO stage; Rajbhandari et al., 2020) and activation memory (Korthikanti et al., 2022), and step time from training FLOPs (6N + 12Lsh per token; Chowdhery et al., 2022), the 1F1B pipeline bubble, and ring all-reduce / all-gather communication (Thakur et al., 2005). All ${pack.variables().reduce((n, v) => n * v.choices.length, 1).toLocaleString("en-US")} combinations were evaluated exhaustively; the reported set is the exact Pareto front of the model. ${cal ? `Efficiency parameters for this hardware were fitted to ${cal.observations} published measurements (${cal.source}); leave-one-out error ${cal.looMapePct}%, error on held-out runs of the fitted strategy ${CALIBRATION_RESULTS.heldOutPtdMape}%.` : "Efficiency parameters for this hardware are uncalibrated placeholders; absolute times and costs are indicative only."}`;
+    return `Training plans were generated with Nomo Planner (${ENGINE_VERSION}). For each candidate layout (GPU count; tensor, pipeline and data parallel sizes; ZeRO stage; activation recomputation; micro-batch size; matmul precision) the planner computes per-GPU memory from exact parameter counts, mixed-precision Adam state (16 bytes/parameter, sharded per ZeRO stage; Rajbhandari et al., 2020) and activation memory (Korthikanti et al., 2022), and step time from training FLOPs (6N + 12Lsh per token; Chowdhery et al., 2022), the 1F1B pipeline bubble, and ring all-reduce / all-gather communication (Thakur et al., 2005). All ${pack.variables().reduce((n, v) => n * v.choices.length, 1).toLocaleString("en-US")} combinations were evaluated exhaustively; the reported set is the exact Pareto front of the model. ${cal ? `Efficiency parameters for this hardware were fitted to ${cal.observations} published measurements (${cal.source}); leave-one-out error ${cal.looMapePct}%, error on held-out runs of the fitted strategy ${CALIBRATION_RESULTS.heldOutPtdMape}%. Uncertainty uses a stratified bootstrap; the nominal 90% interval covered 18/22 leave-one-out runs (81.8%), so intervals are evidence with a documented shortfall, not a guarantee.` : "Efficiency parameters for this hardware are uncalibrated placeholders; absolute times and costs are indicative only."}`;
   }
   if (domain === "llm_inference") {
     return `Serving configurations were generated with Nomo Planner (${ENGINE_VERSION}). Decode time per token is modelled with the roofline model (Williams et al., 2009) on bytes moved (weights plus average KV cache) and FLOPs, plus tensor-parallel all-reduce time; prefill is modelled likewise. Memory includes weights and the full KV cache for the batch. Quality loss from reduced precision is an explicit assumption table, not a measurement. Throughput is an uncalibrated upper bound.`;
@@ -186,7 +200,12 @@ export function buildExport(domain: DomainId, settings: Settings, locks: Record<
   const objs = pack.objectives();
   const story = summary(pl, selected.plan);
   const files: ExportFile[] = [];
-  const numbers = objs.map((o) => `- **${o.label}:** ${fmt(selected.metrics.objectives[o.name]!, o.unit)}`).join("\n");
+  const selectedUncertainty = uncertaintyForPlan(res.uncertainty, selected.plan);
+  const numbers = objs.map((o) => {
+    const q = selectedUncertainty?.objectives[o.name];
+    const probability = selectedUncertainty?.probabilityBest[o.name];
+    return `- **${o.label}:** ${fmt(selected.metrics.objectives[o.name]!, o.unit)}${q ? ` (90% interval ${fmt(q.low, o.unit)}–${fmt(q.high, o.unit)})` : " (90% interval unavailable)"}${probability === undefined ? "" : `; ${(probability * 100).toFixed(0)}% probability of being best`}`;
+  }).join("\n");
   files.push({ id: "summary", folder: "1-summary", name: "plan-summary.md", mime: "text/markdown",
     description: "The recommendation and why, in plain English",
     content: `# Nomo Planner: ${pack.description}\n\nGenerated ${date} by ${ENGINE_VERSION}.\n\n## Chosen plan\n\n${pack.describe(selected.plan)}\n\n${numbers}\n\n## Why\n\n${story}\n\n## How it was found\n\nEvery one of ${res.evaluated.toLocaleString("en-US")} possible plans was evaluated; ${res.front.length} are best trade-offs (no other plan is better on every goal at once).\n\n## Reliability\n\n${pack.calibration ? `Hardware efficiency calibrated on ${pack.calibration.observations} published runs (${pack.calibration.source}); held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}% for the calibrated strategy, leave-one-out ${pack.calibration.looMapePct}%.` : "Hardware efficiency for this setup is uncalibrated: treat absolute numbers as indicative, comparisons between plans as the main result."}\n${selected.metrics.notes.map((n) => `\n- ${n}`).join("")}\n` });
@@ -194,11 +213,12 @@ export function buildExport(domain: DomainId, settings: Settings, locks: Record<
     description: "The chosen plan with every metric, constraint and breakdown",
     content: JSON.stringify({ engine: ENGINE_VERSION, date, domain, plan: selected.plan, description: pack.describe(selected.plan),
       objectives: selected.metrics.objectives, constraints: selected.metrics.constraints, breakdown: selected.metrics.breakdown,
-      notes: selected.metrics.notes, calibration: pack.calibration }, (_k, v) => (typeof v === "number" && !Number.isFinite(v) ? null : v), 2) + "\n" });
+      notes: selected.metrics.notes, calibration: pack.calibration, uncertainty: selectedUncertainty,
+      uncertainty_validation: res.uncertainty?.validation ?? null }, (_k, v) => (typeof v === "number" && !Number.isFinite(v) ? null : v), 2) + "\n" });
   files.push({ id: "front", folder: "2-data", name: "best-tradeoffs.csv", mime: "text/csv",
-    description: `The ${res.front.length} best trade-off plans`, content: rowsToCsv(pack, res.front) });
+    description: `The ${res.front.length} best trade-off plans`, content: rowsToCsv(pack, res.front, res.uncertainty) });
   files.push({ id: "all", folder: "2-data", name: "all-evaluated-plans.csv", mime: "text/csv",
-    description: `All ${res.evaluated.toLocaleString("en-US")} plans with every metric (feasible and not)`, content: rowsToCsv(pack, res.all) });
+    description: `All ${res.evaluated.toLocaleString("en-US")} plans with every metric (feasible and not)`, content: rowsToCsv(pack, res.all, res.uncertainty) });
   files.push({ id: "settings", folder: "2-data", name: "settings.json", mime: "application/json",
     description: "Exact inputs, locks and parameters, to reproduce this result",
     content: JSON.stringify({ engine: ENGINE_VERSION, domain, settings, locks,

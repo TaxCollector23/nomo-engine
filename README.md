@@ -87,3 +87,22 @@ on 1,050 plans across seven problems, every best-trade-off set, recommendation a
 calibration predictions (14,194 numbers; worst difference 2e-16). `npm run bench` times the searches.
 Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
 attention-type quality effects, prices and training utilisation are labelled assumptions.
+
+### A1–A3 uncertainty status
+The A1–A3 uncertainty layer is implemented for calibrated A100 training. The dependency-free Python reference and
+source rows live in `nomo-planner/`; `studies/export_uncertainty.py` produces the checked-in bootstrap artifact at
+`src/planner/uncertainty.json`. The Lab shows medians, central 90% predictive intervals, uncertainty whiskers, and
+posterior probability of being best for front plans. The leave-one-out study reports 18/22 covered runs (81.8%) against
+a nominal 90% target, with a 95% Wilson interval of 61.5%–92.7%; this is evidence on 22 published rows, not a future
+guarantee. Serving and co-design remain explicitly interval-unavailable until published calibration data exists.
+
+### Phase 1 layer-aware planner
+The Lab now has a shared model-graph surface at `/lab#layers`. Paste or upload a Hugging Face `config.json` to expand
+embedding, attention, MLP, and output nodes with parameter, FLOP, activation, and KV-cache accounting. The Train tab
+searches bounded per-node precision, recomputation, CPU-offload, and contiguous pipeline-stage candidates, applies locks,
+and compares the selected result with the global-only baseline. Search is exhaustive only for small spaces; larger results
+are labelled bounded. FP8 quality, offload bandwidth, framework overhead, and cluster utilization remain assumptions until
+customer measurements are supplied. Serve and Neuromorphic tabs share the graph contract but do not fabricate a recommendation
+until their per-layer decision packs are implemented.
+
+The design note and cited formulas are in [`docs/PHASE_1_LAYER_PLANNER_DESIGN.md`](docs/PHASE_1_LAYER_PLANNER_DESIGN.md).

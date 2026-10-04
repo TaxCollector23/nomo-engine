@@ -7,15 +7,17 @@ import { CLUSTERS, MODELS } from "../planner/hardware";
 import { DEFAULT_ATTENTION_PENALTY, DEFAULT_QUALITY_LOSS, SCALING_LAWS, feasible, type Choice } from "../planner/packs";
 import { DEFAULT_SETTINGS, build, innerPack, withLocks, type DomainId, type Settings } from "../planner/registry";
 import { Planner, recommend, type Evaluated } from "../planner/search";
+import { uncertaintyForPlan, UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 import Anatomy from "./Anatomy";
 import { Chips, Field, Info, LinSlider, LogSlider, Segmented, Select, Toggle, fmtNum, fmtTokens } from "./controls";
 import Evidence from "./Evidence";
 import ExportDialog from "./ExportDialog";
+import LayerPlanner from "./LayerPlanner";
 import Methods, { Equations } from "./Methods";
 import TradeoffChart from "./TradeoffChart";
 import "./lab.css";
 
-type ModuleId = DomainId | "evidence" | "methods" | "neuromorphic";
+type ModuleId = DomainId | "layers" | "evidence" | "methods" | "neuromorphic";
 type Mode = "guided" | "explore" | "rigor";
 interface Prefs { animate: boolean; anatomy: boolean; whatif: boolean; table: boolean; equations: boolean; provenance: boolean }
 
@@ -26,12 +28,13 @@ const MODE_PREFS: Record<Mode, Prefs> = {
 };
 
 const MODULES: { id: ModuleId; n: string; title: string; blurb: string }[] = [
-  { id: "llm_training", n: "01", title: "Train a model", blurb: "Split a training run across GPUs" },
-  { id: "llm_inference", n: "02", title: "Serve a model", blurb: "Cheapest tokens at your speed limit" },
-  { id: "arch_codesign", n: "03", title: "Design a model", blurb: "What to build for your budget" },
-  { id: "neuromorphic", n: "04", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
-  { id: "evidence", n: "05", title: "Evidence", blurb: "22 published runs, predicted" },
-  { id: "methods", n: "06", title: "Methods", blurb: "Equations, verification, references" },
+  { id: "layers", n: "01", title: "Shared model graph", blurb: "Train, serve and deploy the same layers" },
+  { id: "llm_training", n: "02", title: "Train a model", blurb: "Split a training run across GPUs" },
+  { id: "llm_inference", n: "03", title: "Serve a model", blurb: "Cheapest tokens at your speed limit" },
+  { id: "arch_codesign", n: "04", title: "Design a model", blurb: "What to build for your budget" },
+  { id: "neuromorphic", n: "05", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
+  { id: "evidence", n: "06", title: "Evidence", blurb: "22 published runs, predicted" },
+  { id: "methods", n: "07", title: "Methods", blurb: "Equations, verification, references" },
 ];
 
 const QUESTIONS: Record<DomainId, string> = {
@@ -270,8 +273,10 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const res = fresh?.res ?? null;
   const objs = pack?.objectives() ?? [];
   const calib = pack?.calibration ?? null;
+  const selectedUncertainty = selected && res ? uncertaintyForPlan(res.uncertainty, selected.plan) : null;
   const reliability = domain === "llm_training"
-    ? (calib ? { cls: "ok", text: `Hardware calibrated on ${calib.observations} published runs (held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}%)` }
+    ? (calib ? (res?.uncertainty ? { cls: "warn", text: `Hardware calibrated on ${calib.observations} runs; 90% intervals covered ${UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${Math.round(UNCERTAINTY_VALIDATION.actual * UNCERTAINTY_VALIDATION.n!)} / ${UNCERTAINTY_VALIDATION.n}`} held-out runs` }
+      : { cls: "ok", text: `Hardware calibrated on ${calib.observations} published runs (held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}%)` })
       : { cls: "warn", text: "Uncalibrated hardware numbers: compare plans, treat absolute values as indicative" })
     : domain === "llm_inference" ? { cls: "warn", text: "Uncalibrated upper bound; quality effects are assumptions" }
       : { cls: "warn", text: "Published scaling law; prices and attention quality effects are assumptions" };
@@ -327,6 +332,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
         </nav>
 
         <main className="lab-main" id="lab-main">
+          {module === "layers" && <LayerPlanner mode={mode} />}
           {module === "evidence" && <Evidence />}
           {module === "methods" && <Methods />}
           {module === "neuromorphic" && (
@@ -407,9 +413,17 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                               {objs.map((o) => (
                                 <div key={o.name} className="lab-metric">
                                   <b>{fmtNum(selected.metrics.objectives[o.name]!, o.unit)}</b><span>{o.label}</span>
+                                  {selectedUncertainty?.objectives[o.name] ? (
+                                    <small>90%: {fmtNum(selectedUncertainty.objectives[o.name]!.low, o.unit)}–{fmtNum(selectedUncertainty.objectives[o.name]!.high, o.unit)}</small>
+                                  ) : <small>90% interval unavailable</small>}
                                 </div>
                               ))}
                             </div>
+                            {selectedUncertainty && (
+                              <p className="lab-note lab-answer-confidence">
+                                {objs.map((o) => `${Math.round((selectedUncertainty.probabilityBest[o.name] ?? 0) * 100)}% chance this is the ${o.label}`).join(" · ")} — probability from {res.uncertainty?.sampleCount.toLocaleString("en-US")} bootstrap samples.
+                              </p>
+                            )}
                             <p className="lab-story">{story}</p>
                             <div className="lab-answer-actions">
                               <button type="button" className="ui-button ui-button--primary ui-button--compact" onClick={() => setExportOpen(true)}>Export this plan</button>
@@ -433,7 +447,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                             <Select label="Vertical axis" value={axes[domain][1]} onChange={(v) => setAxes((A) => ({ ...A, [domain]: [A[domain][0], v] }))} options={objs.map((o) => ({ value: o.name, label: o.label }))} />
                           </span>
                         ) : undefined}>
-                          <TradeoffChart res={res} objectives={objs} xAxis={axes[domain][0]} yAxis={axes[domain][1]} selected={selected} recommended={rec}
+                          <TradeoffChart res={res} uncertainty={res.uncertainty} objectives={objs} xAxis={axes[domain][0]} yAxis={axes[domain][1]} selected={selected} recommended={rec}
                             ghost={ghost} animate={prefs.animate} compact={mode === "guided"} describe={(e) => pack.describe(e.plan)}
                             onSelect={(e) => setSelKey(planKey(e))} />
                           <p className="lab-note">Click a black point to inspect that plan. Lower and further left is better on both axes; no black point beats another on everything.</p>
@@ -481,6 +495,13 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                       </ul>
                     </Card>
                     {prefs.equations && <Card title="The equations behind it"><Equations domain={domain} /></Card>}
+                    {mode === "rigor" && res.uncertainty && (
+                      <Card title="What the 90% interval means">
+                        <p>Intervals come from {res.uncertainty.sampleCount.toLocaleString("en-US")} stratified bootstrap refits of the 22 published A100 runs. Each draw keeps the fitted parameters together and adds a log-time residual draw.</p>
+                        <p className="lab-note">Leave-one-out coverage was {UNCERTAINTY_VALIDATION.covered ?? Math.round((UNCERTAINTY_VALIDATION.actual ?? 0) * (UNCERTAINTY_VALIDATION.n ?? 0))}/{UNCERTAINTY_VALIDATION.n ?? "n/a"} ({UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${(UNCERTAINTY_VALIDATION.actual * 100).toFixed(1)}%`}) against a nominal 90% target. With 22 rows, this is validation evidence, not a future guarantee.</p>
+                        <p className="lab-note">Source: {res.uncertainty.source}. Serving and co-design remain uncalibrated, so their intervals are not fabricated.</p>
+                      </Card>
+                    )}
                     {prefs.provenance && (
                       <Card title="Where the numbers come from">
                         <table className="lab-prov">
@@ -512,7 +533,10 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                         {res.front.map((e, i) => (
                           <tr key={i} className={e === selected ? "is-on" : ""} onClick={() => setSelKey(planKey(e))} tabIndex={0}
                             onKeyDown={(k) => { if (k.key === "Enter") setSelKey(planKey(e)); }}>
-                            {objs.map((o) => <td key={o.name}>{fmtNum(e.metrics.objectives[o.name]!, o.unit)}</td>)}
+                            {objs.map((o) => {
+                              const u = uncertaintyForPlan(res.uncertainty, e.plan)?.objectives[o.name];
+                              return <td key={o.name}>{fmtNum(e.metrics.objectives[o.name]!, o.unit)}{u && <small className="lab-table-ci">90% {fmtNum(u.low, o.unit)}–{fmtNum(u.high, o.unit)}</small>}</td>;
+                            })}
                             <td>{e === rec && <b>Recommended: </b>}{pack.describe(e.plan)}</td>
                           </tr>
                         ))}

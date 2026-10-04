@@ -1,0 +1,3345 @@
+{
+  "method": "stratified non-parametric bootstrap over published runs; log-error refit",
+  "cluster": "a100_nvlink_ib",
+  "seed": 20260929,
+  "source": "Narayanan et al. 2021 (arXiv:2104.04473), Tables 1-2",
+  "sample_count": 256,
+  "parameter_order": [
+    "zero3_overlap",
+    "e_matmul",
+    "bubble_scale",
+    "gemm_h_half",
+    "dp_overlap",
+    "zero3_latency_us"
+  ],
+  "samples": [
+    {
+      "params": {
+        "zero3_overlap": 0.33137500000000014,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.39056560876264246,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.8968299999999997,
+        "zero3_latency_us": 181.1723585056617
+      },
+      "residual_sigma": 0.061270200255413305,
+      "fit_error": 0.003754037439338449,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3566179687500003,
+        "e_matmul": 0.636056202497615,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 358.4586784537571,
+        "dp_overlap": 0.8727056250000003,
+        "zero3_latency_us": 153.55857725566202
+      },
+      "residual_sigma": 0.056605122810519735,
+      "fit_error": 0.0032041399283940213,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.213565,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.4054651087626424,
+        "gemm_h_half": 259.9875034537571,
+        "dp_overlap": 0.6835674999999997,
+        "zero3_latency_us": 83.89523350566188
+      },
+      "residual_sigma": 0.06285894745380079,
+      "fit_error": 0.0039512472749996886,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31308750000000013,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.45150560876264245,
+        "gemm_h_half": 256.4180034537571,
+        "dp_overlap": 0.6955299999999992,
+        "zero3_latency_us": 124.9898585056619
+      },
+      "residual_sigma": 0.07828236276681645,
+      "fit_error": 0.00612812832035545,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.40524312500000026,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2923551087626424,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.8624055000000004,
+        "zero3_latency_us": 169.873983505662
+      },
+      "residual_sigma": 0.06252261500380453,
+      "fit_error": 0.003909077386913963,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2831400000000001,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.1325441087626425,
+        "gemm_h_half": 348.57600345375715,
+        "dp_overlap": 0.7601779999999995,
+        "zero3_latency_us": 115.67285850566188
+      },
+      "residual_sigma": 0.07053969550845941,
+      "fit_error": 0.004975848642426169,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.28146250000000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.27605560876264246,
+        "gemm_h_half": 344.74800345375706,
+        "dp_overlap": 0.97669,
+        "zero3_latency_us": 174.51735850566172
+      },
+      "residual_sigma": 0.051311645143469704,
+      "fit_error": 0.002632884927329358,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4215750000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7663656087626423,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.7111399999999996,
+        "zero3_latency_us": 167.7523585056618
+      },
+      "residual_sigma": 0.07678118605910543,
+      "fit_error": 0.005895350532642965,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.17665999999999996,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.08375899999999999,
+        "gemm_h_half": 369.0275034537571,
+        "dp_overlap": 0.8079540000000005,
+        "zero3_latency_us": 113.73685850566181
+      },
+      "residual_sigma": 0.054739793128111704,
+      "fit_error": 0.0029964449517084655,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5071375,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.7350899999999997,
+        "zero3_latency_us": 259.382358505662
+      },
+      "residual_sigma": 0.07513943912237736,
+      "fit_error": 0.005645935311625453,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4170375000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.7003699999999994,
+        "zero3_latency_us": 151.4173585056618
+      },
+      "residual_sigma": 0.06554203684341806,
+      "fit_error": 0.00429575859358397,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4140125000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.15009560876264239,
+        "gemm_h_half": 387.2380034537571,
+        "dp_overlap": 0.6687899999999993,
+        "zero3_latency_us": 150.8123585056618
+      },
+      "residual_sigma": 0.07880042965833069,
+      "fit_error": 0.006209507714337523,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.24048750000000002,
+        "e_matmul": 0.6158824774976149,
+        "bubble_scale": 0.06331,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.8460099999999996,
+        "zero3_latency_us": 113.79735850566189
+      },
+      "residual_sigma": 0.07985684894334985,
+      "fit_error": 0.006377116323160997,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.41688937500000023,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.22765560876264246,
+        "gemm_h_half": 344.74800345375706,
+        "dp_overlap": 0.8905985,
+        "zero3_latency_us": 184.57548350566185
+      },
+      "residual_sigma": 0.06058484740165499,
+      "fit_error": 0.003670523734681821,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3660250000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.48629560876264244,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.640489999999999,
+        "zero3_latency_us": 151.6098585056618
+      },
+      "residual_sigma": 0.08609644937741517,
+      "fit_error": 0.007412598595397813,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.15669499999999997,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 430.7375034537571,
+        "dp_overlap": 0.7813340000000004,
+        "zero3_latency_us": 93.04585850566185
+      },
+      "residual_sigma": 0.0760992755113927,
+      "fit_error": 0.005791099733358853,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33292500000000014,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.5088156087626422,
+        "gemm_h_half": 256.4180034537571,
+        "dp_overlap": 0.8003499999999992,
+        "zero3_latency_us": 108.3523585056619
+      },
+      "residual_sigma": 0.06539532424956622,
+      "fit_error": 0.0042765484337059035,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.03751756250000001,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 0.7198844337626426,
+        "gemm_h_half": 271.29055345375707,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 94.79506475566187
+      },
+      "residual_sigma": 0.040195255610109906,
+      "fit_error": 0.001615658573562072,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.25162500000000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6303656087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.97669,
+        "zero3_latency_us": 155.3498585056618
+      },
+      "residual_sigma": 0.05030661882742639,
+      "fit_error": 0.0025307558978479713,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3041875000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4434756087626424,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 195.38985850566172
+      },
+      "residual_sigma": 0.05477175360036314,
+      "fit_error": 0.002999944992458893,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31922518750000023,
+        "e_matmul": 0.636056202497615,
+        "bubble_scale": 0.42897678376264237,
+        "gemm_h_half": 308.4691784537571,
+        "dp_overlap": 0.9026198500000003,
+        "zero3_latency_us": 143.727396005662
+      },
+      "residual_sigma": 0.054211644740593895,
+      "fit_error": 0.002938902425480362,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31611250000000013,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.46481560876264244,
+        "gemm_h_half": 256.4180034537571,
+        "dp_overlap": 0.7737299999999991,
+        "zero3_latency_us": 131.6448585056619
+      },
+      "residual_sigma": 0.0816129181222029,
+      "fit_error": 0.006660668404421393,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.07611656250000003,
+        "e_matmul": 0.6239773774976151,
+        "bubble_scale": 0.620773358762643,
+        "gemm_h_half": 242.7752534537571,
+        "dp_overlap": 0.8396650750000002,
+        "zero3_latency_us": 84.44427100566189
+      },
+      "residual_sigma": 0.06295637201094616,
+      "fit_error": 0.0039635047767806455,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.05249131250000001,
+        "e_matmul": 0.6514292524976149,
+        "bubble_scale": 0.8370084337626418,
+        "gemm_h_half": 259.2152784537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 101.11731475566188
+      },
+      "residual_sigma": 0.03877601696582686,
+      "fit_error": 0.0015035794917340926,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3282050000000002,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.557160608762643,
+        "gemm_h_half": 247.2660034537571,
+        "dp_overlap": 0.9444080000000001,
+        "zero3_latency_us": 151.906108505662
+      },
+      "residual_sigma": 0.055983093038343264,
+      "fit_error": 0.0031341067061397983,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.32670000000000016,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.07662000000000001,
+        "gemm_h_half": 347.30800345375707,
+        "dp_overlap": 0.7386399999999992,
+        "zero3_latency_us": 127.7123585056619
+      },
+      "residual_sigma": 0.07483389602259001,
+      "fit_error": 0.005600111993919813,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2834900000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8636056087626425,
+        "gemm_h_half": 227.23800345375707,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 149.58098350566195
+      },
+      "residual_sigma": 0.025757889922576646,
+      "fit_error": 0.0006634688932635756,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.45763750000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.138,
+        "gemm_h_half": 356.5480034537571,
+        "dp_overlap": 0.7987099999999999,
+        "zero3_latency_us": 224.4923585056619
+      },
+      "residual_sigma": 0.07325040301883158,
+      "fit_error": 0.00536562154242125,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.18414687499999996,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.22704510876264247,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.8742030000000006,
+        "zero3_latency_us": 142.90673350566195
+      },
+      "residual_sigma": 0.04687357190600984,
+      "fit_error": 0.002197131743227875,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3433375000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 407.0380034537571,
+        "dp_overlap": 0.7253299999999991,
+        "zero3_latency_us": 134.3673585056619
+      },
+      "residual_sigma": 0.06957174503596444,
+      "fit_error": 0.004840227707349243,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35849659375000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6438738837626422,
+        "gemm_h_half": 269.2275034537571,
+        "dp_overlap": 0.985973725,
+        "zero3_latency_us": 175.12442725566186
+      },
+      "residual_sigma": 0.046342137592278856,
+      "fit_error": 0.002147593716621705,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.38996375000000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.7946289999999999,
+        "zero3_latency_us": 166.8751085056619
+      },
+      "residual_sigma": 0.07057397278291382,
+      "fit_error": 0.00498068563436346,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.39228750000000023,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.3689256087626425,
+        "gemm_h_half": 267.30800345375707,
+        "dp_overlap": 0.5353699999999993,
+        "zero3_latency_us": 115.0073585056619
+      },
+      "residual_sigma": 0.07092746793670542,
+      "fit_error": 0.0050307057079123745,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.18218062499999998,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.07198360876264251,
+        "gemm_h_half": 398.48850345375706,
+        "dp_overlap": 0.9048160000000003,
+        "zero3_latency_us": 113.01085850566186
+      },
+      "residual_sigma": 0.05514046199589939,
+      "fit_error": 0.0030404705491212255,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.13324746875000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7212556087626426,
+        "gemm_h_half": 272.5217284537571,
+        "dp_overlap": 0.9229750750000003,
+        "zero3_latency_us": 110.00435225566187
+      },
+      "residual_sigma": 0.05004735884631358,
+      "fit_error": 0.0025047381274916824,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.12478124999999998,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.064641,
+        "gemm_h_half": 395.46600345375714,
+        "dp_overlap": 0.8841855000000003,
+        "zero3_latency_us": 91.21573350566186
+      },
+      "residual_sigma": 0.08161257313437394,
+      "fit_error": 0.006660612093613533,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.49325,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4059656087626424,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.6779999999999999,
+        "zero3_latency_us": 217.55485850566203
+      },
+      "residual_sigma": 0.07041956738216894,
+      "fit_error": 0.004958915470291831,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.45090000000000036,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.15205560876264246,
+        "gemm_h_half": 331.43800345375706,
+        "dp_overlap": 0.6634799999999994,
+        "zero3_latency_us": 155.84485850566176
+      },
+      "residual_sigma": 0.06874249055594185,
+      "fit_error": 0.004725530007833754,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2906918750000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.36466660876264234,
+        "gemm_h_half": 299.9175034537571,
+        "dp_overlap": 0.9254465000000003,
+        "zero3_latency_us": 138.14585850566192
+      },
+      "residual_sigma": 0.05053322761994451,
+      "fit_error": 0.002553607093689123,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2824518750000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.868952608762643,
+        "gemm_h_half": 259.66850345375707,
+        "dp_overlap": 0.9680385000000001,
+        "zero3_latency_us": 143.15285850566192
+      },
+      "residual_sigma": 0.04371474037022153,
+      "fit_error": 0.001910978525635876,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33687500000000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6728556087626426,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.7911199999999996,
+        "zero3_latency_us": 144.76235850566184
+      },
+      "residual_sigma": 0.06044342511257493,
+      "fit_error": 0.0036534076393394538,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.6033875,
+        "e_matmul": 0.5892624774976148,
+        "bubble_scale": 0.2963256087626425,
+        "gemm_h_half": 194.7080034537571,
+        "dp_overlap": 0.6298199999999998,
+        "zero3_latency_us": 226.464858505662
+      },
+      "residual_sigma": 0.08215986421273751,
+      "fit_error": 0.006750243287455464,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3149437500000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.46301710876264246,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.8488370000000001,
+        "zero3_latency_us": 137.7141085056619
+      },
+      "residual_sigma": 0.050893847869067865,
+      "fit_error": 0.002590183750919824,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3403125000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.0984,
+        "gemm_h_half": 363.0380034537571,
+        "dp_overlap": 0.6477499999999993,
+        "zero3_latency_us": 140.41735850566187
+      },
+      "residual_sigma": 0.08363783125653887,
+      "fit_error": 0.006995286817297271,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2861306250000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6589051087626427,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.9387565000000003,
+        "zero3_latency_us": 140.78860850566193
+      },
+      "residual_sigma": 0.045466129817315314,
+      "fit_error": 0.0020671689605649686,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4018262500000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2931936087626424,
+        "gemm_h_half": 352.06850345375705,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 187.24298350566187
+      },
+      "residual_sigma": 0.036855901932828186,
+      "fit_error": 0.0013583575072822487,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.25004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6310886087626422,
+        "gemm_h_half": 289.0275034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 132.3708585056619
+      },
+      "residual_sigma": 0.022581865488339747,
+      "fit_error": 0.0005099406489334697,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4288412500000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4499351087626425,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.7922065000000001,
+        "zero3_latency_us": 171.1409835056619
+      },
+      "residual_sigma": 0.05907392628245994,
+      "fit_error": 0.0034897287664255113,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3378375000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4197456087626425,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.7729699999999994,
+        "zero3_latency_us": 162.60985850566175
+      },
+      "residual_sigma": 0.06698055906354987,
+      "fit_error": 0.004486395292465693,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.19531568750000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8248648837626426,
+        "gemm_h_half": 255.91750345375706,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 118.47456475566189
+      },
+      "residual_sigma": 0.01948775600634241,
+      "fit_error": 0.00037977263416273476,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.48775,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3869656087626425,
+        "gemm_h_half": 340.3480034537571,
+        "dp_overlap": 0.6823999999999999,
+        "zero3_latency_us": 210.40485850566202
+      },
+      "residual_sigma": 0.07931487896884905,
+      "fit_error": 0.006290850025843173,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.06422075000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.12533933376264242,
+        "gemm_h_half": 344.74800345375706,
+        "dp_overlap": 0.8912730750000004,
+        "zero3_latency_us": 79.41142725566189
+      },
+      "residual_sigma": 0.046690493217739125,
+      "fit_error": 0.0021800021569157433,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.267733125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3619681087626425,
+        "gemm_h_half": 330.1070034537571,
+        "dp_overlap": 0.7506440000000004,
+        "zero3_latency_us": 120.95148350566183
+      },
+      "residual_sigma": 0.07826180679918424,
+      "fit_error": 0.006124910403472839,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3486756250000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.36636560876264246,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.8586795,
+        "zero3_latency_us": 205.63010850566195
+      },
+      "residual_sigma": 0.05599015468955854,
+      "fit_error": 0.003134897422160694,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.48018750000000016,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 320.68800345375706,
+        "dp_overlap": 0.6799799999999998,
+        "zero3_latency_us": 170.4748585056618
+      },
+      "residual_sigma": 0.07109614955736517,
+      "fit_error": 0.005054662481883235,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3590125000000002,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 347.30800345375707,
+        "dp_overlap": 0.7394099999999995,
+        "zero3_latency_us": 139.81235850566185
+      },
+      "residual_sigma": 0.07722866650416371,
+      "fit_error": 0.005964266930011339,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.46137750000000016,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.3628731087626424,
+        "gemm_h_half": 298.58650345375713,
+        "dp_overlap": 0.7790185,
+        "zero3_latency_us": 181.86810850566195
+      },
+      "residual_sigma": 0.07187406298746848,
+      "fit_error": 0.005165880930326588,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.29263750000000005,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6609156087626427,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.9550899999999999,
+        "zero3_latency_us": 179.65985850566193
+      },
+      "residual_sigma": 0.06578798670314756,
+      "fit_error": 0.0043280591944535205,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.249528125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.9372556087626421,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.8998385000000001,
+        "zero3_latency_us": 124.29823350566186
+      },
+      "residual_sigma": 0.04073261390799251,
+      "fit_error": 0.0016591458357775846,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.030250000000000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7475566087626427,
+        "gemm_h_half": 255.91750345375706,
+        "dp_overlap": 0.7859155000000003,
+        "zero3_latency_us": 67.42410850566192
+      },
+      "residual_sigma": 0.04901250146716105,
+      "fit_error": 0.0024022253000684645,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35877500000000007,
+        "e_matmul": 0.653392477497615,
+        "bubble_scale": 0.8660256087626426,
+        "gemm_h_half": 267.1680034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 223.99735850566185
+      },
+      "residual_sigma": 0.039748215626633186,
+      "fit_error": 0.0015799206455013265,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.37758812500000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7361551087626428,
+        "gemm_h_half": 269.2275034537571,
+        "dp_overlap": 0.9826795,
+        "zero3_latency_us": 179.93748350566176
+      },
+      "residual_sigma": 0.06248919320983288,
+      "fit_error": 0.003904899268015824,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.34388750000000007,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7013256087626422,
+        "gemm_h_half": 253.85800345375708,
+        "dp_overlap": 0.8725099999999999,
+        "zero3_latency_us": 167.03735850566187
+      },
+      "residual_sigma": 0.070046498468898,
+      "fit_error": 0.00490651194775333,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.23489125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2444581087626425,
+        "gemm_h_half": 330.1070034537571,
+        "dp_overlap": 0.6880869999999998,
+        "zero3_latency_us": 109.35060850566187
+      },
+      "residual_sigma": 0.07995238012726051,
+      "fit_error": 0.006392383088013961,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.13431484375000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8418679587626428,
+        "gemm_h_half": 231.26427845375707,
+        "dp_overlap": 0.9665744000000002,
+        "zero3_latency_us": 66.2743960056619
+      },
+      "residual_sigma": 0.02120794767765847,
+      "fit_error": 0.0004497770446982992,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.39172687500000014,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.07662000000000001,
+        "gemm_h_half": 351.2380034537571,
+        "dp_overlap": 0.9547285000000001,
+        "zero3_latency_us": 178.93798350566198
+      },
+      "residual_sigma": 0.05420408225593344,
+      "fit_error": 0.002938082533207999,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4195125000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.21940560876264242,
+        "gemm_h_half": 351.2380034537571,
+        "dp_overlap": 0.5843899999999994,
+        "zero3_latency_us": 145.8623585056618
+      },
+      "residual_sigma": 0.08211744640265874,
+      "fit_error": 0.00674327500369353,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31725443750000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5361813837626425,
+        "gemm_h_half": 272.5217284537571,
+        "dp_overlap": 0.8329964500000001,
+        "zero3_latency_us": 152.45837100566195
+      },
+      "residual_sigma": 0.056418050871107815,
+      "fit_error": 0.003182996464094909,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.07154125000000001,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.19163360876264235,
+        "gemm_h_half": 329.27650345375713,
+        "dp_overlap": 0.7875655000000001,
+        "zero3_latency_us": 73.57998350566189
+      },
+      "residual_sigma": 0.06770125211528835,
+      "fit_error": 0.004583459537977836,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.24623499999999995,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.3244531087626424,
+        "gemm_h_half": 276.6250034537572,
+        "dp_overlap": 0.8515935000000003,
+        "zero3_latency_us": 122.49423350566182
+      },
+      "residual_sigma": 0.06623707420787081,
+      "fit_error": 0.004387349999618984,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4151500000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.7511899999999995,
+        "zero3_latency_us": 151.4173585056618
+      },
+      "residual_sigma": 0.05837116308128037,
+      "fit_error": 0.003407192679461428,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.27085437500000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6134861087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.9281085,
+        "zero3_latency_us": 134.7386085056619
+      },
+      "residual_sigma": 0.037146941500772225,
+      "fit_error": 0.0013798952628617937,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.37095062500000014,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5883761087626423,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 232.59248350566173
+      },
+      "residual_sigma": 0.05012528707885109,
+      "fit_error": 0.002512544404737236,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.518,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.6097999999999999,
+        "zero3_latency_us": 198.304858505662
+      },
+      "residual_sigma": 0.07076081760729315,
+      "fit_error": 0.005007093308452608,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35327500000000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4271656087626424,
+        "gemm_h_half": 296.3480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 235.02485850566177
+      },
+      "residual_sigma": 0.06425903715540218,
+      "fit_error": 0.004129223856139359,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.1273525,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7873656087626426,
+        "gemm_h_half": 252.3480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 126.41573350566185
+      },
+      "residual_sigma": 0.03636589464519409,
+      "fit_error": 0.001322478293345356,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.41272687500000016,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.6024146087626425,
+        "gemm_h_half": 254.5865034537571,
+        "dp_overlap": 0.7497389999999998,
+        "zero3_latency_us": 171.42773350566193
+      },
+      "residual_sigma": 0.07146616291778819,
+      "fit_error": 0.0051074124421918434,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.46355000000000013,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 407.0380034537571,
+        "dp_overlap": 0.7475599999999998,
+        "zero3_latency_us": 179.24735850566185
+      },
+      "residual_sigma": 0.06614865951108657,
+      "fit_error": 0.004375645155113664,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.36330250000000025,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4094581087626425,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.7359779999999995,
+        "zero3_latency_us": 146.84548350566195
+      },
+      "residual_sigma": 0.05770436583832756,
+      "fit_error": 0.003329793836803545,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.1761038125,
+        "e_matmul": 0.6481350274976149,
+        "bubble_scale": 0.5449858087626421,
+        "gemm_h_half": 310.03310345375706,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 115.63875850566188
+      },
+      "residual_sigma": 0.015305898528461913,
+      "fit_error": 0.00023427052976357257,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.04745846875000001,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 1.0238181587626423,
+        "gemm_h_half": 224.40055345375708,
+        "dp_overlap": 0.985973725,
+        "zero3_latency_us": 90.73324600566188
+      },
+      "residual_sigma": 0.033636649763137544,
+      "fit_error": 0.001131424207287981,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.19965000000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6638056087626426,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.8968299999999997,
+        "zero3_latency_us": 115.0073585056619
+      },
+      "residual_sigma": 0.06830983875772767,
+      "fit_error": 0.0046662340711067524,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3529625000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7513656087626425,
+        "gemm_h_half": 252.3480034537571,
+        "dp_overlap": 0.8700899999999998,
+        "zero3_latency_us": 154.63485850566178
+      },
+      "residual_sigma": 0.059768536979066575,
+      "fit_error": 0.003572278012618049,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35427500000000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5996756087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 173.69235850566184
+      },
+      "residual_sigma": 0.043753732780126876,
+      "fit_error": 0.0019143891321947491,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3613018750000002,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.4087736087626424,
+        "gemm_h_half": 274.38650345375714,
+        "dp_overlap": 0.8397784999999999,
+        "zero3_latency_us": 153.10035850566186
+      },
+      "residual_sigma": 0.053344860860275546,
+      "fit_error": 0.0028456741802021577,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.200255,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7468281087626425,
+        "gemm_h_half": 255.91750345375706,
+        "dp_overlap": 0.8539960000000002,
+        "zero3_latency_us": 113.29823350566186
+      },
+      "residual_sigma": 0.06395581638415039,
+      "fit_error": 0.00409034644936316,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.54825,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 420.3480034537571,
+        "dp_overlap": 0.5613999999999999,
+        "zero3_latency_us": 198.304858505662
+      },
+      "residual_sigma": 0.0862375332711201,
+      "fit_error": 0.007436912144687547,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20315249999999999,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6044056087626426,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.7960974999999998,
+        "zero3_latency_us": 14.73485850566189
+      },
+      "residual_sigma": 0.0527086597878264,
+      "fit_error": 0.002778202816628828,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.22937062499999997,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.38959510876264236,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.9314360000000004,
+        "zero3_latency_us": 131.26673350566185
+      },
+      "residual_sigma": 0.04759272352493115,
+      "fit_error": 0.002265067332520535,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35313750000000005,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5503656087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 226.58235850566206
+      },
+      "residual_sigma": 0.05021252329472778,
+      "fit_error": 0.00252129749562358,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.255255,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4790581087626425,
+        "gemm_h_half": 289.0275034537571,
+        "dp_overlap": 0.8233060000000002,
+        "zero3_latency_us": 129.45585850566187
+      },
+      "residual_sigma": 0.07310006206851893,
+      "fit_error": 0.005343619074421321,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2993131250000001,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.6190466087626425,
+        "gemm_h_half": 297.67900345375705,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 219.1126085056618
+      },
+      "residual_sigma": 0.02830213419050822,
+      "fit_error": 0.0008010107997375343,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.232038125,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.9473376087626421,
+        "gemm_h_half": 230.9890034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 174.88035850566195
+      },
+      "residual_sigma": 0.03881016198011894,
+      "fit_error": 0.0015062286729230698,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.15556062499999998,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6054781087626423,
+        "gemm_h_half": 289.0275034537571,
+        "dp_overlap": 0.9753590000000001,
+        "zero3_latency_us": 109.51698350566181
+      },
+      "residual_sigma": 0.03899803269525953,
+      "fit_error": 0.0015208465541005315,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.19264062499999998,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.6653321087626418,
+        "gemm_h_half": 283.86850345375706,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 105.90148350566183
+      },
+      "residual_sigma": 0.022405718161095895,
+      "fit_error": 0.0005020162063144625,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.21243062499999998,
+        "e_matmul": 0.6194519774976149,
+        "bubble_scale": 0.3989751087626424,
+        "gemm_h_half": 245.34650345375707,
+        "dp_overlap": 0.6468259999999998,
+        "zero3_latency_us": 87.88823350566186
+      },
+      "residual_sigma": 0.07835604623656676,
+      "fit_error": 0.006139669981826989,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.43763750000000007,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5143656087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.97669,
+        "zero3_latency_us": 260.382358505662
+      },
+      "residual_sigma": 0.07285512604957461,
+      "fit_error": 0.005307869391699405,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.48018750000000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7787656087626423,
+        "gemm_h_half": 216.3480034537571,
+        "dp_overlap": 0.6958499999999996,
+        "zero3_latency_us": 130.09735850566187
+      },
+      "residual_sigma": 0.04857460060413566,
+      "fit_error": 0.0023594918238512967,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.47468750000000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5568556087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.6902499999999997,
+        "zero3_latency_us": 172.70235850566178
+      },
+      "residual_sigma": 0.06500911413190902,
+      "fit_error": 0.004226184920215572,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3620375000000002,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.12061560876264242,
+        "gemm_h_half": 296.4880034537571,
+        "dp_overlap": 0.5152799999999994,
+        "zero3_latency_us": 115.0073585056619
+      },
+      "residual_sigma": 0.08842919574500072,
+      "fit_error": 0.007819722660107652,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3378375000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.7197299999999992,
+        "zero3_latency_us": 145.97235850566182
+      },
+      "residual_sigma": 0.07793030411425456,
+      "fit_error": 0.0060731322993402,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.27114109375000006,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.1792531087626424,
+        "gemm_h_half": 352.06850345375705,
+        "dp_overlap": 0.9479071250000003,
+        "zero3_latency_us": 136.29332725566195
+      },
+      "residual_sigma": 0.02878973138048785,
+      "fit_error": 0.0008288486329606468,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5104375000000001,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 372.4180034537571,
+        "dp_overlap": 0.5692499999999997,
+        "zero3_latency_us": 117.01485850566188
+      },
+      "residual_sigma": 0.07193492765590277,
+      "fit_error": 0.005174633816859966,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.49985000000000024,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 353.7980034537571,
+        "dp_overlap": 0.6426099999999995,
+        "zero3_latency_us": 135.27485850566188
+      },
+      "residual_sigma": 0.0769206645304867,
+      "fit_error": 0.005916788631811675,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20171250000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4153656087626424,
+        "gemm_h_half": 296.3480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 179.0898585056617
+      },
+      "residual_sigma": 0.04123997180515999,
+      "fit_error": 0.0017007352744903906,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3744400000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4637456087626425,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.7403779999999994,
+        "zero3_latency_us": 140.79548350566193
+      },
+      "residual_sigma": 0.05942241661221903,
+      "fit_error": 0.003531023596036124,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4325750000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.47705560876264247,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.6406299999999996,
+        "zero3_latency_us": 156.14735850566177
+      },
+      "residual_sigma": 0.0847686302084172,
+      "fit_error": 0.007185720667411382,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.16707625,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.9504256087626425,
+        "gemm_h_half": 227.23800345375707,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 128.18535850566187
+      },
+      "residual_sigma": 0.03462350537120561,
+      "fit_error": 0.0011987871241899034,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5074125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 387.2380034537571,
+        "dp_overlap": 0.6749599999999998,
+        "zero3_latency_us": 181.3648585056619
+      },
+      "residual_sigma": 0.06589371724717999,
+      "fit_error": 0.004341981972651305,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.37335000000000024,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6170556087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.9633799999999999,
+        "zero3_latency_us": 176.74485850566168
+      },
+      "residual_sigma": 0.056198310193233306,
+      "fit_error": 0.0031582500685748706,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.772,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3507656087626424,
+        "gemm_h_half": 332.3480034537571,
+        "dp_overlap": 0.32159999999999966,
+        "zero3_latency_us": 167.85485850566195
+      },
+      "residual_sigma": 0.08109338800648967,
+      "fit_error": 0.006576137578371083,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.224076875,
+        "e_matmul": 0.5988214774976149,
+        "bubble_scale": 0.2677836087626425,
+        "gemm_h_half": 211.40600345375702,
+        "dp_overlap": 0.7148294999999993,
+        "zero3_latency_us": 90.55023350566188
+      },
+      "residual_sigma": 0.06597963490034671,
+      "fit_error": 0.0043533122215830495,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.245403125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6037456087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.8469174999999999,
+        "zero3_latency_us": 124.15798350566187
+      },
+      "residual_sigma": 0.056650231766923964,
+      "fit_error": 0.003209248759246201,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4541000000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3900956087626424,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.6390999999999996,
+        "zero3_latency_us": 0.0
+      },
+      "residual_sigma": 0.04753581785878764,
+      "fit_error": 0.002259653979503834,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3048443750000001,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.3531326087626424,
+        "gemm_h_half": 276.6250034537572,
+        "dp_overlap": 0.8746265000000002,
+        "zero3_latency_us": 136.98398350566188
+      },
+      "residual_sigma": 0.04973199719467809,
+      "fit_error": 0.0024732715449714694,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4255625000000003,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.30388560876264253,
+        "gemm_h_half": 240.68800345375706,
+        "dp_overlap": 0.5928599999999993,
+        "zero3_latency_us": 167.44985850566172
+      },
+      "residual_sigma": 0.08342864829201087,
+      "fit_error": 0.006960339355832048,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20339721875,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 0.7070713837626427,
+        "gemm_h_half": 280.5742784537571,
+        "dp_overlap": 0.9507022250000001,
+        "zero3_latency_us": 125.73930225566187
+      },
+      "residual_sigma": 0.05156910016513493,
+      "fit_error": 0.0026593720918417197,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.259545,
+        "e_matmul": 0.5974904774976151,
+        "bubble_scale": 0.16961960876264248,
+        "gemm_h_half": 213.4025034537571,
+        "dp_overlap": 0.852907,
+        "zero3_latency_us": 120.33135850566184
+      },
+      "residual_sigma": 0.0735398873681379,
+      "fit_error": 0.005408115034118407,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.34540000000000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 480.5480034537571,
+        "dp_overlap": 0.8120099999999995,
+        "zero3_latency_us": 139.81235850566185
+      },
+      "residual_sigma": 0.06558159641935368,
+      "fit_error": 0.004300945788910983,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4348125000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.19698560876264237,
+        "gemm_h_half": 387.2380034537571,
+        "dp_overlap": 0.7454599999999992,
+        "zero3_latency_us": 124.3498585056619
+      },
+      "residual_sigma": 0.05957007776713701,
+      "fit_error": 0.003548594165182751,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20171250000000002,
+        "e_matmul": 0.653392477497615,
+        "bubble_scale": 0.8942956087626425,
+        "gemm_h_half": 280.4780034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 173.4173585056617
+      },
+      "residual_sigma": 0.03542595471749022,
+      "fit_error": 0.0012549982676456678,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4595250000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2503656087626424,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.7785799999999998,
+        "zero3_latency_us": 248.98735850566197
+      },
+      "residual_sigma": 0.0663922861181497,
+      "fit_error": 0.004407935655994252,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.29700000000000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8794756087626423,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.90002,
+        "zero3_latency_us": 184.08735850566194
+      },
+      "residual_sigma": 0.06868547594167547,
+      "fit_error": 0.00471769460533448,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20358249999999997,
+        "e_matmul": 0.6181209774976151,
+        "bubble_scale": 0.4023196087626423,
+        "gemm_h_half": 225.30450345375706,
+        "dp_overlap": 0.8664160000000002,
+        "zero3_latency_us": 106.08360850566184
+      },
+      "residual_sigma": 0.06778349372294777,
+      "fit_error": 0.004594602021288899,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.44443750000000015,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.0929256087626424,
+        "gemm_h_half": 320.68800345375706,
+        "dp_overlap": 0.78782,
+        "zero3_latency_us": 162.30735850566174
+      },
+      "residual_sigma": 0.08217423684638774,
+      "fit_error": 0.006752605201286227,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.11979000000000001,
+        "e_matmul": 0.6547234774976148,
+        "bubble_scale": 0.5443706087626421,
+        "gemm_h_half": 325.630003453757,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 109.35060850566187
+      },
+      "residual_sigma": 0.0366320505548819,
+      "fit_error": 0.0013419071278554231,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.43917812500000036,
+        "e_matmul": 0.5988214774976149,
+        "bubble_scale": 0.06991310876264253,
+        "gemm_h_half": 217.39550345375702,
+        "dp_overlap": 0.6899184999999995,
+        "zero3_latency_us": 136.86298350566193
+      },
+      "residual_sigma": 0.06375476484183636,
+      "fit_error": 0.004064670040037853,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.36327500000000007,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.23356560876264243,
+        "gemm_h_half": 344.74800345375706,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 249.0148585056619
+      },
+      "residual_sigma": 0.06075668780337803,
+      "fit_error": 0.0036913751128371444,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.37499000000000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.29315510876264245,
+        "gemm_h_half": 340.3480034537571,
+        "dp_overlap": 0.7824080000000001,
+        "zero3_latency_us": 156.33298350566196
+      },
+      "residual_sigma": 0.0756864672120264,
+      "fit_error": 0.005728441319037148,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3378375000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.23043560876264257,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.6364199999999991,
+        "zero3_latency_us": 124.9898585056619
+      },
+      "residual_sigma": 0.08279503137973207,
+      "fit_error": 0.0068550172211708175,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2677125000000001,
+        "e_matmul": 0.6025724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 263.8180034537571,
+        "dp_overlap": 0.6681399999999997,
+        "zero3_latency_us": 92.3198585056619
+      },
+      "residual_sigma": 0.09024939326534742,
+      "fit_error": 0.008144952984763336,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.32595062500000016,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.4125271087626425,
+        "gemm_h_half": 335.18900345375704,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 220.59773350566178
+      },
+      "residual_sigma": 0.048281869258912535,
+      "fit_error": 0.0023311388991347232,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4073262500000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6206056087626427,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.8257685000000001,
+        "zero3_latency_us": 170.43773350566187
+      },
+      "residual_sigma": 0.05701514460127579,
+      "fit_error": 0.003250726713904388,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.23738687499999994,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3715246087626424,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.7167805000000007,
+        "zero3_latency_us": 107.35410850566183
+      },
+      "residual_sigma": 0.06674821619902538,
+      "fit_error": 0.004455324365751834,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.34842500000000015,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.1570356087626425,
+        "gemm_h_half": 304.81800345375706,
+        "dp_overlap": 0.6678799999999994,
+        "zero3_latency_us": 134.3673585056619
+      },
+      "residual_sigma": 0.07963020353155556,
+      "fit_error": 0.006340969314476963,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20993499999999995,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.4842361087626424,
+        "gemm_h_half": 277.95600345375715,
+        "dp_overlap": 0.7460625000000005,
+        "zero3_latency_us": 103.69385850566184
+      },
+      "residual_sigma": 0.06353421205285074,
+      "fit_error": 0.004036596101176604,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5146000000000002,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.3931256087626425,
+        "gemm_h_half": 280.61800345375707,
+        "dp_overlap": 0.6849399999999998,
+        "zero3_latency_us": 190.6673585056617
+      },
+      "residual_sigma": 0.0664803486822811,
+      "fit_error": 0.004419636760917674,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3302750000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.41036560876264244,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 223.21985850566193
+      },
+      "residual_sigma": 0.06507539161779459,
+      "fit_error": 0.00423480659420933,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3915412500000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6851156087626427,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.8939260000000003,
+        "zero3_latency_us": 169.71310850566192
+      },
+      "residual_sigma": 0.06106198200975545,
+      "fit_error": 0.0037285656469596977,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.21018456250000012,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 0.39019188376264247,
+        "gemm_h_half": 324.5742784537571,
+        "dp_overlap": 0.9544955750000003,
+        "zero3_latency_us": 133.75177100566196
+      },
+      "residual_sigma": 0.04140102421645391,
+      "fit_error": 0.0017140448061714031,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.23791625,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7444081087626424,
+        "gemm_h_half": 255.91750345375706,
+        "dp_overlap": 0.8629069999999999,
+        "zero3_latency_us": 122.66060850566187
+      },
+      "residual_sigma": 0.06781243446730977,
+      "fit_error": 0.0045985262683831815,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3181406250000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8287576087626422,
+        "gemm_h_half": 233.22750345375707,
+        "dp_overlap": 0.9012465000000003,
+        "zero3_latency_us": 162.41048350566194
+      },
+      "residual_sigma": 0.07144022616416552,
+      "fit_error": 0.00510370591438712,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4316881250000003,
+        "e_matmul": 0.6194519774976149,
+        "bubble_scale": 0.24524460876264254,
+        "gemm_h_half": 279.2870034537571,
+        "dp_overlap": 0.7334204999999994,
+        "zero3_latency_us": 159.50510850566178
+      },
+      "residual_sigma": 0.06790280530330794,
+      "fit_error": 0.004610790968058945,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4268750000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.1879456087626425,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.7418099999999996,
+        "zero3_latency_us": 157.08985850566177
+      },
+      "residual_sigma": 0.06440662625700207,
+      "fit_error": 0.004148213505809148,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3015375000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.06331,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.7886999999999995,
+        "zero3_latency_us": 145.36735850566185
+      },
+      "residual_sigma": 0.06583387316925557,
+      "fit_error": 0.004334098856465628,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.30605437500000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5923551087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.8528465000000003,
+        "zero3_latency_us": 147.49585850566194
+      },
+      "residual_sigma": 0.06458174419565943,
+      "fit_error": 0.00417080168335359,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.08993875000000001,
+        "e_matmul": 0.6620439774976148,
+        "bubble_scale": 0.750642108762642,
+        "gemm_h_half": 320.47100345375696,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 111.26048350566187
+      },
+      "residual_sigma": 0.04115412642863932,
+      "fit_error": 0.0016936621221044293,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3317875000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 444.5480034537571,
+        "dp_overlap": 0.7853899999999994,
+        "zero3_latency_us": 133.7623585056619
+      },
+      "residual_sigma": 0.05978108780544973,
+      "fit_error": 0.0035737784592028907,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2012680312500001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7005498337626422,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 122.68473975566188
+      },
+      "residual_sigma": 0.021394825525954914,
+      "fit_error": 0.00045773855928605195,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3956625000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.44091560876264235,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 254.17985850566185
+      },
+      "residual_sigma": 0.07298410536412069,
+      "fit_error": 0.005326679635801069,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31611250000000013,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.0903656087626424,
+        "gemm_h_half": 387.2380034537571,
+        "dp_overlap": 0.7262199999999992,
+        "zero3_latency_us": 131.6448585056619
+      },
+      "residual_sigma": 0.07999175556567537,
+      "fit_error": 0.006398680958478755,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3492050000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6406476087626423,
+        "gemm_h_half": 289.0275034537571,
+        "dp_overlap": 0.8490360000000002,
+        "zero3_latency_us": 130.05610850566185
+      },
+      "residual_sigma": 0.037468568170018486,
+      "fit_error": 0.0014038936007113223,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2560425625,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 0.6528207087626425,
+        "gemm_h_half": 271.29055345375707,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 138.61425850566198
+      },
+      "residual_sigma": 0.027764943036871617,
+      "fit_error": 0.0007708920618407257,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.16637500000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5329856087626424,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.623109999999999,
+        "zero3_latency_us": 75.07735850566189
+      },
+      "residual_sigma": 0.0694352154718065,
+      "fit_error": 0.004821249147616197,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2797781250000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5754756087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.9753590000000001,
+        "zero3_latency_us": 160.4359835056619
+      },
+      "residual_sigma": 0.05431413444762682,
+      "fit_error": 0.0029500252007948822,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.27013250000000005,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.45212710876264245,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.8453445000000004,
+        "zero3_latency_us": 134.2614835056619
+      },
+      "residual_sigma": 0.04997793240065036,
+      "fit_error": 0.0024977937270439774,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2901625000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8380556087626423,
+        "gemm_h_half": 216.3480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 144.45235850566183
+      },
+      "residual_sigma": 0.031011569412333413,
+      "fit_error": 0.0009617174374159733,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.49985000000000024,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4804056087626424,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.7043199999999995,
+        "zero3_latency_us": 167.11235850566175
+      },
+      "residual_sigma": 0.0509556650094262,
+      "fit_error": 0.0025964797965528615,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.07559853125000002,
+        "e_matmul": 0.6481350274976149,
+        "bubble_scale": 0.8129783587626422,
+        "gemm_h_half": 243.34310345375707,
+        "dp_overlap": 0.985973725,
+        "zero3_latency_us": 97.85863350566189
+      },
+      "residual_sigma": 0.033399359363697714,
+      "fit_error": 0.0011155172059054224,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2970550000000001,
+        "e_matmul": 0.5974904774976151,
+        "bubble_scale": 0.17048060876264243,
+        "gemm_h_half": 220.72300345375712,
+        "dp_overlap": 0.8992499999999998,
+        "zero3_latency_us": 132.09860850566187
+      },
+      "residual_sigma": 0.06703938596630137,
+      "fit_error": 0.004494279270738724,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3418590937500001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6452818837626424,
+        "gemm_h_half": 280.5742784537571,
+        "dp_overlap": 0.985973725,
+        "zero3_latency_us": 168.46942725566188
+      },
+      "residual_sigma": 0.04255713653964381,
+      "fit_error": 0.0018111098704538863,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.26342562500000005,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.8654371087626422,
+        "gemm_h_half": 255.1890034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 174.98273350566188
+      },
+      "residual_sigma": 0.03546380141835818,
+      "fit_error": 0.0012576812110407436,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4374625000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6202556087626423,
+        "gemm_h_half": 264.74800345375706,
+        "dp_overlap": 0.8026299999999996,
+        "zero3_latency_us": 177.35735850566175
+      },
+      "residual_sigma": 0.06939370161748261,
+      "fit_error": 0.004815485824176209,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.26296875000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.41033760876264247,
+        "gemm_h_half": 349.9070034537571,
+        "dp_overlap": 0.8162450000000001,
+        "zero3_latency_us": 119.99860850566185
+      },
+      "residual_sigma": 0.062349079746946805,
+      "fit_error": 0.0038874077452911325,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2616625,
+        "e_matmul": 0.6025724774976149,
+        "bubble_scale": 0.17023560876264254,
+        "gemm_h_half": 227.81800345375711,
+        "dp_overlap": 0.5170699999999998,
+        "zero3_latency_us": 72.9598585056619
+      },
+      "residual_sigma": 0.08886210116502372,
+      "fit_error": 0.007896473023462908,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.14474625,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 393.3045034537572,
+        "dp_overlap": 0.9108055000000004,
+        "zero3_latency_us": 98.53623350566184
+      },
+      "residual_sigma": 0.061821962928212536,
+      "fit_error": 0.003821955100297285,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3400750000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.49671560876264237,
+        "gemm_h_half": 307.2380034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 211.07235850566167
+      },
+      "residual_sigma": 0.04670063323427218,
+      "fit_error": 0.0021809491444820077,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.25192478125000006,
+        "e_matmul": 0.6441087524976149,
+        "bubble_scale": 0.8243653087626421,
+        "gemm_h_half": 244.57427845375707,
+        "dp_overlap": 0.9999999999999999,
+        "zero3_latency_us": 139.803839755662
+      },
+      "residual_sigma": 0.024488198511766594,
+      "fit_error": 0.0005996718663516876,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.616,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.18200000000000002,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.5071999999999995,
+        "zero3_latency_us": 276.954858505662
+      },
+      "residual_sigma": 0.07866723034030548,
+      "fit_error": 0.00618853312941468,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.43175,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4463656087626425,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.8293999999999999,
+        "zero3_latency_us": 253.30485850566208
+      },
+      "residual_sigma": 0.08496754745349458,
+      "fit_error": 0.007219484120261854,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.27128750000000007,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.2101656087626425,
+        "gemm_h_half": 311.30800345375707,
+        "dp_overlap": 0.7995899999999995,
+        "zero3_latency_us": 129.33485850566188
+      },
+      "residual_sigma": 0.08240292237711608,
+      "fit_error": 0.006790241616289019,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.40287500000000026,
+        "e_matmul": 0.5452624774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 104.28800345375709,
+        "dp_overlap": 0.7625199999999996,
+        "zero3_latency_us": 135.87985850566184
+      },
+      "residual_sigma": 0.08698507058469954,
+      "fit_error": 0.007566402504625161,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3342625000000002,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.07662000000000001,
+        "gemm_h_half": 311.30800345375707,
+        "dp_overlap": 0.7116999999999996,
+        "zero3_latency_us": 136.48485850566186
+      },
+      "residual_sigma": 0.0805778555806563,
+      "fit_error": 0.006492790809977104,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3223701250000002,
+        "e_matmul": 0.632029927497615,
+        "bubble_scale": 0.3549627337626423,
+        "gemm_h_half": 307.73712845375707,
+        "dp_overlap": 0.900339,
+        "zero3_latency_us": 146.32057725566196
+      },
+      "residual_sigma": 0.04995692229969165,
+      "fit_error": 0.0024956940856574283,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5461875,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4226056087626424,
+        "gemm_h_half": 331.43800345375706,
+        "dp_overlap": 0.6672499999999997,
+        "zero3_latency_us": 176.3798585056618
+      },
+      "residual_sigma": 0.06459586650637279,
+      "fit_error": 0.004172625969709134,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.24421375,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6685761087626423,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 166.58773350566184
+      },
+      "residual_sigma": 0.026826509881323114,
+      "fit_error": 0.0007196616324127267,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2994750000000001,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.4583256087626425,
+        "gemm_h_half": 256.4180034537571,
+        "dp_overlap": 0.7737299999999991,
+        "zero3_latency_us": 124.9898585056619
+      },
+      "residual_sigma": 0.06710742379367964,
+      "fit_error": 0.00450340632822452,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33123750000000013,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 383.30800345375707,
+        "dp_overlap": 0.6899199999999996,
+        "zero3_latency_us": 120.45235850566189
+      },
+      "residual_sigma": 0.08431916734886499,
+      "fit_error": 0.0071097219824059,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2731025000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.47405560876264247,
+        "gemm_h_half": 296.3480034537571,
+        "dp_overlap": 0.9826795,
+        "zero3_latency_us": 178.47598350566201
+      },
+      "residual_sigma": 0.04419794958669585,
+      "fit_error": 0.001953458747668108,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4261393750000002,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.6202531087626426,
+        "gemm_h_half": 225.90700345375706,
+        "dp_overlap": 0.8479294999999998,
+        "zero3_latency_us": 177.04798350566188
+      },
+      "residual_sigma": 0.06149433613411914,
+      "fit_error": 0.0037815533765760316,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4968250000000002,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.33413560876264264,
+        "gemm_h_half": 229.79800345375708,
+        "dp_overlap": 0.6690899999999999,
+        "zero3_latency_us": 181.06235850566173
+      },
+      "residual_sigma": 0.06812189557298094,
+      "fit_error": 0.00464059265645612,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.12157853125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.35549900876264234,
+        "gemm_h_half": 356.09477845375704,
+        "dp_overlap": 0.9999999999999999,
+        "zero3_latency_us": 109.21750850566184
+      },
+      "residual_sigma": 0.04066327873714465,
+      "fit_error": 0.00165350223765472,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3662000000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.22105560876264246,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.7528399999999993,
+        "zero3_latency_us": 98.9398585056619
+      },
+      "residual_sigma": 0.06451487428565111,
+      "fit_error": 0.004162169004093367,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31316312500000015,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.6052551087626429,
+        "gemm_h_half": 286.6075034537571,
+        "dp_overlap": 0.7494694999999995,
+        "zero3_latency_us": 125.60998350566189
+      },
+      "residual_sigma": 0.07731702663290654,
+      "fit_error": 0.00597792260735358,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.32492625000000014,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.21765410876264246,
+        "gemm_h_half": 311.89650345375713,
+        "dp_overlap": 0.8648089999999998,
+        "zero3_latency_us": 142.3726085056619
+      },
+      "residual_sigma": 0.048053170027347845,
+      "fit_error": 0.002309107149677201,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.04575312500000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7469051087626428,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.8983260000000003,
+        "zero3_latency_us": 80.23498350566189
+      },
+      "residual_sigma": 0.06744251192537817,
+      "fit_error": 0.004548492414804777,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4529625000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 420.3480034537571,
+        "dp_overlap": 0.7076299999999996,
+        "zero3_latency_us": 162.30735850566174
+      },
+      "residual_sigma": 0.06638428756253655,
+      "fit_error": 0.0044068736351855434,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3620375000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 340.3480034537571,
+        "dp_overlap": 0.7003699999999994,
+        "zero3_latency_us": 148.08985850566182
+      },
+      "residual_sigma": 0.08860887269326513,
+      "fit_error": 0.007851532319971266,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.18996999999999997,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.43915010876264243,
+        "gemm_h_half": 239.94550345375708,
+        "dp_overlap": 0.9185670000000001,
+        "zero3_latency_us": 108.51873350566184
+      },
+      "residual_sigma": 0.05658310110536854,
+      "fit_error": 0.003201647330700358,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4573250000000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.10324000000000001,
+        "gemm_h_half": 387.2380034537571,
+        "dp_overlap": 0.6450299999999995,
+        "zero3_latency_us": 165.52485850566177
+      },
+      "residual_sigma": 0.09277248833958703,
+      "fit_error": 0.008606734592718811,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20430437499999998,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.9944886087626419,
+        "gemm_h_half": 233.22750345375707,
+        "dp_overlap": 0.9533975000000002,
+        "zero3_latency_us": 127.75085850566185
+      },
+      "residual_sigma": 0.054167790461879035,
+      "fit_error": 0.0029341495235220335,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20585125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.726936108762642,
+        "gemm_h_half": 253.85800345375708,
+        "dp_overlap": 0.8709799999999999,
+        "zero3_latency_us": 126.56285850566186
+      },
+      "residual_sigma": 0.05114446582346548,
+      "fit_error": 0.002615756384367629,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4276250000000003,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 333.99800345375706,
+        "dp_overlap": 0.5554999999999994,
+        "zero3_latency_us": 123.77985850566189
+      },
+      "residual_sigma": 0.09206762304622683,
+      "fit_error": 0.008476447213382117,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.11098346875000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5679051087626427,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.921343225,
+        "zero3_latency_us": 103.92905225566189
+      },
+      "residual_sigma": 0.05075241258241417,
+      "fit_error": 0.002575807382935592,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.36753750000000024,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 467.2380034537571,
+        "dp_overlap": 0.6959699999999994,
+        "zero3_latency_us": 139.81235850566185
+      },
+      "residual_sigma": 0.0670928100744229,
+      "fit_error": 0.004501445163682583,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.47963750000000005,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.24616560876264254,
+        "gemm_h_half": 351.2380034537571,
+        "dp_overlap": 0.6888899999999999,
+        "zero3_latency_us": 190.63235850566195
+      },
+      "residual_sigma": 0.07994117435926631,
+      "fit_error": 0.006390591357938618,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2986875000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5972556087626424,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 193.91235850566176
+      },
+      "residual_sigma": 0.032331206928096386,
+      "fit_error": 0.0010453069414273878,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2904000000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2343656087626425,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.8859399999999997,
+        "zero3_latency_us": 143.74485850566185
+      },
+      "residual_sigma": 0.051668872599492724,
+      "fit_error": 0.00266967239570261,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.20638062499999998,
+        "e_matmul": 0.6753539774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 560.5730034537572,
+        "dp_overlap": 0.8417750000000004,
+        "zero3_latency_us": 113.63098350566185
+      },
+      "residual_sigma": 0.049468688766605165,
+      "fit_error": 0.002447151168287248,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.30826812500000017,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.3903236087626424,
+        "gemm_h_half": 285.27650345375713,
+        "dp_overlap": 0.9085670000000002,
+        "zero3_latency_us": 142.09623350566193
+      },
+      "residual_sigma": 0.057121472514000134,
+      "fit_error": 0.003262862622167673,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.07869537500000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.29821815876264257,
+        "gemm_h_half": 360.5217284537571,
+        "dp_overlap": 0.8364132000000004,
+        "zero3_latency_us": 86.45740850566189
+      },
+      "residual_sigma": 0.07002251333243617,
+      "fit_error": 0.004903152373391202,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.27552562500000005,
+        "e_matmul": 0.6607129774976149,
+        "bubble_scale": 0.24138660876264245,
+        "gemm_h_half": 412.62900345375704,
+        "dp_overlap": 0.8021889999999998,
+        "zero3_latency_us": 143.49248350566188
+      },
+      "residual_sigma": 0.052338879360873516,
+      "fit_error": 0.002739358292752072,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.03751756250000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2954951087626425,
+        "gemm_h_half": 358.05800345375707,
+        "dp_overlap": 0.7694366750000005,
+        "zero3_latency_us": 62.6446085056619
+      },
+      "residual_sigma": 0.04616131455302391,
+      "fit_error": 0.0021308669612632174,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.21481625,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.2331256087626425,
+        "gemm_h_half": 333.8580034537571,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 141.93398350566193
+      },
+      "residual_sigma": 0.0455165142612205,
+      "fit_error": 0.002071753070491889,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.8335,
+        "e_matmul": 0.6158824774976149,
+        "bubble_scale": 0.0735656087626424,
+        "gemm_h_half": 223.74800345375712,
+        "dp_overlap": 0.21900000000000008,
+        "zero3_latency_us": 0.0
+      },
+      "residual_sigma": 0.07563442447827311,
+      "fit_error": 0.005720566166159597,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3327912500000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 400.5480034537571,
+        "dp_overlap": 0.8159260000000002,
+        "zero3_latency_us": 148.78560850566194
+      },
+      "residual_sigma": 0.0648233137297927,
+      "fit_error": 0.004202062002911132,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4174500000000003,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.3197556087626426,
+        "gemm_h_half": 253.99800345375706,
+        "dp_overlap": 0.6817699999999993,
+        "zero3_latency_us": 147.07235850566184
+      },
+      "residual_sigma": 0.07359113120472102,
+      "fit_error": 0.005415654591990465,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.22990000000000002,
+        "e_matmul": 0.5892624774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 229.79800345375708,
+        "dp_overlap": 0.9101399999999997,
+        "zero3_latency_us": 118.3348585056619
+      },
+      "residual_sigma": 0.0743050280447249,
+      "fit_error": 0.005521237192727354,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33801250000000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6961856087626423,
+        "gemm_h_half": 251.43800345375706,
+        "dp_overlap": 0.8568999999999996,
+        "zero3_latency_us": 133.7623585056619
+      },
+      "residual_sigma": 0.04273225961802135,
+      "fit_error": 0.0018260460120619784,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.1866425,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 449.0275034537571,
+        "dp_overlap": 0.787446,
+        "zero3_latency_us": 89.38560850566186
+      },
+      "residual_sigma": 0.06638253846058657,
+      "fit_error": 0.004406641412471255,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.35557812500000024,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.1318016087626424,
+        "gemm_h_half": 327.94550345375717,
+        "dp_overlap": 0.8852289999999999,
+        "zero3_latency_us": 152.33310850566193
+      },
+      "residual_sigma": 0.05675260080371663,
+      "fit_error": 0.0032208576979860172,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.08069187500000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5121871087626423,
+        "gemm_h_half": 299.9175034537571,
+        "dp_overlap": 0.7762520000000006,
+        "zero3_latency_us": 74.7446085056619
+      },
+      "residual_sigma": 0.053163884104503484,
+      "fit_error": 0.0028263985730770783,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.39737500000000026,
+        "e_matmul": 0.5868424774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 216.62800345375706,
+        "dp_overlap": 0.6686499999999996,
+        "zero3_latency_us": 150.8123585056618
+      },
+      "residual_sigma": 0.08505431847439035,
+      "fit_error": 0.00723423709114302,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3632887500000002,
+        "e_matmul": 0.6474029774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 415.18900345375704,
+        "dp_overlap": 0.8240484999999997,
+        "zero3_latency_us": 164.4977335056618
+      },
+      "residual_sigma": 0.06663243819610226,
+      "fit_error": 0.004439881819957387,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.0716375,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.25449560876264243,
+        "gemm_h_half": 351.2380034537571,
+        "dp_overlap": 0.6654599999999993,
+        "zero3_latency_us": 39.07985850566189
+      },
+      "residual_sigma": 0.07439001319331584,
+      "fit_error": 0.005533874062901705,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.38240125000000025,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 467.2380034537571,
+        "dp_overlap": 0.7764789999999997,
+        "zero3_latency_us": 147.21260850566188
+      },
+      "residual_sigma": 0.07562675691063137,
+      "fit_error": 0.005719406360819729,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.206305,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 357.95600345375715,
+        "dp_overlap": 0.7850259999999999,
+        "zero3_latency_us": 99.36810850566187
+      },
+      "residual_sigma": 0.07734732593717208,
+      "fit_error": 0.005982608829631133,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33717478125000017,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4578581087626425,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.8910539000000002,
+        "zero3_latency_us": 150.8723147556619
+      },
+      "residual_sigma": 0.04993971118938481,
+      "fit_error": 0.0024939747536791663,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5796375,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4463656087626425,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.6646899999999999,
+        "zero3_latency_us": 188.782358505662
+      },
+      "residual_sigma": 0.05430402984366807,
+      "fit_error": 0.0029489276572619923,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4624125000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.07816560876264245,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.6784699999999997,
+        "zero3_latency_us": 184.6923585056619
+      },
+      "residual_sigma": 0.07732941771442332,
+      "fit_error": 0.005979838844051768,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.0,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8970456087626426,
+        "gemm_h_half": 213.92800345375707,
+        "dp_overlap": 0.6976599999999994,
+        "zero3_latency_us": 55.11235850566189
+      },
+      "residual_sigma": 0.020124219760184626,
+      "fit_error": 0.00040498422095620537,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33330000000000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.34516560876264246,
+        "gemm_h_half": 344.74800345375706,
+        "dp_overlap": 0.9125599999999998,
+        "zero3_latency_us": 203.4473585056619
+      },
+      "residual_sigma": 0.07828225528623928,
+      "fit_error": 0.006128111492699937,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.36300000000000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 480.5480034537571,
+        "dp_overlap": 0.8206,
+        "zero3_latency_us": 199.404858505662
+      },
+      "residual_sigma": 0.07198360768002035,
+      "fit_error": 0.005181639774631084,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.26675000000000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.7196056087626428,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.9218,
+        "zero3_latency_us": 168.05485850566194
+      },
+      "residual_sigma": 0.0691972415033673,
+      "fit_error": 0.004788258231675338,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4025,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6061656087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.8231999999999999,
+        "zero3_latency_us": 193.35485850566198
+      },
+      "residual_sigma": 0.07386955319676121,
+      "fit_error": 0.005456710889489134,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.46355000000000013,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.5899956087626421,
+        "gemm_h_half": 199.10800345375708,
+        "dp_overlap": 0.6957099999999999,
+        "zero3_latency_us": 161.09735850566182
+      },
+      "residual_sigma": 0.0800573264229453,
+      "fit_error": 0.006409175513990015,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.34351250000000016,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.11974560876264244,
+        "gemm_h_half": 364.5480034537571,
+        "dp_overlap": 0.8968299999999997,
+        "zero3_latency_us": 154.13985850566178
+      },
+      "residual_sigma": 0.05554804023328046,
+      "fit_error": 0.0030855847737581445,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3466512500000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.3061656087626424,
+        "gemm_h_half": 320.5480034537571,
+        "dp_overlap": 0.9500699999999999,
+        "zero3_latency_us": 164.3079835056618
+      },
+      "residual_sigma": 0.0630062227270903,
+      "fit_error": 0.003969784102335711,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3504875000000002,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 263.37800345375706,
+        "dp_overlap": 0.5623199999999995,
+        "zero3_latency_us": 101.6973585056619
+      },
+      "residual_sigma": 0.07619240318550888,
+      "fit_error": 0.005805282303183143,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.227404375,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.5790451087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.9387565000000003,
+        "zero3_latency_us": 133.86823350566192
+      },
+      "residual_sigma": 0.050760863762263395,
+      "fit_error": 0.0025766652898910653,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5023250000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 467.2380034537571,
+        "dp_overlap": 0.4540099999999998,
+        "zero3_latency_us": 146.76985850566183
+      },
+      "residual_sigma": 0.07415527432833248,
+      "fit_error": 0.005499004710710245,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.1098075,
+        "e_matmul": 0.6181209774976151,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 340.65300345375726,
+        "dp_overlap": 0.9387565000000003,
+        "zero3_latency_us": 93.04585850566185
+      },
+      "residual_sigma": 0.06590124354907693,
+      "fit_error": 0.004342973901314755,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.34829750000000026,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.4154476087626425,
+        "gemm_h_half": 313.2275034537571,
+        "dp_overlap": 0.8353620000000007,
+        "zero3_latency_us": 145.67460850566195
+      },
+      "residual_sigma": 0.05155253846760685,
+      "fit_error": 0.002657664222454084,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.6129125,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.47207560876264243,
+        "gemm_h_half": 296.3480034537571,
+        "dp_overlap": 0.5896699999999998,
+        "zero3_latency_us": 178.49735850566185
+      },
+      "residual_sigma": 0.061188020573393696,
+      "fit_error": 0.00374397386169005,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.40590000000000026,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.1905056087626426,
+        "gemm_h_half": 297.99800345375706,
+        "dp_overlap": 0.7152099999999995,
+        "zero3_latency_us": 149.1898585056618
+      },
+      "residual_sigma": 0.0783349149659754,
+      "fit_error": 0.006136358902726597,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.48788750000000003,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6061656087626425,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.7962899999999998,
+        "zero3_latency_us": 264.53235850566205
+      },
+      "residual_sigma": 0.07905195751820107,
+      "fit_error": 0.006249211987459467,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.24956249999999994,
+        "e_matmul": 0.625441477497615,
+        "bubble_scale": 0.3384916087626424,
+        "gemm_h_half": 276.6250034537572,
+        "dp_overlap": 0.8369525000000004,
+        "zero3_latency_us": 119.8322335056618
+      },
+      "residual_sigma": 0.06551720257481429,
+      "fit_error": 0.004292503833229252,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.2029775,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 402.05800345375707,
+        "dp_overlap": 0.894168,
+        "zero3_latency_us": 115.67285850566188
+      },
+      "residual_sigma": 0.0646364814034506,
+      "fit_error": 0.0041778747282186154,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.31607812500000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 411.43800345375706,
+        "dp_overlap": 0.8735375,
+        "zero3_latency_us": 155.5506085056619
+      },
+      "residual_sigma": 0.06498096017799167,
+      "fit_error": 0.004222525185653739,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3402025000000002,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.5138836087626427,
+        "gemm_h_half": 274.38650345375714,
+        "dp_overlap": 0.8299784999999997,
+        "zero3_latency_us": 142.10035850566192
+      },
+      "residual_sigma": 0.05353911851982056,
+      "fit_error": 0.0028664372118793924,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5172125000000001,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.7303056087626424,
+        "gemm_h_half": 209.99800345375706,
+        "dp_overlap": 0.6828499999999997,
+        "zero3_latency_us": 189.48485850566175
+      },
+      "residual_sigma": 0.06492276232258928,
+      "fit_error": 0.004214965067595419,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3887063125000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.16186955876264242,
+        "gemm_h_half": 356.09477845375704,
+        "dp_overlap": 0.8440349500000002,
+        "zero3_latency_us": 179.05637100566202
+      },
+      "residual_sigma": 0.06221403052607628,
+      "fit_error": 0.0038705855942995516,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3358506250000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 411.43800345375706,
+        "dp_overlap": 0.7854494999999995,
+        "zero3_latency_us": 139.5249835056619
+      },
+      "residual_sigma": 0.07474745604978658,
+      "fit_error": 0.005587182185914777,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.33191950000000014,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6713656087626424,
+        "gemm_h_half": 252.3480034537571,
+        "dp_overlap": 0.9447944000000003,
+        "zero3_latency_us": 176.15532725566194
+      },
+      "residual_sigma": 0.055636510231863605,
+      "fit_error": 0.0030954212707802633,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5235000000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.0742,
+        "gemm_h_half": 376.3480034537571,
+        "dp_overlap": 0.5811999999999999,
+        "zero3_latency_us": 187.30485850566197
+      },
+      "residual_sigma": 0.08863433569359223,
+      "fit_error": 0.007856045463844398,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3146000000000001,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 443.0380034537571,
+        "dp_overlap": 0.5931199999999996,
+        "zero3_latency_us": 95.6473585056619
+      },
+      "residual_sigma": 0.07316910842320166,
+      "fit_error": 0.00535371842744624,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4620375000000004,
+        "e_matmul": 0.6267724774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 347.30800345375707,
+        "dp_overlap": 0.7103699999999993,
+        "zero3_latency_us": 137.08985850566188
+      },
+      "residual_sigma": 0.06580488813026701,
+      "fit_error": 0.004330283301836956,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3541381250000002,
+        "e_matmul": 0.632761977497615,
+        "bubble_scale": 0.3162851087626425,
+        "gemm_h_half": 343.9175034537571,
+        "dp_overlap": 0.8020099999999996,
+        "zero3_latency_us": 141.55998350566188
+      },
+      "residual_sigma": 0.059991672207621284,
+      "fit_error": 0.0035990007342666798,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.3648906250000002,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.8419656087626423,
+        "gemm_h_half": 240.54800345375708,
+        "dp_overlap": 0.7706875000000002,
+        "zero3_latency_us": 159.26310850566193
+      },
+      "residual_sigma": 0.06369148751901395,
+      "fit_error": 0.00405660558238471,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.32972500000000016,
+        "e_matmul": 0.6134624774976148,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 294.06800345375706,
+        "dp_overlap": 0.7153299999999992,
+        "zero3_latency_us": 124.9898585056619
+      },
+      "residual_sigma": 0.07483682661928992,
+      "fit_error": 0.00560055061844566,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.40205000000000013,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.05,
+        "gemm_h_half": 420.3480034537571,
+        "dp_overlap": 0.8136699999999998,
+        "zero3_latency_us": 211.1748585056618
+      },
+      "residual_sigma": 0.07724985624799824,
+      "fit_error": 0.005967540290336393,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.32338284375000015,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6805498337626426,
+        "gemm_h_half": 276.5480034537571,
+        "dp_overlap": 0.9460437249999999,
+        "zero3_latency_us": 156.07049600566182
+      },
+      "residual_sigma": 0.040039890339412354,
+      "fit_error": 0.0016031928183921666,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.5554374999999999,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6154056087626426,
+        "gemm_h_half": 263.2380034537571,
+        "dp_overlap": 0.6090299999999996,
+        "zero3_latency_us": 138.86985850566185
+      },
+      "residual_sigma": 0.06694918078017457,
+      "fit_error": 0.004482192807136497,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.4855018750000002,
+        "e_matmul": 0.612131477497615,
+        "bubble_scale": 0.29632310876264245,
+        "gemm_h_half": 244.0155034537571,
+        "dp_overlap": 0.7150699999999998,
+        "zero3_latency_us": 177.92048350566188
+      },
+      "residual_sigma": 0.07620100223619287,
+      "fit_error": 0.005806592741800271,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.25162500000000004,
+        "e_matmul": 0.6400824774976149,
+        "bubble_scale": 0.6339156087626427,
+        "gemm_h_half": 283.0380034537571,
+        "dp_overlap": 0.9367599999999998,
+        "zero3_latency_us": 152.02235850566183
+      },
+      "residual_sigma": 0.04529975176027731,
+      "fit_error": 0.0020520675095427473,
+      "source_rows": 22
+    },
+    {
+      "params": {
+        "zero3_overlap": 0.11653812500000002,
+        "e_matmul": 0.6547234774976148,
+        "bubble_scale": 0.7813101087626423,
+        "gemm_h_half": 312.320003453757,
+        "dp_overlap": 0.99,
+        "zero3_latency_us": 111.42273350566187
+      },
+      "residual_sigma": 0.029392345727506063,
+      "fit_error": 0.000863909987365244,
+      "source_rows": 22
+    }
+  ]
+}

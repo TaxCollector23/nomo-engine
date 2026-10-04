@@ -1,5 +1,6 @@
 // Exhaustive search, Pareto front, recommendation (ASF). Port of nomo_planner/search.py.
 import { feasible, violation, type Metrics, type Pack, type Plan } from "./packs";
+import { uncertaintyForPlansWithRanking, type UncertaintyResult } from "./uncertainty";
 
 export interface Evaluated { plan: Plan; metrics: Metrics; F: number[] }
 export interface Result {
@@ -9,6 +10,7 @@ export interface Result {
   evaluated: number;
   exhaustive: boolean;
   recommended: Evaluated | null;
+  uncertainty: UncertaintyResult | null;
 }
 
 export function objectiveVector(pack: Pack, m: Metrics): number[] {
@@ -113,6 +115,9 @@ export class Planner {
       front = [...best.values()].sort((a, b) => lexCmp(a.F, b.F));
     }
     const closest = feas.length ? [] : [...all].sort((a, b) => violation(a.metrics) - violation(b.metrics)).slice(0, 5);
-    return { front, closest, all, evaluated: all.length, exhaustive: true, recommended: recommend(front, weights) };
+    return {
+      front, closest, all, evaluated: all.length, exhaustive: true, recommended: recommend(front, weights),
+      uncertainty: uncertaintyForPlansWithRanking(this.pack, all, front),
+    };
   }
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 
 function Eq({ children, label }: { children: ReactNode; label: string }) {
   return (
@@ -92,7 +93,20 @@ export default function Methods() {
           <h3>4. Check against reality</h3>
           <p>Hardware parameters are fitted to published measurements where they exist; everything else is labelled as a placeholder or assumption.</p>
         </div>
+        <div className="lab-card">
+          <h3>5. Share one layer graph</h3>
+          <p>Hugging Face config fields expand into embedding, attention, MLP and output nodes. Train is layer-aware now; Serve and Neuromorphic consume the same graph next.</p>
+        </div>
       </div>
+      <h3>Layer-aware training</h3>
+      <p>
+        The shared graph uses a deterministic bounded search for small spaces and a bounded candidate search for larger
+        models. Repair keeps pipeline stages contiguous and non-empty, applies locks as absolute constraints, keeps endpoint
+        nodes in BF16 by default, and rejects plans that exceed the assumed per-stage memory capacity. The objective is
+        estimated step time, cluster cost per step, and memory headroom. FP8 throughput, CPU activation-offload bandwidth,
+        framework overhead and training-quality effects are assumptions until customer measurements replace them. A bounded
+        result is labelled as such; it is not presented as a proof of global optimality.
+      </p>
       <h3>Equations</h3>
       <div className="lab-method-eqs">
         <div><h4>Training</h4><Equations domain="llm_training" /></div>
@@ -104,6 +118,16 @@ export default function Methods() {
         The engine in this page is a TypeScript port of the Python reference implementation. A test suite compares both on
         1,050 plans across seven problems, every best-trade-off set, every counterfactual and all 22 calibration predictions:
         14,194 numbers agree to within 2×10<sup>−16</sup> (the limit of double-precision arithmetic).
+      </p>
+      <h3>Uncertainty (A1–A3)</h3>
+      <p>
+        For calibrated A100 training, Nomo stores 256 deterministic, stratified bootstrap refits of the six positive hardware parameters,
+        fitted in log-error space to the 22 published runs. Each objective reports the median and central 90% predictive interval;
+        probability of being best is the fraction of parameter draws in which a front plan wins. This is an empirical bootstrap
+        distribution, not a Bayesian posterior. Leave-one-out coverage was {UNCERTAINTY_VALIDATION.covered}/{UNCERTAINTY_VALIDATION.n}
+        ({(UNCERTAINTY_VALIDATION.actual * 100).toFixed(1)}%) against a nominal {(UNCERTAINTY_VALIDATION.nominal * 100).toFixed(0)}% target,
+        so the shortfall and the small sample are reported rather than hidden. Serving and co-design intervals remain unavailable until
+        published calibration data exists.
       </p>
       <h3>References</h3>
       <ol className="lab-refs">

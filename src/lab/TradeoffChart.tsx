@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { feasible, type Objective } from "../planner/packs";
 import type { Evaluated, Result } from "../planner/search";
+import { uncertaintyForPlan, type UncertaintyResult } from "../planner/uncertainty";
 import { fmtNum } from "./controls";
 
 interface Props {
   res: Result;
+  uncertainty?: UncertaintyResult | null;
   objectives: Objective[];
   xAxis: string;
   yAxis: string;
@@ -20,7 +22,7 @@ interface Props {
 
 /** Every evaluated plan on log axes. Grey = feasible, pale = breaks a limit, ink = best trade-offs.
  *  With animation on, the exhaustive search is replayed: plans appear in evaluation order. */
-export default function TradeoffChart({ res, objectives, xAxis, yAxis, selected, recommended, ghost, onSelect, animate, describe, compact }: Props) {
+export default function TradeoffChart({ res, uncertainty, objectives, xAxis, yAxis, selected, recommended, ghost, onSelect, animate, describe, compact }: Props) {
   const W = 760, H = compact ? 320 : 420, pl = 78, pb = 46, pr = 18, pt = 16;
   const ox = objectives.find((o) => o.name === xAxis) ?? objectives[0]!;
   const oy = objectives.find((o) => o.name === yAxis && o.name !== ox.name) ?? objectives.find((o) => o !== ox)!;
@@ -101,11 +103,17 @@ export default function TradeoffChart({ res, objectives, xAxis, yAxis, selected,
           )}
           {!progress && res.front.map((e, i) => {
             const [x, y] = pt2(e);
+            const intervals = uncertaintyForPlan(uncertainty, e.plan);
+            const xi = intervals?.objectives[xAxis], yi = intervals?.objectives[yAxis];
             return (
-              <circle key={`f${i}`} cx={x} cy={y} r={selected === e ? 6.5 : 4.5} className={`lab-pt-front${selected === e ? " is-selected" : ""}`}
-                tabIndex={0} role="button" aria-label={describe(e)}
-                onMouseEnter={() => setHover(e)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(e)} onBlur={() => setHover(null)}
-                onClick={() => onSelect(e)} onKeyDown={(k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); onSelect(e); } }} />
+              <g key={`f${i}`}>
+                {xi && <line x1={geo.X(xi.low)} x2={geo.X(xi.high)} y1={y} y2={y} className="lab-pt-uncertainty" />}
+                {yi && <line x1={x} x2={x} y1={geo.Y(yi.low)} y2={geo.Y(yi.high)} className="lab-pt-uncertainty" />}
+                <circle cx={x} cy={y} r={selected === e ? 6.5 : 4.5} className={`lab-pt-front${selected === e ? " is-selected" : ""}`}
+                  tabIndex={0} role="button" aria-label={`${describe(e)}${xi ? `; ${ox.label} 90% interval ${xi.low.toPrecision(3)} to ${xi.high.toPrecision(3)}` : ""}`}
+                  onMouseEnter={() => setHover(e)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(e)} onBlur={() => setHover(null)}
+                  onClick={() => onSelect(e)} onKeyDown={(k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); onSelect(e); } }} />
+              </g>
             );
           })}
           {!progress && recommended && (() => { const [x, y] = pt2(recommended); return <circle cx={x} cy={y} r={11} className="lab-pt-rec" />; })()}
@@ -126,6 +134,7 @@ export default function TradeoffChart({ res, objectives, xAxis, yAxis, selected,
       </svg>
       <div className="lab-chart-legend" aria-hidden="true">
         <span><i className="lg-front" />best trade-offs</span>
+        {uncertainty?.available && <span><i className="lg-uncertainty" />90% interval</span>}
         <span><i className="lg-pt" />other feasible plans</span>
         <span><i className="lg-bad" />breaks a limit</span>
         <span><i className="lg-rec" />recommended</span>
