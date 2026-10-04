@@ -18,12 +18,10 @@ The product keeps evidence boundaries explicit: calibration measures runtime fid
 
 ## Development
 
-The deployable neuromorphic dashboard is the historical Next.js application in
-`frontend/`. The Vercel `nomo-engine` project is configured with Root Directory
-`frontend`, so `https://frontend-gray-ten-c3tj1luab7.vercel.app/` opens the
-engine dashboard instead of the public Nomo AI landing shell. The browser Lab
-source remains in the repository root and is documented below for local
-development and the separate Lab deployment target.
+The deployable mode-selection shell and Nomo Lab are the Vite application in
+the repository root. The historical Next.js neuromorphic dashboard remains in
+`frontend/` and is deployed separately. The mode shell links to that dashboard
+when the Neuromorphic chips mode is selected.
 
 ```bash
 npm install
@@ -40,7 +38,8 @@ npm run build
 
 - Landing page repository: <https://github.com/TaxCollector23/nomo-ai>
 - Landing page: <https://nomoailanding.vercel.app/>
-- Main Nomo Engine dashboard: <https://frontend-gray-ten-c3tj1luab7.vercel.app/>
+- Nomo Engine mode selector and Lab: <https://frontend-gray-ten-c3tj1luab7.vercel.app/>
+- Neuromorphic engine dashboard: <https://nomo-engine-dashboard.vercel.app/>
 - Live Python backend: <https://nomo-engine.onrender.com/>
 - Engine repository: <https://github.com/TaxCollector23/nomo-engine>
 - Engine release line: `v0.5.0` (the repository `main` branch is the deployment source; verify the live `/` response after Render redeploys)
@@ -49,7 +48,7 @@ npm run build
 - Historical v3 release: <https://github.com/TaxCollector23/nomo-engine/releases/tag/v3-fixed>
 - V1 prototype: <https://nomoaiprototype.vercel.app/>
 
-The engine’s silicon coefficients are placeholders until calibrated with the measurement LUT or HITL protocol, and accuracy values remain a proxy until promoted by measured data. This landing page intentionally keeps those boundaries visible.
+The engine’s silicon coefficients are placeholders until calibrated with the measurement LUT or HITL protocol, and accuracy values remain a proxy until promoted by measured data. The mode shell intentionally keeps those boundaries visible.
 
 ## Landing page routes
 

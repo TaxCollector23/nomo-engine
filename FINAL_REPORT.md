@@ -21,4 +21,4 @@ The current formulas are engineering estimates. FP8 quality, PCIe/host bandwidth
 
 ## Deployment
 
-The engine repository is deployed from `main`; the Vercel engine project uses `frontend/` as its root so the live [frontend-gray-ten engine URL](https://frontend-gray-ten-c3tj1luab7.vercel.app/) remains the neuromorphic engine dashboard. The latest production deployment `dpl_3dPDPYdtS3tSYXe8ueduxG6FEcBt` is ready. The [nomo-ai landing page](https://nomoailanding.vercel.app/) was also refreshed successfully as deployment `dpl_714aSJgFxTinoZKGLMkBLgBsdrep`, and its Open Engine links point to the engine URL.
+The engine repository is deployed from `main`. The [frontend-gray-ten URL](https://frontend-gray-ten-c3tj1luab7.vercel.app/) is restored as the multi-mode shell and Lab; its Neuromorphic chips mode links to the separate [neuromorphic dashboard](https://nomo-engine-dashboard.vercel.app/), deployment `dpl_CyRWoKMFj8fjxx77VP5Y7BeXDgLS`. The [nomo-ai landing page](https://nomoailanding.vercel.app/) was refreshed successfully as deployment `dpl_714aSJgFxTinoZKGLMkBLgBsdrep`, and its Open Engine links point to the mode shell.

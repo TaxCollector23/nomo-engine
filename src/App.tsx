@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "./components/ui/button";
 import LabPage from "./lab/LabPage";
 
-const ENGINE_URL = "https://frontend-gray-ten-c3tj1luab7.vercel.app/";
+const ENGINE_URL = "https://nomo-engine-dashboard.vercel.app/";
 const ENGINE_REPO_URL = "https://github.com/TaxCollector23/nomo-engine";
 const ENGINE_README_URL = "https://github.com/TaxCollector23/nomo-engine#readme";
 const ENGINE_SPEC_URL = "https://github.com/TaxCollector23/nomo-engine/blob/main/docs/SPEC.md";

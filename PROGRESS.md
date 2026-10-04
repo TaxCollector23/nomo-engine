@@ -2,7 +2,7 @@
 
 Current phase: Gate 0 — per-layer training integrity
 
-Status: Gate 0 implementation and parity checks complete. Engine and landing deployments are live.
+Status: Gate 0 implementation and parity checks complete. The multi-mode shell and neuromorphic dashboard are both live.
 
 ## Completed
 
