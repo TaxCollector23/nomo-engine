@@ -763,7 +763,8 @@ function App() {
 
   useEffect(() => {
     const titles: Record<string, string> = {
-      "/": "Nomo AI | Open science for physical AI",
+      "/": "Nomo Lab | Nomo AI",
+      "/home": "Nomo AI | Open science for physical AI",
       "/research": "Research & Papers | Nomo AI",
       "/architecture": "Architecture (NIR) | Nomo AI",
       "/benchmarks": "Benchmarks | Nomo AI",
@@ -774,7 +775,7 @@ function App() {
     document.title = titles[path] ?? "Nomo AI";
   }, [path]);
 
-  if (path === "/lab") {
+  if (path === "/" || path === "/lab") {
     return (
       <div className="site-shell">
         <SiteHeader />
@@ -783,6 +784,7 @@ function App() {
       </div>
     );
   }
+  if (path === "/home") return <HomePage />;
   if (path === "/research") return <ResearchPage />;
   if (path === "/architecture") return <ArchitecturePage />;
   if (path === "/benchmarks") return <BenchmarksPage />;
