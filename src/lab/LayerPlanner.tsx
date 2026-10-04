@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import {
+  BUILTIN_MODEL_CONFIGS,
   buildLayerGraph,
   searchLayerTraining,
   type LayerGraph,
@@ -11,7 +12,7 @@ import {
 
 type LayerLocks = Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>;
 
-const DEMO_CONFIG = {
+const TINY_DEMO_CONFIG = {
   _name_or_path: "demo-transformer",
   model_type: "llama",
   num_hidden_layers: 12,
@@ -24,10 +25,34 @@ const DEMO_CONFIG = {
   hidden_act: "silu",
 };
 
+const MODEL_OPTIONS = [
+  ["llama3_8b", "Llama 3 8B"],
+  ["llama3_70b", "Llama 3 70B"],
+  ["mixtral_8x7b", "Mixtral 8x7B"],
+  ["tiny_demo", "Tiny demo (example only)"],
+] as const;
+
 function formatBytes(value: number): string {
   if (value >= 1e9) return `${(value / 1e9).toFixed(1)} GB`;
   if (value >= 1e6) return `${(value / 1e6).toFixed(1)} MB`;
   return `${(value / 1e3).toFixed(0)} KB`;
+}
+
+function formatSeconds(value: number): string {
+  if (value >= 86400) return `${(value / 86400).toFixed(1)} d`;
+  if (value >= 3600) return `${(value / 3600).toFixed(1)} h`;
+  if (value >= 60) return `${(value / 60).toFixed(1)} min`;
+  if (value >= 1) return `${value.toFixed(2)} s`;
+  if (value >= 0.001) return `${(value * 1000).toFixed(1)} ms`;
+  return `${(value * 1e6).toFixed(1)} µs`;
+}
+
+function formatUsd(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}k`;
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  if (value >= 0.01) return `$${value.toFixed(3)}`;
+  return "<$0.01";
 }
 
 function formatParams(value: number): string {
@@ -56,8 +81,10 @@ function nodeLabel(id: string): string {
 }
 
 export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "rigor" }) {
-  const [configText, setConfigText] = useState(() => JSON.stringify(DEMO_CONFIG, null, 2));
-  const [graph, setGraph] = useState<LayerGraph>(() => buildLayerGraph(DEMO_CONFIG, { seqLen: 2048, batchSize: 1, source: "demo config" }));
+  const [modelKey, setModelKey] = useState<"llama3_8b" | "llama3_70b" | "mixtral_8x7b" | "tiny_demo">("llama3_8b");
+  const defaultConfig = BUILTIN_MODEL_CONFIGS.llama3_8b;
+  const [configText, setConfigText] = useState(() => JSON.stringify(defaultConfig, null, 2));
+  const [graph, setGraph] = useState<LayerGraph>(() => buildLayerGraph(defaultConfig, { seqLen: 2048, batchSize: 1, source: "published model config" }));
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"train" | "serve" | "neuromorphic">("train");
   const [selectedId, setSelectedId] = useState("block.5.mlp");
@@ -66,9 +93,11 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
   const result = useMemo(() => searchLayerTraining({
     graph,
     hardware: { devices: 8, memoryBytes: 80e9, usableMemory: 0.9, costPerDeviceHour: 3.5 },
-    pipelineStages: [1, 2, 4, 8],
+    pipelineStages: [1, 2, 4, 8, 16, 32],
     microBatches: 8,
     maxCandidates: 20000,
+    totalSteps: 1000,
+    seed: 20261003,
   }, locks), [graph, locks]);
   const selected = graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0]!;
   const selectedLock = locks[selected.id] ?? {};
@@ -87,6 +116,16 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
+  }
+
+  function selectModel(nextKey: typeof modelKey) {
+    setModelKey(nextKey);
+    const nextConfig = nextKey === "tiny_demo" ? TINY_DEMO_CONFIG : BUILTIN_MODEL_CONFIGS[nextKey];
+    setConfigText(JSON.stringify(nextConfig, null, 2));
+    setGraph(buildLayerGraph(nextConfig, { seqLen: graph.seqLen, batchSize: graph.batchSize, source: nextKey === "tiny_demo" ? "tiny example" : "published model config" }));
+    setSelectedId("block.0.mlp");
+    setLocks({});
+    setError(null);
   }
 
   function setLock(field: "precision" | "recompute" | "offload", value: LayerPrecision | RecomputeMode | boolean | null) {
@@ -118,6 +157,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
       <div className="layer-input-grid">
         <section className="lab-card">
           <div className="lab-card-head"><h3>Model config</h3><label className="ui-button ui-button--outline ui-button--compact" htmlFor="layer-config-file">Choose JSON</label></div>
+          <label className="layer-model-select">Built-in model<select aria-label="Built-in model config" value={modelKey} onChange={(event) => selectModel(event.target.value as typeof modelKey)}>{MODEL_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <input id="layer-config-file" className="layer-file" type="file" accept="application/json,.json" onChange={(event) => {
             const file = event.target.files?.[0];
             if (!file) return;
@@ -125,7 +165,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
           }} />
           <textarea aria-label="Hugging Face config JSON" className="layer-config" value={configText} onChange={(event) => setConfigText(event.target.value)} onBlur={() => parseConfig(configText)} spellCheck={false} />
           {error && <p className="layer-error" role="alert">{error}</p>}
-          <p className="lab-note">Required: layers, hidden size, attention heads, intermediate size, and vocabulary. Aliases such as <code>n_layer</code> and <code>n_embd</code> are accepted.</p>
+          <p className="lab-note">Default is the published Llama 3 8B config. Tiny demo is an example only. Uploaded fields are parsed from the config; aliases such as <code>n_layer</code> and <code>n_embd</code> are accepted.</p>
         </section>
 
         <section className="lab-card layer-summary">
@@ -177,8 +217,9 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
             <div className="lab-card-head"><h3>Layer-aware training plan</h3><span className={`lab-rel ${result.exhaustive ? "ok" : "warn"}`}>{result.exhaustive ? "Exhaustive" : "Bounded search"}</span></div>
             {best && metrics ? <>
               <p className="layer-plan-summary">{planSummary(graph, best)}</p>
-              <div className="lab-metrics"><div className="lab-metric"><b>{metrics.objectives.stepTimeS.toFixed(3)} s</b><span>estimated step time</span><small>global baseline {baseline.objectives.stepTimeS.toFixed(3)} s · {percentChange(metrics.objectives.stepTimeS, baseline.objectives.stepTimeS)}</small></div><div className="lab-metric"><b>${metrics.objectives.costUsdPerStep.toFixed(4)}</b><span>estimated cost / step</span><small>global baseline ${baseline.objectives.costUsdPerStep.toFixed(4)} · {percentChange(metrics.objectives.costUsdPerStep, baseline.objectives.costUsdPerStep)}</small></div><div className="lab-metric"><b>{(metrics.objectives.memoryHeadroom * 100).toFixed(1)}%</b><span>memory headroom</span></div></div>
-              <p className="lab-note">Compared with the best global-only baseline: the percentages are model estimates, not measurements. Search evaluated {result.evaluated.toLocaleString("en-US")} repaired candidates.</p>
+               <div className="lab-metrics"><div className="lab-metric"><b>{formatSeconds(metrics.objectives.stepTimeS)}</b><span>estimated step time</span><small>best global {formatSeconds(baseline.objectives.stepTimeS)} · {percentChange(metrics.objectives.stepTimeS, baseline.objectives.stepTimeS)}</small></div><div className="lab-metric"><b>{formatUsd(metrics.objectives.costUsdPerStep)}</b><span>estimated cost / step</span><small>best global {formatUsd(baseline.objectives.costUsdPerStep)} · {percentChange(metrics.objectives.costUsdPerStep, baseline.objectives.costUsdPerStep)}</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.wholeRunTimeS)}</b><span>whole run · 1,000 steps</span><small>estimated total time</small></div><div className="lab-metric"><b>{formatUsd(metrics.objectives.wholeRunCostUsd)}</b><span>whole run cost</span><small>estimated total cost</small></div><div className="lab-metric"><b>{(metrics.objectives.memoryHeadroom * 100).toFixed(1)}%</b><span>memory headroom</span></div></div>
+               <div className="lab-metrics"><div className="lab-metric"><b>{result.precisionGainPct.toFixed(1)}%</b><span>gain from global precision choice</span><small>BF16 global → best global</small></div><div className="lab-metric"><b>{result.perLayerGainPct.toFixed(1)}%</b><span>gain from per-layer decisions</span><small>best global → per-layer plan</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.pipelineBubbleS)}</b><span>pipeline bubble / step</span><small>charged estimate</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.communicationS)}</b><span>inter-stage transfer / step</span><small>charged estimate</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.offloadTransferS)}</b><span>CPU offload transfer / step</span><small>PCIe/host bandwidth assumption</small></div></div>
+               <p className="lab-note">The fair comparison is against the best global-only plan allowed the same precision, recompute, offload, and stage choices. All values are model estimates; hardware measurements and bandwidth remain customer inputs. Search evaluated {result.evaluated.toLocaleString("en-US")} repaired candidates with fixed seed {result.seed}.</p>
               {mode === "rigor" && <div className="layer-rigor"><p><b>Validity:</b> stages are contiguous and non-empty; endpoint nodes stay BF16 unless explicitly locked; every stage must fit the 80 GB × 90% assumed capacity.</p><p><b>Customer inputs still needed:</b> FP8 quality evaluation, CPU offload bandwidth, framework overhead, and cluster-specific utilization.</p></div>}
             </> : <p role="alert">No feasible layer-aware plan under the current assumptions.</p>}
           </section>

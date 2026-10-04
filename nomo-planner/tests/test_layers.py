@@ -7,6 +7,7 @@ from nomo_planner.layers import (
     repair_plan,
     search,
 )
+from nomo_planner.model_configs import LLAMA_3_8B, LLAMA_3_70B, MIXTRAL_8X7B
 
 
 def config(**overrides):
@@ -60,3 +61,44 @@ def test_layer_search_reports_comparison_and_respects_memory():
 def test_balanced_stages_are_non_empty():
     stages = balanced_stages(7, 3)
     assert stages == (0, 0, 0, 1, 1, 2, 2)
+
+
+def test_fair_global_comparison_separates_precision_and_per_layer_gain():
+    graph = build_graph(LLAMA_3_8B, seq_len=128, batch_size=1)
+    result = search(TrainingProblem(graph, max_candidates=600, seed=17))
+    assert result.global_best == result.baseline
+    assert result.precision_gain_pct >= 0
+    assert 0 <= result.per_layer_gain_pct <= 20, "unexpected >20% gain needs a documented physical case"
+
+
+def test_offload_is_not_chosen_when_all_stages_have_headroom():
+    graph = build_graph(config(), seq_len=16, batch_size=1)
+    problem = TrainingProblem(graph, TrainingHardware(memory_bytes=80e9, overhead_bytes=1e6), max_candidates=500)
+    result = search(problem)
+    assert result.best is not None
+    assert not any(result.best.offload)
+
+
+def test_stage_count_is_minimal_unless_charged_cost_shows_benefit():
+    graph = build_graph(config(), seq_len=16, batch_size=1)
+    problem = TrainingProblem(graph, TrainingHardware(memory_bytes=80e9, overhead_bytes=1e6), max_candidates=500)
+    result = search(problem)
+    assert result.best is not None
+    assert "minimum feasible stage count" in " ".join(result.assumptions) or "charged pipeline/bandwidth model" in " ".join(result.assumptions)
+
+
+def test_published_model_search_is_reproducible_with_fixed_seed():
+    for model_config in (LLAMA_3_8B, LLAMA_3_70B):
+        graph = build_graph(model_config, seq_len=128, batch_size=1)
+        problem = TrainingProblem(graph, max_candidates=600, seed=20261003)
+        first = search(problem)
+        second = search(problem)
+        assert first.seed == second.seed == 20261003
+        assert first.best == second.best
+        assert first.best_metrics == second.best_metrics
+
+
+def test_builtin_model_config_values_are_published_values():
+    assert (LLAMA_3_8B["num_hidden_layers"], LLAMA_3_8B["hidden_size"], LLAMA_3_8B["vocab_size"]) == (32, 4096, 128256)
+    assert (LLAMA_3_70B["num_hidden_layers"], LLAMA_3_70B["hidden_size"], LLAMA_3_70B["vocab_size"]) == (80, 8192, 128256)
+    assert (MIXTRAL_8X7B["num_local_experts"], MIXTRAL_8X7B["num_experts_per_tok"], MIXTRAL_8X7B["vocab_size"]) == (8, 2, 32000)

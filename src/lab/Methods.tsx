@@ -103,9 +103,14 @@ export default function Methods() {
         The shared graph uses a deterministic bounded search for small spaces and a bounded candidate search for larger
         models. Repair keeps pipeline stages contiguous and non-empty, applies locks as absolute constraints, keeps endpoint
         nodes in BF16 by default, and rejects plans that exceed the assumed per-stage memory capacity. The objective is
-        estimated step time, cluster cost per step, and memory headroom. FP8 throughput, CPU activation-offload bandwidth,
-        framework overhead and training-quality effects are assumptions until customer measurements replace them. A bounded
-        result is labelled as such; it is not presented as a proof of global optimality.
+        estimated step time, cluster cost per step, pipeline bubble, inter-stage communication, offload transfer, and memory
+        headroom. The fair comparison is the best global plan allowed the same precision, recompute, offload, and stage
+        choices; the UI reports precision gain separately from the additional per-layer gain. FP8 throughput, PCIe/host
+        activation-offload bandwidth, framework overhead and training-quality effects are assumptions until customer
+        measurements replace them. A bounded result is labelled as such; it is not presented as a proof of global optimality.
+      </p>
+      <p>
+        Built-in presets use the published fields consumed by the planner from <a href="https://huggingface.co/meta-llama/Meta-Llama-3-8B/blob/main/config.json" target="_blank" rel="noreferrer">Meta Llama 3 8B</a>, <a href="https://huggingface.co/meta-llama/Meta-Llama-3-70B/blob/main/config.json" target="_blank" rel="noreferrer">Meta Llama 3 70B</a>, and <a href="https://huggingface.co/mistralai/Mixtral-8x7B-v0.1/blob/main/config.json" target="_blank" rel="noreferrer">Mixtral 8x7B</a>. Fields not used by the graph are omitted rather than invented.
       </p>
       <h3>Equations</h3>
       <div className="lab-method-eqs">
@@ -126,8 +131,8 @@ export default function Methods() {
         probability of being best is the fraction of parameter draws in which a front plan wins. This is an empirical bootstrap
         distribution, not a Bayesian posterior. Leave-one-out coverage was {UNCERTAINTY_VALIDATION.covered}/{UNCERTAINTY_VALIDATION.n}
         ({(UNCERTAINTY_VALIDATION.actual * 100).toFixed(1)}%) against a nominal {(UNCERTAINTY_VALIDATION.nominal * 100).toFixed(0)}% target,
-        so the shortfall and the small sample are reported rather than hidden. Serving and co-design intervals remain unavailable until
-        published calibration data exists.
+        so the shortfall and the small sample are reported rather than hidden. Serving and co-design are labelled as point estimates
+        until published calibration data exists; no calibrated interval is claimed for those packs.
       </p>
       <h3>References</h3>
       <ol className="lab-refs">

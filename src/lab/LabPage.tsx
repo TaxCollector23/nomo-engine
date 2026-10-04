@@ -415,7 +415,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                                   <b>{fmtNum(selected.metrics.objectives[o.name]!, o.unit)}</b><span>{o.label}</span>
                                   {selectedUncertainty?.objectives[o.name] ? (
                                     <small>90%: {fmtNum(selectedUncertainty.objectives[o.name]!.low, o.unit)}–{fmtNum(selectedUncertainty.objectives[o.name]!.high, o.unit)}</small>
-                                  ) : <small>90% interval unavailable</small>}
+                                  ) : null}
                                 </div>
                               ))}
                             </div>

@@ -190,9 +190,11 @@ class TrainingProblem:
     graph: ModelGraph
     hardware: TrainingHardware = TrainingHardware()
     micro_batches: int = 8
-    pipeline_stages: tuple[int, ...] = (1, 2, 4)
+    pipeline_stages: tuple[int, ...] = (1, 2, 4, 8, 16, 32)
     fp8_enabled: bool = True
     max_candidates: int = 20_000
+    total_steps: int = 1_000
+    seed: int = 20261003
 
 
 @dataclass(frozen=True)
@@ -219,6 +221,11 @@ class LayerSearchResult:
     best_metrics: LayerMetrics | None
     front: tuple[tuple[LayerTrainingPlan, LayerMetrics], ...]
     baseline: tuple[LayerTrainingPlan, LayerMetrics]
+    global_bf16: tuple[LayerTrainingPlan, LayerMetrics]
+    global_best: tuple[LayerTrainingPlan, LayerMetrics]
+    precision_gain_pct: float
+    per_layer_gain_pct: float
+    seed: int
     evaluated: int
     exhaustive: bool
     assumptions: tuple[str, ...]
@@ -279,6 +286,8 @@ def evaluate_plan(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: M
     stage_times = [0.0] * stage_count
     memory = [hardware.overhead_bytes] * stage_count
     notes: list[str] = []
+    offload_transfer = 0.0
+    communication_by_stage = [0.0] * stage_count
     for node, precision, recompute, offload, stage in zip(graph.nodes, plan.precision, plan.recompute, plan.offload, plan.stages):
         speed = PRECISION_SPEEDUP[precision]
         stage_times[stage] += node.forward_flops * RECOMPUTE_FLOP_MULTIPLIER[recompute] / (hardware.peak_flops * speed)
@@ -288,24 +297,44 @@ def evaluate_plan(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: M
             memory[stage] += state_bytes + activation_bytes * 0.15
             transfer = activation_bytes * 0.85 / hardware.cpu_offload_bytes_s
             stage_times[stage] += transfer
+            offload_transfer += transfer
             notes.append("CPU activation offload uses the supplied/default transfer bandwidth")
         else:
             memory[stage] += state_bytes + activation_bytes
         if precision == "fp8":
             notes.append("FP8 speed and training quality are assumptions until customer evaluation")
+    communication_bytes = 0.0
     if stage_count > 1:
-        boundary_bytes = sum(node.activation_bytes for node in graph.nodes[:-1]) / max(1, stage_count)
-        stage_times = [value + 2.0 * boundary_bytes / hardware.interconnect_bytes_s for value in stage_times]
+        for index in range(1, len(graph.nodes)):
+            left, right = plan.stages[index - 1], plan.stages[index]
+            if left != right:
+                bytes_at_boundary = graph.nodes[index - 1].activation_bytes
+                communication_bytes += bytes_at_boundary
+                transfer = bytes_at_boundary / hardware.interconnect_bytes_s
+                communication_by_stage[left] += transfer
+                communication_by_stage[right] += transfer
+        stage_times = [value + communication_by_stage[index] for index, value in enumerate(stage_times)]
+        notes.append("Inter-stage communication charges both adjacent stages at the supplied/default interconnect bandwidth")
     max_stage = max(stage_times, default=0.0)
     micro_batches = max(1, problem.micro_batches)
-    step_time = max_stage * (micro_batches + stage_count - 1) / micro_batches
+    pipeline_bubble = max_stage * max(0, stage_count - 1) / micro_batches
+    step_time = max_stage + pipeline_bubble
     cost = step_time / 3600.0 * hardware.devices * hardware.cost_per_device_hour
     capacity = hardware.memory_bytes * hardware.usable_memory
     constraints = {f"memory_stage_{i}": value / capacity - 1.0 for i, value in enumerate(memory)}
     constraints["stage_count"] = -1.0 if stage_count in problem.pipeline_stages or not problem.pipeline_stages else 1.0
     headroom = min((capacity - value) / capacity for value in memory)
     return LayerMetrics(
-        objectives={"step_time_s": step_time, "cost_usd_per_step": cost, "memory_headroom": headroom},
+        objectives={
+            "step_time_s": step_time,
+            "cost_usd_per_step": cost,
+            "memory_headroom": headroom,
+            "communication_s": sum(communication_by_stage),
+            "pipeline_bubble_s": pipeline_bubble,
+            "offload_transfer_s": offload_transfer,
+            "whole_run_time_s": step_time * max(1, problem.total_steps),
+            "whole_run_cost_usd": cost * max(1, problem.total_steps),
+        },
         constraints=constraints, memory_by_stage=tuple(memory), stage_times=tuple(stage_times), notes=tuple(sorted(set(notes))),
     )
 
@@ -378,8 +407,45 @@ def _dedup(plans: Iterable[LayerTrainingPlan]) -> list[LayerTrainingPlan]:
     return result
 
 
+def _choose_global(problem: TrainingProblem, *, precision: str | None = None,
+                   locks: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[LayerTrainingPlan, LayerMetrics]:
+    n = len(problem.graph.nodes)
+    choices: list[tuple[LayerTrainingPlan, LayerMetrics]] = []
+    precisions = [precision] if precision is not None else (["bf16", "fp8"] if problem.fp8_enabled else ["bf16"])
+    for stages in sorted(set((1, *problem.pipeline_stages))):
+        if stages > n:
+            continue
+        for selected_precision in precisions:
+            for recompute in RECOMPUTE_FLOP_MULTIPLIER:
+                for offload in (False, True):
+                    plan = repair_plan(problem.graph, LayerTrainingPlan(
+                        balanced_stages(n, stages), tuple(selected_precision for _ in range(n)),
+                        tuple(recompute for _ in range(n)), tuple(offload for _ in range(n))), locks=locks)
+                    metrics = evaluate_plan(problem, plan, locks=locks)
+                    if _feasible(metrics):
+                        choices.append((plan, metrics))
+    if not choices:
+        # Preserve a diagnostic comparison for deliberately undersized test
+        # hardware instead of hiding the infeasibility behind an exception.
+        fallback: list[tuple[LayerTrainingPlan, LayerMetrics]] = []
+        for stages in sorted(set((1, *problem.pipeline_stages))):
+            if stages > n:
+                continue
+            for selected_precision in precisions:
+                plan = repair_plan(problem.graph, LayerTrainingPlan(
+                    balanced_stages(n, stages), tuple(selected_precision for _ in range(n)),
+                    tuple("none" for _ in range(n)), tuple(False for _ in range(n))), locks=locks)
+                fallback.append((plan, evaluate_plan(problem, plan, locks=locks)))
+        return min(fallback, key=lambda item: sum(max(0.0, value) for value in item[1].constraints.values()))
+    # Prefer the least expensive step time, then fewer stages. Offload has no
+    # objective benefit when memory is already ample because its transfer time
+    # is explicitly charged above.
+    return min(choices, key=lambda item: (item[1].objectives["step_time_s"], len(set(item[0].stages)), item[1].objectives["cost_usd_per_step"]))
+
+
 def global_baseline(problem: TrainingProblem, *, precision: str = "bf16", recompute: str = "none", offload: bool = False,
                     stages: int = 1, locks: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[LayerTrainingPlan, LayerMetrics]:
+    """Compatibility helper for callers that need one explicit global plan."""
     n = len(problem.graph.nodes)
     plan = repair_plan(problem.graph, LayerTrainingPlan(
         balanced_stages(n, stages), tuple(precision for _ in range(n)),
@@ -402,11 +468,35 @@ def search(problem: TrainingProblem, *, locks: Mapping[str, Mapping[str, Any]] |
     def score(item: tuple[LayerTrainingPlan, LayerMetrics]) -> float:
         values = _vector(item[1])
         return sum((value - low) / (high - low if high > low else 1.0) for value, (low, high) in zip(values, ranges))
-    best = min(front, key=score) if front else None
-    baseline = global_baseline(problem, locks=locks)
+    if feasible:
+        fastest = min(feasible, key=lambda item: (item[1].objectives["step_time_s"], item[1].objectives["cost_usd_per_step"]))
+        minimum_stage = min(feasible, key=lambda item: (len(set(item[0].stages)), item[1].objectives["step_time_s"]))
+        if (len(set(fastest[0].stages)) > len(set(minimum_stage[0].stages))
+                and fastest[1].objectives["step_time_s"] < minimum_stage[1].objectives["step_time_s"] * 0.95):
+            best = fastest
+            stage_note = (f"{len(set(best[0].stages))} stages selected because the charged pipeline/bandwidth model "
+                          f"improves step time by more than 5% over the minimum-memory-feasible stage count")
+        else:
+            best = minimum_stage
+            stage_note = "minimum feasible stage count selected; extra stages did not earn a documented cost benefit"
+    else:
+        best = min(front, key=score) if front else None
+        stage_note = "no feasible plan under the supplied hardware limits; showing the least-violating diagnostic"
+    global_bf16 = _choose_global(problem, precision="bf16", locks=locks)
+    global_best = _choose_global(problem, locks=locks)
+    baseline = global_best
+    precision_gain = (global_bf16[1].objectives["step_time_s"] - global_best[1].objectives["step_time_s"]) / global_bf16[1].objectives["step_time_s"] * 100.0
+    per_layer_gain = (global_best[1].objectives["step_time_s"] - best[1].objectives["step_time_s"]) / global_best[1].objectives["step_time_s"] * 100.0 if best else 0.0
     return LayerSearchResult(
         graph=problem.graph, best=best[0] if best else None, best_metrics=best[1] if best else None,
-        front=front, baseline=baseline, evaluated=len(evaluated), exhaustive=exhaustive,
-        assumptions=tuple(sorted(set(problem.graph.assumptions + ("FP8 quality and CPU offload transfer are assumptions",)))),
+        front=front, baseline=baseline, global_bf16=global_bf16, global_best=global_best,
+        precision_gain_pct=precision_gain, per_layer_gain_pct=per_layer_gain, seed=problem.seed,
+        evaluated=len(evaluated), exhaustive=exhaustive,
+        assumptions=tuple(sorted(set(problem.graph.assumptions + (
+            "FP8 quality is an assumption until customer evaluation",
+            "CPU activation offload uses the supplied/default PCIe/host bandwidth",
+            "Pipeline bubble and inter-stage communication are charged per stage",
+            stage_note,
+        )))),
     )
 

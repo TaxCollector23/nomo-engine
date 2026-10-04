@@ -10,12 +10,13 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration";`));
+export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
 const golden = JSON.parse(readFileSync(new URL("./golden.json", import.meta.url), "utf8").replace(/: (-?)Infinity/g, ': "$1Infinity"'),
   (_k, v) => (v === "Infinity" ? Infinity : v === "-Infinity" ? -Infinity : v));
+const layerGolden = JSON.parse(readFileSync(new URL("./layer-golden.json", import.meta.url), "utf8"));
 
 let checks = 0, worst = 0;
 const fail = (msg) => { console.error("FAIL:", msg); process.exit(1); };
@@ -59,4 +60,19 @@ for (const c of golden.cases) {
 const pts = E.calibrationPoints();
 golden.calibration.forEach((g, i) => { close(pts[i].measured, g.measured_step_s, "calibration measured"); close(pts[i].predicted, g.predicted_step_s, "calibration predicted"); close(pts[i].uncalibrated, g.predicted_uncalibrated, "calibration uncalibrated"); });
 console.log(`ok  calibration: 22 published runs reproduced`);
+
+const sameLayerPlan = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+for (const c of layerGolden.cases) {
+  const graph = E.buildLayerGraph(c.config, { seqLen: c.seq_len, batchSize: c.batch_size, source: "golden" });
+  const result = E.searchLayerTraining({ graph, pipelineStages: c.pipeline_stages, maxCandidates: c.max_candidates, totalSteps: c.total_steps, seed: c.seed });
+  if (!result.best || !sameLayerPlan(result.best, c.best)) fail(`layers ${c.key} best plan differs`);
+  if (!sameLayerPlan(result.globalBf16.plan, c.global_bf16)) fail(`layers ${c.key} global BF16 plan differs`);
+  if (!sameLayerPlan(result.globalBest.plan, c.global_best)) fail(`layers ${c.key} global plan differs`);
+  const objectiveKey = (key) => ({ step_time_s: "stepTimeS", cost_usd_per_step: "costUsdPerStep", memory_headroom: "memoryHeadroom", communication_s: "communicationS", pipeline_bubble_s: "pipelineBubbleS", offload_transfer_s: "offloadTransferS", whole_run_time_s: "wholeRunTimeS", whole_run_cost_usd: "wholeRunCostUsd" })[key] ?? key;
+  for (const [key, value] of Object.entries(c.best_objectives)) close(result.bestMetrics.objectives[objectiveKey(key)], value, `layers ${c.key} best ${key}`);
+  for (const [key, value] of Object.entries(c.global_objectives)) close(result.globalBest.metrics.objectives[objectiveKey(key)], value, `layers ${c.key} global ${key}`);
+  close(result.precisionGainPct, c.precision_gain_pct, `layers ${c.key} precision gain`);
+  close(result.perLayerGainPct, c.per_layer_gain_pct, `layers ${c.key} per-layer gain`);
+  console.log(`ok  layers ${c.key.padEnd(14)} seed ${c.seed}  best ${new Set(result.best.stages).size} stages`);
+}
 console.log(`\nALL MATCH: ${checks} checks, worst relative difference ${worst.toExponential(2)}`);

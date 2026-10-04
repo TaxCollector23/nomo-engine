@@ -48,7 +48,7 @@ function rowsToCsv(pack: Pack, evs: Evaluated[], uncertainty: Result["uncertaint
       return [q?.median, q?.low, q?.high, u?.probabilityBest[o.name]];
     });
     lines.push([...vars.map((v) => e.plan[v]), ...objs.map((o) => e.metrics.objectives[o]), ...uncertaintyValues,
-      uncertainty ? uncertainty.method : "unavailable", uncertainty?.sampleCount ?? "", feas,
+      uncertainty ? uncertainty.method : "not_calibrated", uncertainty?.sampleCount ?? "", feas,
       ...cons.map((c) => e.metrics.constraints[c]), pack.describe(e.plan)].map(csvEscape).join(","));
   }
   return lines.join("\n") + "\n";
@@ -204,7 +204,7 @@ export function buildExport(domain: DomainId, settings: Settings, locks: Record<
   const numbers = objs.map((o) => {
     const q = selectedUncertainty?.objectives[o.name];
     const probability = selectedUncertainty?.probabilityBest[o.name];
-    return `- **${o.label}:** ${fmt(selected.metrics.objectives[o.name]!, o.unit)}${q ? ` (90% interval ${fmt(q.low, o.unit)}–${fmt(q.high, o.unit)})` : " (90% interval unavailable)"}${probability === undefined ? "" : `; ${(probability * 100).toFixed(0)}% probability of being best`}`;
+    return `- **${o.label}:** ${fmt(selected.metrics.objectives[o.name]!, o.unit)}${q ? ` (90% interval ${fmt(q.low, o.unit)}–${fmt(q.high, o.unit)})` : ""}${probability === undefined ? "" : `; ${(probability * 100).toFixed(0)}% probability of being best`}`;
   }).join("\n");
   files.push({ id: "summary", folder: "1-summary", name: "plan-summary.md", mime: "text/markdown",
     description: "The recommendation and why, in plain English",

@@ -101,7 +101,7 @@ source rows live in `nomo-planner/`; `studies/export_uncertainty.py` produces th
 `src/planner/uncertainty.json`. The Lab shows medians, central 90% predictive intervals, uncertainty whiskers, and
 posterior probability of being best for front plans. The leave-one-out study reports 18/22 covered runs (81.8%) against
 a nominal 90% target, with a 95% Wilson interval of 61.5%–92.7%; this is evidence on 22 published rows, not a future
-guarantee. Serving and co-design remain explicitly interval-unavailable until published calibration data exists.
+guarantee. Serving and co-design remain point-estimate packs until published calibration data exists; no calibrated interval is claimed for them.
 
 ### Phase 1 layer-aware planner
 The Lab now has a shared model-graph surface at `/lab#layers`. Paste or upload a Hugging Face `config.json` to expand
@@ -113,3 +113,6 @@ customer measurements are supplied. Serve and Neuromorphic tabs share the graph 
 until their per-layer decision packs are implemented.
 
 The design note and cited formulas are in [`docs/PHASE_1_LAYER_PLANNER_DESIGN.md`](docs/PHASE_1_LAYER_PLANNER_DESIGN.md).
+
+### Gate 0 fair per-layer training comparison
+The layer planner now ships published Llama 3 8B, Llama 3 70B, and Mixtral 8x7B presets, with Llama 3 8B as the default and the tiny model only as an example. It compares a per-layer plan with the best global-only plan allowed the same options, reports precision gain separately from per-layer gain, and charges pipeline bubble, inter-stage communication, and CPU activation offload using customer-overridable bandwidth assumptions. Step and whole-run totals use adaptive units. Fixed-seed parity cases live in `scripts/layer-golden.json` and are checked by `npm run verify`.

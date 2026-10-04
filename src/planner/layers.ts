@@ -69,10 +69,21 @@ export interface LayerTrainingProblem {
   pipelineStages?: number[];
   fp8Enabled?: boolean;
   maxCandidates?: number;
+  totalSteps?: number;
+  seed?: number;
 }
 
 export interface LayerMetrics {
-  objectives: { stepTimeS: number; costUsdPerStep: number; memoryHeadroom: number };
+  objectives: {
+    stepTimeS: number;
+    costUsdPerStep: number;
+    memoryHeadroom: number;
+    communicationS: number;
+    pipelineBubbleS: number;
+    offloadTransferS: number;
+    wholeRunTimeS: number;
+    wholeRunCostUsd: number;
+  };
   constraints: Record<string, number>;
   memoryByStage: number[];
   stageTimes: number[];
@@ -85,10 +96,38 @@ export interface LayerSearchResult {
   bestMetrics: LayerMetrics | null;
   front: Array<{ plan: LayerTrainingPlan; metrics: LayerMetrics }>;
   baseline: { plan: LayerTrainingPlan; metrics: LayerMetrics };
+  globalBf16: { plan: LayerTrainingPlan; metrics: LayerMetrics };
+  globalBest: { plan: LayerTrainingPlan; metrics: LayerMetrics };
+  precisionGainPct: number;
+  perLayerGainPct: number;
+  seed: number;
   evaluated: number;
   exhaustive: boolean;
   assumptions: string[];
 }
+
+/** Planner-facing fields copied from the public Hugging Face model configs. */
+export const BUILTIN_MODEL_CONFIGS = {
+  llama3_8b: {
+    _name_or_path: "meta-llama/Meta-Llama-3-8B", model_type: "llama", num_hidden_layers: 32,
+    hidden_size: 4096, intermediate_size: 14336, num_attention_heads: 32, num_key_value_heads: 8,
+    vocab_size: 128256, max_position_embeddings: 8192, rope_theta: 500000, tie_word_embeddings: false, hidden_act: "silu",
+    source: "https://huggingface.co/meta-llama/Meta-Llama-3-8B/blob/main/config.json",
+  },
+  llama3_70b: {
+    _name_or_path: "meta-llama/Meta-Llama-3-70B", model_type: "llama", num_hidden_layers: 80,
+    hidden_size: 8192, intermediate_size: 28672, num_attention_heads: 64, num_key_value_heads: 8,
+    vocab_size: 128256, max_position_embeddings: 8192, rope_theta: 500000, tie_word_embeddings: false, hidden_act: "silu",
+    source: "https://huggingface.co/meta-llama/Meta-Llama-3-70B/blob/main/config.json",
+  },
+  mixtral_8x7b: {
+    _name_or_path: "mistralai/Mixtral-8x7B-v0.1", model_type: "mixtral", num_hidden_layers: 32,
+    hidden_size: 4096, intermediate_size: 14336, num_attention_heads: 32, num_key_value_heads: 8,
+    num_local_experts: 8, num_experts_per_tok: 2, vocab_size: 32000, max_position_embeddings: 32768,
+    rope_theta: 1000000, tie_word_embeddings: false, hidden_act: "silu",
+    source: "https://huggingface.co/mistralai/Mixtral-8x7B-v0.1/blob/main/config.json",
+  },
+} as const;
 
 const PRECISION_SPEEDUP: Record<LayerPrecision, number> = { bf16: 1, fp8: 1.35 };
 const RECOMPUTE_MULTIPLIER: Record<RecomputeMode, number> = { none: 1, selective: 1.12, full: 1.28 };
@@ -225,7 +264,9 @@ export function evaluateLayerPlan(problem: LayerTrainingProblem, rawPlan: LayerT
   const stageCount = Math.max(...plan.stages) + 1;
   const stageTimes = Array.from({ length: stageCount }, () => 0);
   const memoryByStage = Array.from({ length: stageCount }, () => hw.overheadBytes);
+  const communicationByStage = Array.from({ length: stageCount }, () => 0);
   const notes = new Set<string>();
+  let offloadTransferS = 0;
   graph.nodes.forEach((node, index) => {
     const p = plan.precision[index]!;
     const r = plan.recompute[index]!;
@@ -234,20 +275,35 @@ export function evaluateLayerPlan(problem: LayerTrainingProblem, rawPlan: LayerT
     const stateBytes = node.parameterCount * (p === "fp8" ? 1 : 16);
     if (plan.offload[index]) {
       memoryByStage[s]! += stateBytes + node.activationBytes * 0.15;
-      stageTimes[s]! += node.activationBytes * 0.85 / hw.cpuOffloadBytesS;
-      notes.add("CPU activation offload uses the supplied/default transfer bandwidth");
+      const transfer = node.activationBytes * 0.85 / hw.cpuOffloadBytesS;
+      stageTimes[s]! += transfer;
+      offloadTransferS += transfer;
+      notes.add("CPU activation offload uses the supplied/default PCIe/host bandwidth");
     } else {
       memoryByStage[s]! += stateBytes + node.activationBytes;
     }
     if (p === "fp8") notes.add("FP8 speed and training quality are assumptions until customer evaluation");
   });
+  let communicationS = 0;
   if (stageCount > 1) {
-    const boundaryBytes = graph.nodes.slice(0, -1).reduce((total, node) => total + node.activationBytes, 0) / stageCount;
-    for (let index = 0; index < stageTimes.length; index += 1) stageTimes[index]! += 2 * boundaryBytes / hw.interconnectBytesS;
+    for (let index = 1; index < graph.nodes.length; index += 1) {
+      const left = plan.stages[index - 1]!;
+      const right = plan.stages[index]!;
+      if (left !== right) {
+        const bytesAtBoundary = graph.nodes[index - 1]!.activationBytes;
+        const transfer = bytesAtBoundary / hw.interconnectBytesS;
+        communicationS += bytesAtBoundary * 2 / hw.interconnectBytesS;
+        communicationByStage[left]! += transfer;
+        communicationByStage[right]! += transfer;
+      }
+    }
+    for (let index = 0; index < stageTimes.length; index += 1) stageTimes[index]! += communicationByStage[index]!;
+    notes.add("Inter-stage communication charges both adjacent stages at the supplied/default interconnect bandwidth");
   }
   const maxStage = Math.max(...stageTimes, 0);
   const microBatches = Math.max(1, problem.microBatches ?? 8);
-  const stepTimeS = maxStage * (microBatches + stageCount - 1) / microBatches;
+  const pipelineBubbleS = maxStage * Math.max(0, stageCount - 1) / microBatches;
+  const stepTimeS = maxStage + pipelineBubbleS;
   const costUsdPerStep = stepTimeS / 3600 * hw.devices * hw.costPerDeviceHour;
   const capacity = hw.memoryBytes * hw.usableMemory;
   const constraints: Record<string, number> = {};
@@ -255,7 +311,14 @@ export function evaluateLayerPlan(problem: LayerTrainingProblem, rawPlan: LayerT
   const allowedStages = problem.pipelineStages ?? [1, 2, 4];
   constraints.stageCount = allowedStages.includes(stageCount) ? -1 : 1;
   const memoryHeadroom = Math.min(...memoryByStage.map((value) => (capacity - value) / capacity));
-  return { objectives: { stepTimeS, costUsdPerStep, memoryHeadroom }, constraints, memoryByStage, stageTimes, notes: [...notes].sort() };
+  const totalSteps = Math.max(1, problem.totalSteps ?? 1000);
+  return {
+    objectives: {
+      stepTimeS, costUsdPerStep, memoryHeadroom, communicationS, pipelineBubbleS, offloadTransferS,
+      wholeRunTimeS: stepTimeS * totalSteps, wholeRunCostUsd: costUsdPerStep * totalSteps,
+    },
+    constraints, memoryByStage, stageTimes, notes: [...notes].sort(),
+  };
 }
 
 function feasible(metrics: LayerMetrics): boolean {
@@ -299,10 +362,38 @@ function candidates(problem: LayerTrainingProblem, locks: Record<string, Partial
   return { plans: plans.slice(0, maxCandidates), exhaustive: n <= 4 && plans.length < maxCandidates };
 }
 
-function globalBaseline(problem: LayerTrainingProblem, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): { plan: LayerTrainingPlan; metrics: LayerMetrics } {
+function chooseGlobal(problem: LayerTrainingProblem, precision?: LayerPrecision, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>> = {}): { plan: LayerTrainingPlan; metrics: LayerMetrics } {
   const n = problem.graph.nodes.length;
-  const plan = repairLayerPlan(problem.graph, { stages: balancedLayerStages(n, 1), precision: Array(n).fill("bf16"), recompute: Array(n).fill("none"), offload: Array(n).fill(false) }, locks);
-  return { plan, metrics: evaluateLayerPlan(problem, plan, locks) };
+  const plans: Array<{ plan: LayerTrainingPlan; metrics: LayerMetrics }> = [];
+  const precisionChoices: LayerPrecision[] = precision ? [precision] : (problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"]);
+  const stageChoices = [...new Set([1, ...(problem.pipelineStages ?? [1, 2, 4, 8, 16, 32])])].filter((count) => count <= n);
+  for (const stages of stageChoices) {
+    for (const selectedPrecision of precisionChoices) for (const recompute of ["none", "selective", "full"] as RecomputeMode[]) for (const offload of [false, true]) {
+      const plan = repairLayerPlan(problem.graph, {
+        stages: balancedLayerStages(n, stages), precision: Array(n).fill(selectedPrecision),
+        recompute: Array(n).fill(recompute), offload: Array(n).fill(offload),
+      }, locks);
+      const metrics = evaluateLayerPlan(problem, plan, locks);
+      if (feasible(metrics)) plans.push({ plan, metrics });
+    }
+  }
+  if (!plans.length) {
+    const fallback: Array<{ plan: LayerTrainingPlan; metrics: LayerMetrics }> = [];
+    for (const stages of stageChoices) {
+      for (const selectedPrecision of precisionChoices) {
+        const plan = repairLayerPlan(problem.graph, {
+          stages: balancedLayerStages(n, stages), precision: Array(n).fill(selectedPrecision),
+          recompute: Array(n).fill("none"), offload: Array(n).fill(false),
+        }, locks);
+        fallback.push({ plan, metrics: evaluateLayerPlan(problem, plan, locks) });
+      }
+    }
+    return fallback.sort((left, right) => Object.values(left.metrics.constraints).reduce((sum, value) => sum + Math.max(0, value), 0)
+      - Object.values(right.metrics.constraints).reduce((sum, value) => sum + Math.max(0, value), 0))[0]!;
+  }
+  return plans.sort((left, right) => left.metrics.objectives.stepTimeS - right.metrics.objectives.stepTimeS
+    || new Set(left.plan.stages).size - new Set(right.plan.stages).size
+    || left.metrics.objectives.costUsdPerStep - right.metrics.objectives.costUsdPerStep)[0]!;
 }
 
 export function searchLayerTraining(problem: LayerTrainingProblem, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>> = {}): LayerSearchResult {
@@ -311,12 +402,34 @@ export function searchLayerTraining(problem: LayerTrainingProblem, locks: Record
   const feasiblePlans = evaluated.filter((item) => feasible(item.metrics));
   const pool = feasiblePlans.length ? feasiblePlans : evaluated.slice().sort((a, b) => Object.values(a.metrics.constraints).reduce((x, y) => x + Math.max(0, y), 0) - Object.values(b.metrics.constraints).reduce((x, y) => x + Math.max(0, y), 0)).slice(0, 1);
   const front = pool.filter((item) => !pool.some((other) => other !== item && dominates(other.metrics, item.metrics)));
-  const ranges = [0, 1, 2].map((index) => { const values = front.map((item) => objectiveVector(item.metrics)[index]!); return [Math.min(...values, 0), Math.max(...values, 1)] as const; });
-  const score = (item: { metrics: LayerMetrics }) => objectiveVector(item.metrics).reduce((total, value, index) => total + (value - ranges[index]![0]) / (ranges[index]![1] > ranges[index]![0] ? ranges[index]![1] - ranges[index]![0] : 1), 0);
-  const best = front.length ? [...front].sort((a, b) => score(a) - score(b))[0]! : null;
+  let stageNote = "no feasible plan under the supplied hardware limits; showing the least-violating diagnostic";
+  let best: { plan: LayerTrainingPlan; metrics: LayerMetrics } | null = null;
+  if (feasiblePlans.length) {
+    const fastest = [...feasiblePlans].sort((a, b) => a.metrics.objectives.stepTimeS - b.metrics.objectives.stepTimeS || a.metrics.objectives.costUsdPerStep - b.metrics.objectives.costUsdPerStep)[0]!;
+    const minimumStage = [...feasiblePlans].sort((a, b) => new Set(a.plan.stages).size - new Set(b.plan.stages).size || a.metrics.objectives.stepTimeS - b.metrics.objectives.stepTimeS)[0]!;
+    if (new Set(fastest.plan.stages).size > new Set(minimumStage.plan.stages).size && fastest.metrics.objectives.stepTimeS < minimumStage.metrics.objectives.stepTimeS * 0.95) {
+      best = fastest;
+      stageNote = `${new Set(best.plan.stages).size} stages selected because the charged pipeline/bandwidth model improves step time by more than 5% over the minimum-memory-feasible stage count`;
+    } else {
+      best = minimumStage;
+      stageNote = "minimum feasible stage count selected; extra stages did not earn a documented cost benefit";
+    }
+  } else if (front.length) {
+    best = front[0]!;
+  }
+  const globalBf16 = chooseGlobal(problem, "bf16", locks);
+  const globalBest = chooseGlobal(problem, undefined, locks);
+  const precisionGainPct = (globalBf16.metrics.objectives.stepTimeS - globalBest.metrics.objectives.stepTimeS) / globalBf16.metrics.objectives.stepTimeS * 100;
+  const perLayerGainPct = best ? (globalBest.metrics.objectives.stepTimeS - best.metrics.objectives.stepTimeS) / globalBest.metrics.objectives.stepTimeS * 100 : 0;
   return {
     graph: problem.graph, best: best?.plan ?? null, bestMetrics: best?.metrics ?? null,
-    front, baseline: globalBaseline(problem, locks), evaluated: evaluated.length, exhaustive: generated.exhaustive,
-    assumptions: [...new Set([...problem.graph.assumptions, "FP8 quality and CPU offload transfer are assumptions"])],
+    front, baseline: globalBest, globalBf16, globalBest, precisionGainPct, perLayerGainPct,
+    seed: problem.seed ?? 20261003, evaluated: evaluated.length, exhaustive: generated.exhaustive,
+    assumptions: [...new Set([...problem.graph.assumptions,
+      "FP8 quality is an assumption until customer evaluation",
+      "CPU activation offload uses the supplied/default PCIe/host bandwidth",
+      "Pipeline bubble and inter-stage communication are charged per stage",
+      stageNote,
+    ])],
   };
 }
