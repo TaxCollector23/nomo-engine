@@ -2,7 +2,7 @@
 
 Current phase: Gate 0 — per-layer training integrity
 
-Status: Gate 0 implementation and parity checks complete locally. Deployment is the next step.
+Status: Gate 0 implementation and parity checks complete. Engine and landing deployments are live.
 
 ## Completed
 
@@ -25,4 +25,4 @@ Status: Gate 0 implementation and parity checks complete locally. Deployment is 
 
 - Serve and neuromorphic per-layer recommendation packs remain Preview/contract surfaces; no recommendation is fabricated there.
 - Auditor/log calibration, calibrated uncertainty for new packs, product packs, and the cost tracker are not yet implemented.
-- Browser viewport evidence for both 1440px and 390px should be collected after deployment; automated parity/build checks are complete.
+- Live smoke check: the engine URL resolves to the neuromorphic dashboard and the landing page's Open Engine links resolve to it. Dedicated 1440px/390px screenshot evidence remains a follow-up because the current browser harness does not expose viewport controls in this run.
