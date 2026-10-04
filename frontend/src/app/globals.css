@@ -1,0 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { font-feature-settings: "kern"; }
+::selection { background: #2F5BEA; color: #fff; }
+
+/* keyboard focus is always visible */
+:focus-visible { outline: 2px solid #2F5BEA; outline-offset: 2px; border-radius: 4px; }
+
+/* spikes travelling along spiking layers in the design graph */
+@keyframes nomo-spike { from { offset-distance: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { offset-distance: 100%; opacity: 0; } }
+@keyframes nomo-drawer { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.nomo-drawer { animation: nomo-drawer 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .nomo-spike { display: none; }
+  .nomo-drawer { animation: none; }
+}
+
+input[type="range"] { accent-color: #2F5BEA; }

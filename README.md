@@ -1,4 +1,4 @@
-# Nomo AI landing page
+# Nomo Engine
 
 The public landing page for [Nomo AI](https://github.com/TaxCollector23/nomo-ai), an open research and compiler project for hardware-aware neural architecture search, physical AI, and neuromorphic hardware.
 
@@ -17,6 +17,13 @@ The current engine is [Nomo Engine v5](https://github.com/TaxCollector23/nomo-en
 The product keeps evidence boundaries explicit: calibration measures runtime fidelity and quantisation ranges, while task accuracy remains a proxy until labeled/oracle evaluation. PPA, thermal, cycle, and power values remain proxies until synthesis, simulation, or trusted hardware-in-the-loop measurement. Built-in demo weights are marked as synthetic.
 
 ## Development
+
+The deployable neuromorphic dashboard is the historical Next.js application in
+`frontend/`. The Vercel `nomo-engine` project is configured with Root Directory
+`frontend`, so `https://frontend-gray-ten-c3tj1luab7.vercel.app/` opens the
+engine dashboard instead of the public Nomo AI landing shell. The browser Lab
+source remains in the repository root and is documented below for local
+development and the separate Lab deployment target.
 
 ```bash
 npm install
