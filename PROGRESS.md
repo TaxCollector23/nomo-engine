@@ -1,7 +1,8 @@
 # Nomo Engine progress
 
 Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; the strict roadmap audit and the
-remaining safe implementation slices are committed, pushed, deployed, and responsive-smoke-tested.
+remaining safe implementation slices are committed, pushed, deployed, and smoke-tested across the Lab, dashboard, and
+landing page.
 
 ## Completed
 
@@ -48,15 +49,17 @@ remaining safe implementation slices are committed, pushed, deployed, and respon
 
 ## Deployment evidence
 
-- Implementation commit: 02692e9 on main, pushed to github.com/TaxCollector23/nomo-engine.
-- Vercel production deployment: dpl_E4UvJqtuyzH7pC2bXeFekTY2umUr.
-- Unique URL: https://nomo-engine-kqn7xk9nz-rangan-alt.vercel.app/
+- Engine commit: b6ebb80 on main, pushed to github.com/TaxCollector23/nomo-engine.
+- Mode-shell Vercel production deployment: dpl_DsZowSZrhtsXSMvogFktxiCmC5om.
+- Mode-shell unique URL: https://nomo-engine-qtmjxi7bc-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both URLs returned HTTP 200 and served the final index-CJoHfU4S.js bundle with index-BYBpg4SO.css.
+- Both mode-shell URLs returned HTTP 200 and served index-Cx7FVYMF.js with index-BYBpg4SO.css.
+- Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
+- Landing deployment: dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ; stable alias https://nomoailanding.vercel.app/.
 - Responsive smoke: 1440×900 and 390×844 both passed with document width contained by the viewport; shared graph tabs also fit at 390px.
 
 ## Delivery bundles
 
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-engine-02692e9.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-planner-02692e9.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-ai-02692e9.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-engine-b6ebb80.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-planner-b6ebb80.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-ai-b6ebb80.zip

@@ -8,7 +8,8 @@ estimates as measurements. It does not claim that data-dependent or cross-reposi
 The shared model graph now powers layer-aware Train and a bounded per-layer Serve search. The engine reports precision
 gain separately from additional layer gain, charges pipeline bubble, inter-stage transfer, and CPU activation offload,
 and preserves locks and bounded-search labels. The historical Neuromorphic dashboard remains linked from the mode shell,
-but is not misrepresented as a new shared-graph compiler integration.
+but is not misrepresented as a new shared-graph compiler integration. The dashboard launcher now removes an
+unimplemented phase-coding control and states the estimate/provenance boundary before a search begins.
 
 The run auditor parses Megatron commands, DeepSpeed JSON, vLLM commands, and selected log metrics into one canonical
 record, flags unrecognized options, round-trips supported core fields, and connects known published model names to a
@@ -22,12 +23,14 @@ comparison from user-entered GPU rate and measured throughput. Nomo graph contra
 training exposes a conservative interval-regret Safest plan option.
 Recommendation-sensitive experiment templates can now be downloaded and completed-result CSVs can be loaded back into
 the local calibration fit with candidate-name matching and explicit errors for unknown experiments.
+The landing page now links to real engine specification, deployment, observability, and roadmap-audit documents.
 
 ## Verification
 
 - Python reference: 37 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
+- Landing page production build: passed.
 - Python/TypeScript planner, product, layer, and auditor parity: 14,332 checks passed; worst relative difference 4.37e-16.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
@@ -53,18 +56,22 @@ Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 - Historical Neuromorphic dashboard: https://nomo-engine-dashboard.vercel.app/
 - Landing page: https://nomoailanding.vercel.app/
 
-The engine repository is the only repository changed in this release. The landing repository has no required frontend
-change; its pre-existing untracked research/pilot directory was preserved.
+Both repositories changed in this release. The landing repository's pre-existing untracked `research/pilot` directory
+was preserved and was not committed or deployed as source.
 
-Implementation commit 02692e9 was pushed to `main`. Production deployment: dpl_E4UvJqtuyzH7pC2bXeFekTY2umUr at
-https://nomo-engine-kqn7xk9nz-rangan-alt.vercel.app/. The stable mode-shell alias
+Engine commit b6ebb80 and landing commit 98a91d7 were pushed to their respective default branches. Mode-shell
+production deployment: dpl_DsZowSZrhtsXSMvogFktxiCmC5om at
+https://nomo-engine-qtmjxi7bc-rangan-alt.vercel.app/. The stable mode-shell alias
 https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
-index-CJoHfU4S.js bundle with index-BYBpg4SO.css. The unique URL also returned HTTP 200. Browser module smoke tests
+index-Cx7FVYMF.js bundle with index-BYBpg4SO.css. The unique URL also returned HTTP 200. Browser module smoke tests
 were run after cache-busting the stable alias. The live Product Studio was also checked at
 1440×900 and 390×844; both viewports contained the document without horizontal overflow, and the
 shared graph tablist fit at 390px.
 
+The neuromorphic dashboard deployment dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq and landing deployment
+dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ both completed successfully and were aliased to their stable URLs.
+
 The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.md); the file-level review is in
 [docs/FILE_AUDIT.md](docs/FILE_AUDIT.md). Source bundles are available at
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/ (engine, planner, and landing archives), generated
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/ (engine, planner, and landing archives), generated
 from the final audited tree after the implementation commit.

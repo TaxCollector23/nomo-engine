@@ -84,7 +84,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | 161 | Every module at 1440px and 390px with no console errors | Preview | Desktop/mobile smoke covered the mode shell, Lab, Product Studio, Auditor, Cost Tracker, and graph surfaces; a full scripted every-control accessibility matrix is still open. |
 | 162 | README, Methods, Evidence, docs, PROGRESS | Built | Updated repository documentation and gate reports. |
 | 163–164 | Feature-by-feature final report, verification, assumptions, limitations | Built | `FINAL_REPORT.md` plus this line audit. |
-| 165 | Three updated codebase zips | Built | `release-bundles-*/nomo-engine-*.zip`, `nomo-planner-*.zip`, and `nomo-ai-*.zip`; landing archive contains no changes beyond its preserved pre-existing files. |
+| 165 | Three updated codebase zips | Built | `release-bundles-b6ebb80/nomo-engine-b6ebb80.zip`, `nomo-planner-b6ebb80.zip`, and `nomo-ai-b6ebb80.zip`; landing archive contains no changes beyond its preserved pre-existing files. |
 
 ## Verdict
 
