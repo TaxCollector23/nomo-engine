@@ -9,6 +9,7 @@ import {
   type LayerTrainingPlan,
   type RecomputeMode,
 } from "../planner/layers";
+import { searchServing } from "../planner/serving";
 
 type LayerLocks = Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>;
 
@@ -99,6 +100,13 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
     totalSteps: 1000,
     seed: 20261003,
   }, locks), [graph, locks]);
+  const servingResult = useMemo(() => searchServing({
+    graph,
+    hardware: { devices: graph.parameterCount > 25e9 ? 8 : 1, memoryBytes: 80e9, usableMemory: 0.9, costPerDeviceHour: 3.5 },
+    maxQualityPenaltyPct: 1,
+    maxCandidates: 20000,
+    seed: 20261003,
+  }, locks), [graph, locks]);
   const selected = graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0]!;
   const selectedLock = locks[selected.id] ?? {};
   const best = result.best;
@@ -143,7 +151,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
       <header className="lab-q">
         <p className="section-kicker">Shared model graph</p>
         <h2>Plan the same model layer by layer.</h2>
-        <p className="lab-lede">Upload a Hugging Face <code>config.json</code>. The graph is shared across training, serving, and neuromorphic tabs; this first slice searches training decisions and keeps every assumption visible.</p>
+        <p className="lab-lede">Upload a Hugging Face <code>config.json</code>. The same graph now drives layer-aware training and GPU serving decisions; neuromorphic exports remain owned by the validated compiler.</p>
       </header>
 
       <div className="layer-tabs" role="tablist" aria-label="Shared model graph tabs">
@@ -204,11 +212,30 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
         </div>
       </section>
 
-      {tab !== "train" ? (
+      {tab === "serve" ? (
+        <section className="lab-card layer-answer">
+          <div className="lab-card-head"><h3>Layer-aware serving recommendation</h3><span className={`lab-rel ${servingResult.exhaustive ? "ok" : "warn"}`}>{servingResult.exhaustive ? "Exhaustive" : "Bounded search"}</span></div>
+          {servingResult.best && servingResult.bestMetrics ? <>
+            <p className="layer-plan-summary">Per-node weight precision and attention KV-cache precision are selected from this shared graph.</p>
+            <div className="lab-metrics">
+              <div className="lab-metric"><b>{formatSeconds(servingResult.bestMetrics.objectives.latencyS)}</b><span>estimated request latency</span><small>roofline-style estimate</small></div>
+              <div className="lab-metric"><b>{formatUsd(servingResult.bestMetrics.objectives.costUsdPerRequest)}</b><span>estimated cost / request</span><small>{servingResult.globalBest.plan.weightPrecision.every((value) => value === servingResult.globalBest.plan.weightPrecision[0]) ? "global policy baseline" : "best global policy"}</small></div>
+              <div className="lab-metric"><b>{formatBytes(servingResult.bestMetrics.objectives.memoryBytesPerDevice)}</b><span>memory / GPU</span><small>{graph.parameterCount > 25e9 ? "8-way tensor parallel" : "single GPU estimate"}</small></div>
+              <div className="lab-metric"><b>{servingResult.bestMetrics.objectives.throughputRequestsS.toFixed(2)}</b><span>requests / second</span><small>single-request estimate</small></div>
+              <div className="lab-metric"><b>{servingResult.bestMetrics.qualityPenaltyPct.toFixed(2)}%</b><span>quality penalty assumption</span><small>budget ≤ 1.00%</small></div>
+            </div>
+            <div className="layer-stage-list" aria-label="Serving precision decisions">
+              {graph.nodes.map((node, index) => <div key={node.id} className="layer-stage"><span>{node.kind === "attention" ? "KV" : "W"}</span><div><b>{nodeLabel(node.id)}</b><small>weights {servingResult.best!.weightPrecision[index].toUpperCase()} · KV {servingResult.best!.kvPrecision[index].toUpperCase()}</small></div></div>)}
+            </div>
+            <p className="lab-note">Search evaluated {servingResult.evaluated.toLocaleString("en-US")} repaired candidates with fixed seed {servingResult.seed}. Weights are sharded across the assumed device count; KV cache is conservatively replicated. FP8 quality and throughput must be calibrated with customer evals.</p>
+            {mode === "rigor" && <div className="layer-rigor"><p><b>Per-layer gain:</b> {servingResult.perLayerGainPct.toFixed(1)}% versus the best global weight/KV policy under the same assumptions.</p><p><b>Customer inputs still needed:</b> measured GPU bandwidth, kernel throughput, batching behavior, and quality evaluation.</p></div>}
+          </> : <p role="alert">No serving plan satisfies the current memory and quality assumptions.</p>}
+        </section>
+      ) : tab === "neuromorphic" ? (
         <section className="lab-card layer-coming-soon">
-          <p className="section-kicker">{tab === "serve" ? "Serve on GPUs" : "Neuromorphic deployment"}</p>
+          <p className="section-kicker">Neuromorphic deployment</p>
           <h3>The shared graph is ready for this tab.</h3>
-          <p>{tab === "serve" ? "Per-layer weight and KV-cache precision will consume these same nodes next. No serving recommendation is fabricated in this slice." : "The existing neuromorphic compiler remains the source of truth for NIR and chip exports. This tab will consume the shared graph without changing those exports."}</p>
+          <p>The existing neuromorphic compiler remains the source of truth for NIR and chip exports. This tab will consume the shared graph without changing those exports.</p>
           <span className="lab-rel warn">Not yet a recommendation</span>
         </section>
       ) : (

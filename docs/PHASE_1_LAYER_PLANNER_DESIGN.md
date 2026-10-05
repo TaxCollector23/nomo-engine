@@ -1,6 +1,8 @@
 # Phase 1.1–1.2: shared model graph and per-layer training planner
 
-Status: implementation note for the first layer-aware planning slice.
+Status: implementation note for the layer-aware planning slice. Train and Serve
+are implemented; Neuromorphic graph recommendation/export integration remains
+pending.
 
 ## Objective
 
@@ -34,8 +36,10 @@ layer-aware decisions.
 
 The recommended integration point is `src/planner/layers.ts`: the graph and
 generic layer-search types are independent of the existing domain packs. The
-Python implementation in `nomo-planner/nomo_planner/layers.py` is the
-reference for parsing, graph accounting, repair, and objective semantics.
+Python implementations in `nomo-planner/nomo_planner/layers.py` and
+`nomo-planner/nomo_planner/serving.py` are the references for graph accounting,
+repair, training objectives, and serving precision semantics. The serving port
+is `src/planner/serving.ts`.
 
 ## Sources and formulas
 
@@ -71,8 +75,8 @@ published observations remain unchanged.
 - Add a shared model input that accepts Hugging Face `config.json` text or a
   local JSON file; keep the existing preset models as fallback examples.
 - Add three graph tabs over the same graph: Train, Serve, and Neuromorphic.
-  This slice wires Train first and leaves existing neuromorphic export behavior
-  intact.
+  Train and Serve now produce recommendations; existing neuromorphic export
+  behavior remains intact while shared-graph integration is still pending.
 - Show layer badges, stage boundaries, lock controls, and a baseline-versus-
   layer-aware comparison. Guided mode stays plain; Explore exposes decisions;
   Rigor exposes equations, source labels, and editable assumptions.
@@ -82,8 +86,9 @@ published observations remain unchanged.
 - FP8 quality impact, CPU transfer bandwidth/latency, framework overhead, and
   cluster-specific utilization are assumptions until customer measurements are
   supplied.
-- Per-layer serving and config auditing are intentionally not claimed as
-  complete by this slice. The graph contract is shared so they can consume the
-  same uploaded model next.
+- Per-layer serving is implemented as an estimate/recommendation surface with
+  explicit FP8 quality and GPU bandwidth assumptions. Config auditing is still
+  intentionally not claimed as complete; the graph contract is shared so it
+  can consume the same uploaded model next.
 - Exhaustive search is guaranteed only for the bounded small-space mode. Any
   capped search is explicitly marked non-exhaustive in results and exports.

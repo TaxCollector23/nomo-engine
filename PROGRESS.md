@@ -1,6 +1,6 @@
 # Nomo Engine progress
 
-Current phase: Gate 0 closeout / Phase 1 pending
+Current phase: Gate 0 closeout / Phase 1 serving slice complete
 
 Status: Gate 0 implementation is complete, but its acceptance checklist is not fully closed: the expected positive per-layer gain is not demonstrated under the current assumptions, and dedicated 1440px/390px screenshot evidence is still pending. The multi-mode shell and neuromorphic dashboard are live.
 
@@ -16,14 +16,14 @@ Status: Gate 0 implementation is complete, but its acceptance checklist is not f
 
 ## Verification evidence
 
-- `python -m pytest -q` in `nomo-planner`: 13 passed.
+- `python -m pytest -q` in `nomo-planner`: 17 passed.
 - `npm run build`: passed.
 - `npm run verify`: passed, 14,248 checks, worst relative difference `4.37e-16`.
 - Llama 3 8B and 70B fixed-seed searches are reproducible in the reference and browser engines. Under the current model, precision gain is about 15.8%; per-layer gain is 0% because the current assumptions make uniform FP8 the fastest feasible precision choice. This is reported rather than inflated.
 
 ## Remaining / next
 
-- Phase 1 is partial: the shared graph and Train recommendation exist; Serve has no real per-layer recommendation, and Neuromorphic is a link to the existing dashboard rather than a shared-graph recommendation/export surface.
+- Phase 1 serving slice is now real: the shared graph drives per-node weight precision and attention KV-cache precision, with memory, latency, cost, quality-budget constraints, locks, and bounded/exhaustive search reported in the UI. Neuromorphic remains a link to the existing validated dashboard rather than a shared-graph recommendation/export surface.
 - Phase 2 auditor/log parsing and customer-log calibration are not implemented.
 - Phase 3 has the earlier calibrated-training uncertainty artifact, but the full experiment designer and end-to-end trust layer are not implemented.
 - Phase 4 products (chip design, RL post-training, reliability/goodput, serving fleets, fine-tuning, and TCO/procurement) are not implemented.
@@ -35,9 +35,9 @@ Status: Gate 0 implementation is complete, but its acceptance checklist is not f
 
 | Scope | Status | Evidence / limitation |
 |---|---|---|
-| Gate 0 reference + TypeScript cost/baseline work | Built | 13 pytest tests, `npm run build`, 14,248 parity checks |
+| Gate 0 reference + TypeScript cost/baseline work | Built | 17 pytest tests, `npm run build`, 14,248 parity checks |
 | Gate 0 acceptance | Partial | 0% extra per-layer gain for Llama 3 8B/70B under current assumptions; viewport screenshots pending |
-| Phase 1 shared graph | Partial | Train slice is real; Serve/Neuromorphic shared-graph recommendations are not |
+| Phase 1 shared graph | Partial | Train and Serve recommendations are real; Neuromorphic shared-graph recommendation/export remains pending |
 | Phase 2 auditor/calibration | Not built | No parser, round-trip fixtures, or customer-log refit |
 | Phase 3 uncertainty | Partial foundation | Existing calibrated-training bootstrap only; no experiment designer/full coverage |
 | Phase 4 product packs | Not built | No new packs beyond existing planner domains |
