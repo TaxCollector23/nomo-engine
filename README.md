@@ -135,8 +135,10 @@ with cited formulas and physics-sanity tests; they are not measured product spec
 model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator and provider/physical
 comparison. Rows are hand-entered and not scraped at runtime, and provider prices must be rechecked before procurement.
 
-The gate reports in [docs/](docs/) record what is built and what remains partial. The strict line-by-line audit is in
+The gate reports in [docs/](docs/) record what is built and what remains partial. The current surface specification,
+deployment guide, and observability guide are [`docs/SPEC.md`](docs/SPEC.md), [`docs/DEPLOY.md`](docs/DEPLOY.md), and
+[`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). The strict line-by-line audit is in
 [`docs/ROADMAP_AUDIT.md`](docs/ROADMAP_AUDIT.md). Core DeepSpeed/vLLM round-trip fixtures, editable product inputs and
-JSON/CSV exports, graph-contract re-import, and the conservative training “Safest plan” option are shipped. Binary
+JSON/CSV exports, graph-contract re-import, local completed-experiment CSV ingestion, and the conservative training “Safest plan” option are shipped. Binary
 ONNX/state-dict ingestion, the neuromorphic server adapter, customer/published serving calibration, and broader source
 coverage remain explicitly open.

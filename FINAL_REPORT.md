@@ -20,11 +20,14 @@ reliability/checkpoint goodput, serving fleet sizing, fine-tuning modes, and TCO
 model-card GPU-hour and provider-token price rows plus a local physical-cost calculation and provider/physical
 comparison from user-entered GPU rate and measured throughput. Nomo graph contracts can be re-imported, and calibrated
 training exposes a conservative interval-regret Safest plan option.
+Recommendation-sensitive experiment templates can now be downloaded and completed-result CSVs can be loaded back into
+the local calibration fit with candidate-name matching and explicit errors for unknown experiments.
 
 ## Verification
 
-- Python reference: 36 tests passed.
+- Python reference: 37 tests passed.
 - TypeScript production build: passed.
+- Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Python/TypeScript planner, product, layer, and auditor parity: 14,332 checks passed; worst relative difference 4.37e-16.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
@@ -35,7 +38,7 @@ training exposes a conservative interval-regret Safest plan option.
 |---|---|---|
 | Gate 0 layer-aware training | Partial | Fair baseline and parity shipped; current assumptions show 0% extra per-layer gain; 1440px/390px live viewport checks pass |
 | Gate 1 shared graph | Partial | Train and Serve are real; Neuromorphic graph-contract export is shipped, but placement/compiler integration remains |
-| Gate 2 auditor/calibration | Partial | Parsers, unknown-option warnings, core round-trip fixtures, same-format exports, known-preset recommendation bridge, local CSV fit, and experiment ranking shipped; full framework-option and six-parameter refit remain |
+| Gate 2 auditor/calibration | Partial | Parsers, unknown-option warnings, core round-trip fixtures, same-format exports, known-preset recommendation bridge, local CSV fit, experiment ranking, downloadable templates, and local completed-result ingestion shipped; full framework-option and six-parameter refit remain |
 | Gate 3 uncertainty | Partial foundation | Calibrated A100 bootstrap, probability-best, held-out coverage, and interval-regret Safest plan shipped; serving/co-design validation remains |
 | Gate 4 product packs | Partial Preview | Six reference estimators, editable forms, Python/browser goldens, JSON/CSV preview exports, and Methods equations shipped; joint chip optimization and customer calibration remain |
 | Gate 5 cost tracker | Partial Preview | Five cited rows, physical-cost calculation, provider/physical comparison, and source/as-of labels shipped; broader coverage and freshness checks remain |
@@ -61,6 +64,7 @@ were run after cache-busting the stable alias. The live Product Studio was also 
 1440×900 and 390×844; both viewports contained the document without horizontal overflow, and the
 shared graph tablist fit at 390px.
 
-The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.md). Source bundles are available at
+The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.md); the file-level review is in
+[docs/FILE_AUDIT.md](docs/FILE_AUDIT.md). Source bundles are available at
 C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/ (engine, planner, and landing archives), generated
 from the final audited tree after the implementation commit.

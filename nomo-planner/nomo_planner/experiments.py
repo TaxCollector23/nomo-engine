@@ -7,6 +7,8 @@ import io
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+from .customer_calibration import CustomerObservation
+
 
 @dataclass(frozen=True)
 class ExperimentCandidate:
@@ -58,6 +60,46 @@ def csv_template(ranked: Iterable[RankedExperiment]) -> str:
     for row in rows:
         writer.writerow([row.name, _json(row.config), "", "", "Fill after running this benchmark; values stay local"])
     return output.getvalue()
+
+
+def parse_experiment_results_csv(
+    text: str,
+    candidates: Iterable[ExperimentCandidate | RankedExperiment],
+    *,
+    cluster: str = "experiment-upload",
+) -> list[CustomerObservation]:
+    """Convert completed designer rows into local calibration observations.
+
+    The expected step time comes from the exact candidate emitted by the
+    designer; the observed value must be supplied by the customer. Empty
+    template rows are ignored, while unknown experiment names are rejected so
+    an upload can never silently attach an observation to the wrong plan.
+    """
+    candidate_by_name = {candidate.name: candidate for candidate in candidates}
+    reader = csv.DictReader(io.StringIO(text.strip()))
+    required = {"experiment", "observed_step_s"}
+    if not required.issubset(set(reader.fieldnames or ())):
+        missing = ", ".join(sorted(required - set(reader.fieldnames or ())))
+        raise ValueError(f"experiment results CSV is missing columns: {missing}")
+    rows: list[CustomerObservation] = []
+    for index, row in enumerate(reader, start=2):
+        name = (row.get("experiment") or "").strip()
+        observed_text = (row.get("observed_step_s") or "").strip()
+        if not name and not observed_text:
+            continue
+        if name not in candidate_by_name:
+            raise ValueError(f"row {index} names an experiment that was not in the current designer: {name}")
+        try:
+            observed = float(observed_text)
+        except ValueError as exc:
+            raise ValueError(f"row {index} observed_step_s is not numeric") from exc
+        if observed <= 0:
+            raise ValueError(f"row {index} observed_step_s must be positive")
+        expected = candidate_by_name[name].expected_step_s
+        rows.append(CustomerObservation(f"experiment:{name}", cluster, expected, observed))
+    if not rows:
+        raise ValueError("experiment results CSV contains no completed observations")
+    return rows
 
 
 def _json(value: Mapping[str, Any]) -> str:

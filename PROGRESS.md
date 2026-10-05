@@ -13,13 +13,17 @@ remaining safe implementation slices are committed, pushed, deployed, and respon
 - Reference product estimators and editable browser Product Studio for chip design, RL scheduling, reliability/goodput, fleet sizing, fine-tuning, and TCO, with JSON/CSV exports.
 - Cited cost tracker with model-card compute rows, provider token-price rows, a local physical-cost calculator, and provider-versus-physical comparison.
 - Nomo graph-contract re-import and a conservative interval-regret “Safest plan” option for calibrated training.
+- Downloadable recommendation-experiment CSVs can be loaded back into the browser-local calibration fit; completed rows are matched to the current candidate names and unknown names are rejected.
+- Neuromorphic dashboard typecheck/build is green; the launcher no longer advertises an unimplemented phase-coding control.
 - Gate reports for Gates 0–5 in docs/.
 - Line-by-line roadmap audit in `docs/ROADMAP_AUDIT.md`.
+- File-by-file scope and disposition record in `docs/FILE_AUDIT.md`; linked engine specification, deployment, and observability docs are now present.
 
 ## Verification evidence
 
-- Python: 36 tests passed in nomo-planner.
+- Python: 37 tests passed in nomo-planner.
 - TypeScript production build: passed.
+- Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16.
 - Existing 22-row calibration artifact and fixed-seed layer goldens remain green.
 - Product estimators pass Python physics-sanity tests and browser product golden parity.
@@ -37,7 +41,7 @@ remaining safe implementation slices are committed, pushed, deployed, and respon
 
 - Binary ONNX/state-dict ingestion and the Neuromorphic shared-graph placement/compiler adapter.
 - Full DeepSpeed/vLLM option preservation and arbitrary-model/hardware auditor recommendation.
-- Customer-held-out uncertainty for serving/co-design and automatic experiment-result ingestion.
+- Customer-held-out uncertainty for serving/co-design and server-side/published experiment-result ingestion.
 - Product pack joint chip/software optimization, customer calibration, and richer procurement uncertainty.
 - Broader cost history/coverage and source-freshness checks.
 - Dedicated 1440px/390px live viewport checks pass with no horizontal overflow; a complete every-control accessibility matrix remains open.

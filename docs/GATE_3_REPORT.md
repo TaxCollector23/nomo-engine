@@ -14,4 +14,6 @@ Open:
 
 - Serving and co-design remain point estimates because no published calibration rows are available.
 - The 22-row coverage result is evidence, not a future guarantee.
-- A full safest-plan surface across all packs, customer-held-out validation, and automatic experiment-result ingestion remain to be built.
+- The safest-plan surface is implemented for calibrated training; customer-held-out validation for serving/co-design
+  and server-side/published experiment-result ingestion remain to be built. Completed experiment-result CSVs can be
+  loaded into the browser-local calibration fit with candidate-name validation.

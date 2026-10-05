@@ -133,6 +133,10 @@ export default function Home() {
             Nomo tries thousands of combinations of standard, spiking and physics-based layers, then shows you the best
             trade-offs between energy, speed and accuracy, ready to export.
           </p>
+          <p className="mt-3 max-w-2xl text-xs text-ink-faint">
+            Energy and response time are model estimates; accuracy is a proxy until an oracle evaluation is supplied.
+            Built-in chip values are specifications or placeholders, and custom measurements remain your inputs.
+          </p>
         </div>
         <Link href="/admin" className="text-sm text-ink-muted hover:text-ink">Admin</Link>
       </header>
@@ -244,7 +248,7 @@ export default function Home() {
                 </div>
                 <div className="space-y-4">
                   <fieldset disabled={!search.allow_spiking} className="space-y-2 disabled:opacity-50">
-                    <legend className="mb-1 text-sm text-ink-soft">Spike codes the search may use</legend>
+                    <legend className="mb-1 text-sm text-ink-soft">Supported spike codes</legend>
                     {(["rate", "ttfs"] as const).map((c) => (
                       <label key={c} className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={search.codings.includes(c)} onChange={(e) => toggleCoding(c, e.target.checked)}
@@ -252,10 +256,6 @@ export default function Home() {
                         <Term k={c}>{c === "rate" ? "Rate coding" : "Time-to-first-spike"}</Term>
                       </label>
                     ))}
-                    <label className="flex items-center gap-2 text-sm text-ink-faint">
-                      <input type="checkbox" disabled className="h-4 w-4" />
-                      <Term k="phase">Phase coding</Term><span className="text-2xs">(not modelled yet)</span>
-                    </label>
                   </fieldset>
                   <Slider label={<Term k="crossing_penalty">Discourage style changes</Term>} min={0} max={1} step={0.05}
                     value={search.crossing_penalty} onChange={(v) => setSearch({ crossing_penalty: v })}

@@ -54,7 +54,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | 112 | Hardware distribution | Built for calibrated A100 training | Deterministic stratified bootstrap artifact in `src/planner/uncertainty.json`. |
 | 113–114 | Median + 90% interval and held-out coverage | Preview | Training predictions show intervals; coverage is reported as 18/22 (81.8%) against 90%. Serving/co-design lack published calibration rows. |
 | 115–116 | Probability-best and safest plan | Preview | Probability-best is posterior-draw based for calibrated training; Rigor mode now offers a conservative interval-regret “Safest plan” selection. It is not a guarantee and is not available for uncalibrated packs. |
-| 117–118 | Recommendation-sensitive experiment designer, exact configs, CSV, upload into calibration | Preview | Ranking and CSV template are shipped; a customer can copy results into the local calibration CSV. Automatic one-click experiment-result ingestion remains open. |
+| 117–118 | Recommendation-sensitive experiment designer, exact configs, CSV, upload into calibration | Preview | Ranking and a downloadable CSV template are shipped; completed experiment-result CSV rows can now be loaded locally, matched to the current candidate names, and fed into the local calibration fit without guessing. Server-side result ingestion and published calibration remain open. |
 | 119–120 | Gate 3 | Partial | Coverage study and training interval evidence pass; “intervals everywhere” cannot be honestly closed without serving/co-design observations. |
 
 ## Phase 4 — six paid products
@@ -73,7 +73,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 150–152 | Public cited training rows, provider prices, physical serving comparison | Preview | Five hand-entered cited rows and a local physical-cost calculator are live. Rows are not scraped; broader model history, freshness checks, and explicit row-by-row provider/physical ratio UI remain open. |
+| 150–152 | Public cited training rows, provider prices, physical serving comparison | Preview | Five hand-entered cited rows, a local physical-cost calculator, and row-by-row provider/physical ratios are live. Rows are not scraped; broader model history, uncertainty ranges for every row, and automated freshness checks remain open. |
 | 153 | Gate 5 | Partial | Source links/as-of notes and browser page pass; broader coverage/freshness are not claimed. |
 
 ## Final delivery
