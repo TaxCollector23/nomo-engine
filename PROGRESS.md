@@ -37,7 +37,7 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 - Generic serving/co-design uncertainty with customer-held-out validation and safest-plan UI.
 - Product pack richer input forms and per-pack CSV/config exports; JSON preview export and browser goldens are shipped.
 - Broader cost history/coverage and source-freshness checks.
-- Dedicated 1440px/390px screenshots and final zip bundles.
+- Dedicated 1440px/390px screenshots remain the only packaging/evidence item still open; source bundles are built below.
 
 ## Deployment evidence
 
@@ -46,3 +46,9 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 - Unique URL: https://nomo-engine-8k0dif0wq-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both URLs returned HTTP 200 and served the new index-qN5pH8rH.js bundle.
+
+## Delivery bundles
+
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-7193351/nomo-engine-7193351.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-7193351/nomo-planner-7193351.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-7193351/nomo-ai-7193351.zip

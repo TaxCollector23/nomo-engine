@@ -54,3 +54,7 @@ https://nomo-engine-8k0dif0wq-rangan-alt.vercel.app/. The stable mode-shell alia
 https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
 index-qN5pH8rH.js bundle. The unique URL also returned HTTP 200. Browser module smoke tests
 were run after cache-busting the stable alias.
+
+Source bundles are available at C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-7193351/
+(engine, planner, and landing archives). The only evidence item still open is dedicated 1440px/390px
+screenshot capture.
