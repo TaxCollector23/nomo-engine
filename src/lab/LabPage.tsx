@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS, build, innerPack, withLocks, type DomainId, type Sett
 import { Planner, recommend, type Evaluated } from "../planner/search";
 import { uncertaintyForPlan, UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 import Anatomy from "./Anatomy";
+import Auditor from "./Auditor";
 import { Chips, Field, Info, LinSlider, LogSlider, Segmented, Select, Toggle, fmtNum, fmtTokens } from "./controls";
 import Evidence from "./Evidence";
 import ExportDialog from "./ExportDialog";
@@ -17,7 +18,7 @@ import Methods, { Equations } from "./Methods";
 import TradeoffChart from "./TradeoffChart";
 import "./lab.css";
 
-type ModuleId = DomainId | "layers" | "evidence" | "methods" | "neuromorphic";
+type ModuleId = DomainId | "layers" | "auditor" | "evidence" | "methods" | "neuromorphic";
 type Mode = "guided" | "explore" | "rigor";
 interface Prefs { animate: boolean; anatomy: boolean; whatif: boolean; table: boolean; equations: boolean; provenance: boolean }
 
@@ -33,8 +34,9 @@ const MODULES: { id: ModuleId; n: string; title: string; blurb: string }[] = [
   { id: "llm_inference", n: "03", title: "Serve a model", blurb: "Cheapest tokens at your speed limit" },
   { id: "arch_codesign", n: "04", title: "Design a model", blurb: "What to build for your budget" },
   { id: "neuromorphic", n: "05", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
-  { id: "evidence", n: "06", title: "Evidence", blurb: "22 published runs, predicted" },
-  { id: "methods", n: "07", title: "Methods", blurb: "Equations, verification, references" },
+  { id: "auditor", n: "06", title: "Audit a run", blurb: "Parse configs and observed logs" },
+  { id: "evidence", n: "07", title: "Evidence", blurb: "22 published runs, predicted" },
+  { id: "methods", n: "08", title: "Methods", blurb: "Equations, verification, references" },
 ];
 
 const QUESTIONS: Record<DomainId, string> = {
@@ -333,6 +335,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
 
         <main className="lab-main" id="lab-main">
           {module === "layers" && <LayerPlanner mode={mode} />}
+          {module === "auditor" && <Auditor />}
           {module === "evidence" && <Evidence />}
           {module === "methods" && <Methods />}
           {module === "neuromorphic" && (

@@ -10,9 +10,11 @@ The browser planner includes published config presets for Llama 3 8B, Llama 3 70
 
 The shared graph now also drives a real serving search. It selects per-node weight precision and per-attention-node KV-cache precision, charges tensor-parallel weight memory and conservatively replicated KV memory, applies latency/cost/quality constraints, respects node locks, and reports whether the search was exhaustive or bounded. The Python reference is `nomo-planner/nomo_planner/serving.py`; the browser port is `src/planner/serving.ts`.
 
+The Phase 2 auditor is now a real Lab module. It parses Megatron and vLLM command lines plus DeepSpeed JSON into one canonical run record, attaches observed step-time/throughput/memory log metrics, supports core Megatron round-trip export, and marks absent fields or uncalibrated assumptions instead of filling them with invented values. The Python reference is `nomo-planner/nomo_planner/auditor.py`; the browser port is `src/planner/auditor.ts`.
+
 ## Verification
 
-- Python: 17 tests passed.
+- Python: 21 tests passed.
 - TypeScript production build: passed.
 - Python/TypeScript parity: `npm run verify` passed with 14,248 checks and worst relative difference `4.37e-16`.
 - Regression calibration checks: the existing 22 published calibration predictions still pass unchanged.
@@ -28,7 +30,7 @@ The current formulas are engineering estimates. FP8 quality, GPU memory bandwidt
 | Gate 0 Python-first layer accounting, fair baseline, cost model, presets, parity | Built and verified |
 | Gate 0 expected positive per-layer gain and 1440px/390px screenshot evidence | Not fully satisfied; current assumptions produce 0% extra layer gain and viewport evidence remains pending |
 | Phase 1 shared graph across Train, Serve, and Neuromorphic | Partial; Train and Serve are real, Neuromorphic links to the existing dashboard |
-| Phase 2 config auditor and customer-log calibration | Not built |
+| Phase 2 config auditor and customer-log calibration | Partial; auditor and log attachment are built, customer-log calibration/refitting remains |
 | Phase 3 full uncertainty trust layer and experiment designer | Partial foundation only |
 | Phase 4 chip/RL/reliability/fleet/fine-tuning/TCO products | Not built |
 | Phase 5 public cited cost tracker | Not built |
