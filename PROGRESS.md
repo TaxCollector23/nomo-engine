@@ -44,15 +44,15 @@ remaining safe implementation slices are committed, pushed, deployed, and respon
 
 ## Deployment evidence
 
-- Commit: 29b8503 on main, pushed to github.com/TaxCollector23/nomo-engine.
-- Vercel production deployment: dpl_FjUvGXnLiCr4U5GoTSDWf1zsCKoe.
-- Unique URL: https://nomo-engine-7mnxyawpw-rangan-alt.vercel.app/
+- Implementation commit: 02692e9 on main, pushed to github.com/TaxCollector23/nomo-engine.
+- Vercel production deployment: dpl_E4UvJqtuyzH7pC2bXeFekTY2umUr.
+- Unique URL: https://nomo-engine-kqn7xk9nz-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both URLs returned HTTP 200 and served the new index-Bvqy1GcW.js bundle.
-- Responsive smoke: 1440×900 and 390×844 both passed with document width contained by the viewport.
+- Both URLs returned HTTP 200 and served the final index-CJoHfU4S.js bundle with index-BYBpg4SO.css.
+- Responsive smoke: 1440×900 and 390×844 both passed with document width contained by the viewport; shared graph tabs also fit at 390px.
 
 ## Delivery bundles
 
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29b8503/nomo-engine-29b8503.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29b8503/nomo-planner-29b8503.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29b8503/nomo-ai-29b8503.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-engine-02692e9.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-planner-02692e9.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-02692e9/nomo-ai-02692e9.zip
