@@ -59,11 +59,11 @@ Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 Both repositories changed in this release. The landing repository's pre-existing untracked `research/pilot` directory
 was preserved and was not committed or deployed as source.
 
-Engine commit b6ebb80 and landing commit 98a91d7 were pushed to their respective default branches. Mode-shell
-production deployment: dpl_DsZowSZrhtsXSMvogFktxiCmC5om at
-https://nomo-engine-qtmjxi7bc-rangan-alt.vercel.app/. The stable mode-shell alias
+Engine final commit 29bbd00 and landing commit 98a91d7 were pushed to their respective default branches. Mode-shell
+production deployment: dpl_V495J7gBMhyQQ83HTXP585hPz6AM at
+https://nomo-engine-hdw7htt2j-rangan-alt.vercel.app/. The stable mode-shell alias
 https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
-index-Cx7FVYMF.js bundle with index-BYBpg4SO.css. The unique URL also returned HTTP 200. Browser module smoke tests
+index-Cy47kWqD.js bundle with index-BYBpg4SO.css. The unique URL also returned HTTP 200. Browser module smoke tests
 were run after cache-busting the stable alias. The live Product Studio was also checked at
 1440×900 and 390×844; both viewports contained the document without horizontal overflow, and the
 shared graph tablist fit at 390px.
@@ -73,5 +73,5 @@ dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ both completed successfully and were aliased to
 
 The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.md); the file-level review is in
 [docs/FILE_AUDIT.md](docs/FILE_AUDIT.md). Source bundles are available at
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/ (engine, planner, and landing archives), generated
-from the final audited tree after the implementation commit.
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/ (engine, planner, and landing archives), generated
+from the final audited tree after the final pushed source commit.

@@ -49,17 +49,17 @@ landing page.
 
 ## Deployment evidence
 
-- Engine commit: b6ebb80 on main, pushed to github.com/TaxCollector23/nomo-engine.
-- Mode-shell Vercel production deployment: dpl_DsZowSZrhtsXSMvogFktxiCmC5om.
-- Mode-shell unique URL: https://nomo-engine-qtmjxi7bc-rangan-alt.vercel.app/
+- Engine final commit: 29bbd00 on main, pushed to github.com/TaxCollector23/nomo-engine.
+- Mode-shell Vercel production deployment: dpl_V495J7gBMhyQQ83HTXP585hPz6AM.
+- Mode-shell unique URL: https://nomo-engine-hdw7htt2j-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both mode-shell URLs returned HTTP 200 and served index-Cx7FVYMF.js with index-BYBpg4SO.css.
+- Both mode-shell URLs returned HTTP 200 and served index-Cy47kWqD.js with index-BYBpg4SO.css.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
 - Landing deployment: dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ; stable alias https://nomoailanding.vercel.app/.
 - Responsive smoke: 1440×900 and 390×844 both passed with document width contained by the viewport; shared graph tabs also fit at 390px.
 
 ## Delivery bundles
 
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-engine-b6ebb80.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-planner-b6ebb80.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-b6ebb80/nomo-ai-b6ebb80.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-engine-29bbd00.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-planner-29bbd00.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-ai-29bbd00.zip
