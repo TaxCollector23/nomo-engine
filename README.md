@@ -69,6 +69,9 @@ An interactive planner that runs entirely in the browser (no server):
 | Train a model | How should this model be trained on these GPUs? (parallel layout, ZeRO, recomputation, precision) |
 | Serve a model | Cheapest tokens within a speed limit and quality budget (precision, KV cache, GPUs, batch) |
 | Design a model | Which model to build for a budget and lifetime usage (size, shape, attention type, training length) |
+| Audit a run | What topology and precision did an existing Megatron, DeepSpeed, vLLM, or log describe? |
+| Infrastructure products | What do chip, RL, reliability, fleet, fine-tuning, and TCO assumptions imply? |
+| Cost tracker | Which public compute and provider-price rows have cited evidence, and what must be measured locally? |
 | Evidence | Predictions vs 22 published measured runs (Narayanan et al. 2021), calibrated and not |
 | Methods | Equations, verification, references |
 
@@ -90,7 +93,7 @@ nomo-plan_<question>_<date>/
 ### Engine and verification
 `src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
 on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22
-calibration predictions (14,194 numbers; worst difference 2e-16). `npm run bench` times the searches.
+calibration predictions and product golden cases (14,289 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
 Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
 attention-type quality effects, prices and training utilisation are labelled assumptions.
 
@@ -108,10 +111,28 @@ embedding, attention, MLP, and output nodes with parameter, FLOP, activation, an
 searches bounded per-node precision, recomputation, CPU-offload, and contiguous pipeline-stage candidates, applies locks,
 and compares the selected result with the global-only baseline. Search is exhaustive only for small spaces; larger results
 are labelled bounded. FP8 quality, offload bandwidth, framework overhead, and cluster utilization remain assumptions until
-customer measurements are supplied. Serve and Neuromorphic tabs share the graph contract but do not fabricate a recommendation
-until their per-layer decision packs are implemented.
+customer measurements are supplied. Serve now has a bounded per-layer decision pack using the same graph. Neuromorphic
+can export the same graph as a contract JSON and still opens the validated historical dashboard; no placement recommendation
+or new compiler integration is claimed.
 
 The design note and cited formulas are in [`docs/PHASE_1_LAYER_PLANNER_DESIGN.md`](docs/PHASE_1_LAYER_PLANNER_DESIGN.md).
 
 ### Gate 0 fair per-layer training comparison
 The layer planner now ships published Llama 3 8B, Llama 3 70B, and Mixtral 8x7B presets, with Llama 3 8B as the default and the tiny model only as an example. It compares a per-layer plan with the best global-only plan allowed the same options, reports precision gain separately from per-layer gain, and charges pipeline bubble, inter-stage communication, and CPU activation offload using customer-overridable bandwidth assumptions. Step and whole-run totals use adaptive units. Fixed-seed parity cases live in `scripts/layer-golden.json` and are checked by `npm run verify`.
+
+### Phase 2–5 product slices
+
+The `Audit a run` module parses Megatron commands, DeepSpeed JSON, vLLM commands, and a small set of log metrics into
+one canonical record. It can re-serialize the fields it actually observed in the same source format. A local CSV fit can
+apply a multiplicative customer scale and central 90% range; this is explicitly a customer preview, not a held-out
+calibration claim. Recommendation-sensitive benchmark candidates are ranked by uncertainty divided by benchmark hours.
+DeepSpeed/vLLM export is intentionally loss-aware: unsupported framework fields are not fabricated.
+
+`Infrastructure products` contains reference estimators for chip bottlenecks, RL rollout/training/reward scheduling,
+checkpoint/restart goodput, hourly fleet sizing, fine-tuning modes, and buy/rent TCO. Values are user inputs or examples,
+with cited formulas and physics-sanity tests; they are not measured product specifications. `Cost tracker` contains cited
+model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator. Rows are hand-entered and
+not scraped at runtime, and provider prices must be rechecked before procurement.
+
+The gate reports in [docs/](docs/) record what is built and what remains partial. Generic serving uncertainty, full
+DeepSpeed/vLLM round-trip fixtures, pack-level browser goldens, and 1440px/390px screenshot evidence remain open items.

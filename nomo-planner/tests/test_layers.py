@@ -3,6 +3,7 @@ from nomo_planner.layers import (
     TrainingHardware,
     TrainingProblem,
     balanced_stages,
+    build_neuromorphic_manifest,
     build_graph,
     repair_plan,
     search,
@@ -34,6 +35,15 @@ def test_huggingface_config_expands_ordered_graph_and_totals():
     assert graph.nodes[-1].parameter_count == 0
     assert graph.nodes[1].kv_cache_bytes > 0
     assert graph.parameter_count == sum(node.parameter_count for node in graph.nodes)
+
+
+def test_neuromorphic_manifest_preserves_shared_graph_and_declares_boundary():
+    graph = build_graph(config(), seq_len=16, batch_size=2)
+    manifest = build_neuromorphic_manifest(graph)
+    assert manifest["format"] == "nomo.graph/neuromorphic-preview/1"
+    assert manifest["status"] == "contract-only"
+    assert len(manifest["graph"]["nodes"]) == len(graph.nodes)
+    assert "NIR/C11/RTL" in manifest["export_boundary"]
 
 
 def test_repair_makes_stages_contiguous_and_locks_are_absolute():

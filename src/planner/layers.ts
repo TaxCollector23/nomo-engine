@@ -214,6 +214,28 @@ export function buildLayerGraph(raw: unknown, options: { seqLen?: number; batchS
   };
 }
 
+/** Contract/export artifact for the established neuromorphic compiler boundary. */
+export function buildNeuromorphicManifest(graph: LayerGraph) {
+  return {
+    format: "nomo.graph/neuromorphic-preview/1",
+    status: "contract-only",
+    source: graph.source,
+    graph: {
+      name: graph.name,
+      seqLen: graph.seqLen,
+      batchSize: graph.batchSize,
+      hiddenSize: graph.hiddenSize,
+      layers: graph.layers,
+      attentionHeads: graph.attentionHeads,
+      kvHeads: graph.kvHeads,
+      parameterCount: graph.parameterCount,
+      nodes: graph.nodes,
+    },
+    exportBoundary: "NIR/C11/RTL exports remain owned by the validated compiler dashboard",
+    assumptions: graph.assumptions,
+  };
+}
+
 export function balancedLayerStages(nodeCount: number, stages: number): number[] {
   const count = Math.max(1, Math.min(stages, nodeCount));
   return Array.from({ length: nodeCount }, (_, index) => Math.min(count - 1, Math.floor((index * count) / nodeCount)));

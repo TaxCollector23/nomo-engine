@@ -15,10 +15,12 @@ import Evidence from "./Evidence";
 import ExportDialog from "./ExportDialog";
 import LayerPlanner from "./LayerPlanner";
 import Methods, { Equations } from "./Methods";
+import ProductStudio from "./ProductStudio";
+import CostTracker from "./CostTracker";
 import TradeoffChart from "./TradeoffChart";
 import "./lab.css";
 
-type ModuleId = DomainId | "layers" | "auditor" | "evidence" | "methods" | "neuromorphic";
+type ModuleId = DomainId | "layers" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic";
 type Mode = "guided" | "explore" | "rigor";
 interface Prefs { animate: boolean; anatomy: boolean; whatif: boolean; table: boolean; equations: boolean; provenance: boolean }
 
@@ -35,8 +37,10 @@ const MODULES: { id: ModuleId; n: string; title: string; blurb: string }[] = [
   { id: "arch_codesign", n: "04", title: "Design a model", blurb: "What to build for your budget" },
   { id: "neuromorphic", n: "05", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
   { id: "auditor", n: "06", title: "Audit a run", blurb: "Parse configs and observed logs" },
-  { id: "evidence", n: "07", title: "Evidence", blurb: "22 published runs, predicted" },
-  { id: "methods", n: "08", title: "Methods", blurb: "Equations, verification, references" },
+  { id: "products", n: "07", title: "Infrastructure products", blurb: "RL, reliability, fleets, TCO" },
+  { id: "costs", n: "08", title: "Cost tracker", blurb: "Cited compute and token prices" },
+  { id: "evidence", n: "09", title: "Evidence", blurb: "22 published runs, predicted" },
+  { id: "methods", n: "10", title: "Methods", blurb: "Equations, verification, references" },
 ];
 
 const QUESTIONS: Record<DomainId, string> = {
@@ -336,6 +340,8 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
         <main className="lab-main" id="lab-main">
           {module === "layers" && <LayerPlanner mode={mode} />}
           {module === "auditor" && <Auditor />}
+          {module === "products" && <ProductStudio />}
+          {module === "costs" && <CostTracker />}
           {module === "evidence" && <Evidence />}
           {module === "methods" && <Methods />}
           {module === "neuromorphic" && (

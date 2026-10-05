@@ -1,0 +1,24 @@
+from nomo_planner.customer_calibration import apply_customer_fit, fit_customer_scale, parse_customer_csv
+
+
+def test_customer_csv_refit_recovers_known_scale_and_interval():
+    rows = parse_customer_csv("run_id,cluster,predicted_step_s,observed_step_s\n"
+                             "a,h100,1,1.2\n"
+                             "b,h100,2,2.4\n"
+                             "c,h100,4,4.8\n")
+    fit = fit_customer_scale(rows, cluster="h100")
+    assert fit.observations == 3
+    assert fit.scale == 1.2
+    interval = apply_customer_fit(10, fit)
+    assert interval["median"] == 12
+    assert interval["low"] <= interval["median"] <= interval["high"]
+    assert fit.coverage == 1
+
+
+def test_customer_fit_rejects_missing_or_invalid_values():
+    try:
+        parse_customer_csv("run_id,cluster,predicted_step_s\na,h100,1\n")
+    except ValueError as error:
+        assert "missing columns" in str(error)
+    else:
+        raise AssertionError("missing columns should fail loudly")

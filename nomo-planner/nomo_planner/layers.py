@@ -91,6 +91,33 @@ class ModelGraph:
         return data
 
 
+def build_neuromorphic_manifest(graph: ModelGraph) -> dict[str, Any]:
+    """Serialize the shared graph for the existing compiler boundary.
+
+    This is deliberately a contract/export artifact, not a neuromorphic
+    placement recommendation. NIR, C11, RTL, and chip validation remain owned
+    by the established compiler dashboard.
+    """
+    return {
+        "format": "nomo.graph/neuromorphic-preview/1",
+        "status": "contract-only",
+        "source": graph.source,
+        "graph": {
+            "name": graph.name,
+            "seq_len": graph.seq_len,
+            "batch_size": graph.batch_size,
+            "hidden_size": graph.hidden_size,
+            "layers": graph.layers,
+            "attention_heads": graph.attention_heads,
+            "kv_heads": graph.kv_heads,
+            "parameter_count": graph.parameter_count,
+            "nodes": [asdict(node) for node in graph.nodes],
+        },
+        "export_boundary": "NIR/C11/RTL exports remain owned by the validated compiler dashboard",
+        "assumptions": list(graph.assumptions),
+    }
+
+
 def build_graph(config: Mapping[str, Any], *, seq_len: int = 2048, batch_size: int = 1,
                 source: str = "huggingface-config") -> ModelGraph:
     """Expand a transformer config into one ordered, decision-addressable graph."""

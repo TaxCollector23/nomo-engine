@@ -10,13 +10,14 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers";`));
+export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
 const golden = JSON.parse(readFileSync(new URL("./golden.json", import.meta.url), "utf8").replace(/: (-?)Infinity/g, ': "$1Infinity"'),
   (_k, v) => (v === "Infinity" ? Infinity : v === "-Infinity" ? -Infinity : v));
 const layerGolden = JSON.parse(readFileSync(new URL("./layer-golden.json", import.meta.url), "utf8"));
+const productGolden = JSON.parse(readFileSync(new URL("./product-golden.json", import.meta.url), "utf8"));
 
 let checks = 0, worst = 0;
 const fail = (msg) => { console.error("FAIL:", msg); process.exit(1); };
@@ -57,6 +58,61 @@ for (const c of golden.cases) {
   }
   console.log(`ok  ${c.domain.padEnd(14)} ${JSON.stringify(c.problem).slice(0, 70)}  front ${r.front.length}`);
 }
+const productClose = (a, b, what) => close(a, b, "products " + what);
+const productExact = (a, b, what) => { checks++; if (a !== b) fail("products " + what + ": " + a + " vs " + b); };
+const chip = productGolden.chip;
+const chipResult = E.evaluateChip(chip.spec, chip.workload, chip.precision);
+productClose(chipResult.seconds, chip.expected.seconds, "chip seconds");
+productClose(chipResult.energyJ, chip.expected.energy_j, "chip energy");
+productClose(chipResult.costUsd, chip.expected.cost_usd, "chip cost");
+productExact(chipResult.bottleneck, chip.expected.bottleneck, "chip bottleneck");
+productExact(chipResult.mapping.densePrecision, chip.expected.dense_precision, "chip precision");
+productExact(chipResult.mapping.neuromorphicCores, chip.expected.neuromorphic_cores, "chip neuromorphic cores");
+productExact(E.paretoChips([chip.spec], [chip.workload], chip.precision)[0].chip, "golden", "chip pareto");
+
+const reliability = productGolden.reliability;
+const reliabilityResult = E.evaluateReliability(reliability.problem, reliability.interval);
+productClose(reliabilityResult.goodput, reliability.expected.goodput, "reliability goodput");
+productClose(reliabilityResult.costUsdPerUsefulHour, reliability.expected.cost_usd_per_useful_hour, "reliability cost");
+
+const fleet = productGolden.fleet;
+const fleetResult = E.sizeFleet(fleet.traffic);
+fleetResult.forEach((row, i) => {
+  const expected = fleet.expected[i];
+  productExact(row.replicas, expected.replicas, "fleet " + i + " replicas");
+  productClose(row.approxP99Ms, expected.approx_p99_ms, "fleet " + i + " p99");
+  productExact(row.withinTarget, expected.within_target, "fleet " + i + " target");
+});
+
+const fineTune = productGolden.finetune;
+const fineTuneResult = E.fineTuneOptions(fineTune.problem);
+fineTuneResult.forEach((row, i) => {
+  const expected = fineTune.expected[i];
+  productExact(row.mode, expected.mode, "fine-tune " + i + " mode");
+  productClose(row.memoryBytes, expected.memory_bytes, "fine-tune " + i + " memory");
+  productClose(row.timeHours, expected.time_hours, "fine-tune " + i + " time");
+  productClose(row.costUsd, expected.cost_usd, "fine-tune " + i + " cost");
+  productExact(row.feasible, expected.feasible, "fine-tune " + i + " feasibility");
+});
+
+const tco = productGolden.tco;
+const tcoResult = E.evaluateTco(tco.option);
+productClose(tcoResult.buyUsdPerUsefulHour, tco.expected.buy_usd_per_useful_hour, "TCO buy");
+productClose(tcoResult.rentUsdPerUsefulHour, tco.expected.rent_usd_per_useful_hour, "TCO rent");
+productClose(tcoResult.rangeLow, tco.expected.range_low, "TCO low");
+productClose(tcoResult.rangeHigh, tco.expected.range_high, "TCO high");
+productExact(tcoResult.recommended, tco.expected.recommended, "TCO recommendation");
+
+const rl = productGolden.rl;
+const rlResult = E.evaluateRlPlan(rl.problem, rl.options);
+productClose(rlResult.samplesPerHour, rl.expected.samples_per_hour, "RL samples");
+productClose(rlResult.costUsdPerUpdate, rl.expected.cost_usd_per_update, "RL cost");
+productClose(rlResult.stepSeconds, rl.expected.step_seconds, "RL step");
+productExact(rlResult.schedule, rl.expected.schedule, "RL schedule");
+productExact(rlResult.colocation, rl.expected.colocation, "RL colocation");
+productExact(rlResult.feasible, rl.expected.feasible, "RL feasibility");
+console.log("ok  products: chip, reliability, fleet, fine-tune, TCO, RL goldens");
+
 const pts = E.calibrationPoints();
 golden.calibration.forEach((g, i) => { close(pts[i].measured, g.measured_step_s, "calibration measured"); close(pts[i].predicted, g.predicted_step_s, "calibration predicted"); close(pts[i].uncalibrated, g.predicted_uncalibrated, "calibration uncalibrated"); });
 console.log(`ok  calibration: 22 published runs reproduced`);

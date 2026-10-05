@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import {
   BUILTIN_MODEL_CONFIGS,
   buildLayerGraph,
+  buildNeuromorphicManifest,
   searchLayerTraining,
   type LayerGraph,
   type LayerPrecision,
@@ -60,6 +61,16 @@ function formatParams(value: number): string {
   if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
   if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
   return `${(value / 1e3).toFixed(0)}K`;
+}
+
+function downloadManifest(value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "nomo-neuromorphic-graph-contract.json";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function percentChange(value: number, baseline: number): string {
@@ -234,9 +245,10 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
       ) : tab === "neuromorphic" ? (
         <section className="lab-card layer-coming-soon">
           <p className="section-kicker">Neuromorphic deployment</p>
-          <h3>The shared graph is ready for this tab.</h3>
-          <p>The existing neuromorphic compiler remains the source of truth for NIR and chip exports. This tab will consume the shared graph without changing those exports.</p>
-          <span className="lab-rel warn">Not yet a recommendation</span>
+          <h3>The shared graph is ready at the compiler boundary.</h3>
+          <p>The existing neuromorphic compiler remains the source of truth for NIR and chip exports. Downloading this contract preserves the same layer accounting without pretending that a neuromorphic placement recommendation or silicon validation has been performed.</p>
+          <div className="lab-card-head"><span className="lab-rel warn">Contract/export only</span><button className="ui-button ui-button--outline ui-button--compact" type="button" onClick={() => downloadManifest(buildNeuromorphicManifest(graph))}>Download graph contract</button></div>
+          <p className="lab-note">{graph.nodes.length} shared nodes · {formatParams(graph.parameterCount)} parameters · source: {graph.source}.</p>
         </section>
       ) : (
         <div className="layer-results-grid">

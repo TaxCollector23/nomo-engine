@@ -64,11 +64,55 @@ class AuditRun:
             args += ["--seq-length", str(self.sequence_length)]
         if self.micro_batch_size:
             args += ["--micro-batch-size", str(self.micro_batch_size)]
+        if self.data_parallel:
+            args += ["--data-parallel-size", str(self.data_parallel)]
         if self.precision == "bf16":
             args.append("--bf16")
         elif self.precision == "fp8":
             args.append("--fp8")
         return " ".join(shlex.quote(value) for value in args)
+
+    def to_vllm_command(self) -> str:
+        """Emit the fields vLLM can represent without inventing measurements."""
+        args = ["vllm", "serve", self.model or "<model>"]
+        if self.tensor_parallel > 1:
+            args += ["--tensor-parallel-size", str(self.tensor_parallel)]
+        if self.sequence_length:
+            args += ["--max-model-len", str(self.sequence_length)]
+        if self.micro_batch_size:
+            args += ["--max-num-seqs", str(self.micro_batch_size)]
+        if self.precision == "bf16":
+            args += ["--dtype", "bfloat16"]
+        elif self.precision == "fp16":
+            args += ["--dtype", "float16"]
+        elif self.precision != "unknown":
+            args += ["--dtype", self.precision]
+        return " ".join(shlex.quote(value) for value in args)
+
+    def to_deepspeed_config(self) -> dict[str, Any]:
+        """Emit a conservative DeepSpeed JSON projection of the audit record."""
+        config: dict[str, Any] = {
+            "train_micro_batch_size_per_gpu": self.micro_batch_size or "auto",
+            "tensor_parallel": {"tp_size": self.tensor_parallel},
+            "pipeline_parallel": {"stages": self.pipeline_parallel},
+        }
+        if self.zero_stage is not None:
+            config["zero_optimization"] = {"stage": self.zero_stage}
+        if self.precision == "bf16":
+            config["bf16"] = {"enabled": True}
+        elif self.precision == "fp16":
+            config["fp16"] = {"enabled": True}
+        if self.model:
+            config["model_name_or_path"] = self.model
+        return config
+
+    def export_same_format(self) -> str:
+        """Return a corrected representation in the source format, not a recommendation."""
+        if self.source_format == "vllm":
+            return self.to_vllm_command()
+        if self.source_format == "deepspeed-json":
+            return json.dumps(self.to_deepspeed_config(), indent=2, sort_keys=True)
+        return self.to_megatron_args()
 
 
 def _base(source_format: str, *, command: str | None = None) -> AuditRun:
@@ -128,6 +172,7 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
         warnings.append("DeepSpeed JSON did not enable bf16 or fp16")
     return replace(
         _base("deepspeed-json", command=command),
+        model=str(config.get("model_name_or_path")) if config.get("model_name_or_path") else None,
         micro_batch_size=int(_number(config.get("train_micro_batch_size_per_gpu"), 0) or 0) or None,
         tensor_parallel=int(_number(tensor.get("tp_size", tensor.get("tp", 1)), 1) or 1),
         pipeline_parallel=int(_number(pipeline.get("stages", pipeline) if isinstance(pipeline, Mapping) else pipeline, 1) or 1),

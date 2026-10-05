@@ -1,0 +1,59 @@
+{
+  "chip": {
+    "spec": {
+      "name": "golden",
+      "memoryBandwidthGbps": 1600,
+      "sramGb": 80,
+      "bf16Tops": 1000,
+      "fp8Tops": 2000,
+      "interconnectGbps": 800,
+      "neuromorphicCores": 128,
+      "neuromorphicMemoryGb": 16,
+      "costUsd": 10000,
+      "powerW": 300,
+      "hourlyCostUsd": 2
+    },
+    "workload": { "name": "serve", "denseFlops": 1000000000000000, "memoryBytes": 1000000000000, "spikingOps": 2000000000000 },
+    "precision": "fp8",
+    "expected": {
+      "seconds": 15.625,
+      "energy_j": 4687.5,
+      "cost_usd": 0.008680555555555556,
+      "bottleneck": "neuromorphic",
+      "dense_precision": "fp8",
+      "neuromorphic_cores": 128
+    }
+  },
+  "reliability": {
+    "problem": { "failureRatePerHour": 0.1, "checkpointWriteHours": 0.05, "restartHours": 0.1, "gpuCount": 8, "gpuCostPerHour": 2 },
+    "interval": 0.5,
+    "expected": { "checkpoint_interval_hours": 0.5, "goodput": 0.8810572687224669, "cost_usd_per_useful_hour": 18.16 }
+  },
+  "fleet": {
+    "traffic": [
+      { "hour": 9, "arrivalRps": 100, "serviceRpsPerReplica": 80, "p99TargetMs": 200 },
+      { "hour": 10, "arrivalRps": 200, "serviceRpsPerReplica": 80, "p99TargetMs": 200 }
+    ],
+    "expected": [
+      { "hour": 9, "replicas": 2, "approx_p99_ms": 76.75283643313486, "hourly_cost_usd": 2, "within_target": true },
+      { "hour": 10, "replicas": 4, "approx_p99_ms": 38.37641821656743, "hourly_cost_usd": 4, "within_target": true }
+    ]
+  },
+  "finetune": {
+    "problem": { "parameterCount": 1000000000, "trainingTokens": 10000000000, "memoryBytes": 16000000000, "peakTflops": 100, "gpuMemoryBytes": 80000000000, "gpuCostPerHour": 2, "qualityLoss": { "full": 0, "lora": 0.5, "qlora": 1 } },
+    "expected": [
+      { "mode": "full", "memory_bytes": 256000000000, "time_hours": 166.66666666666666, "cost_usd": 333.3333333333333, "quality_loss": 0, "feasible": false },
+      { "mode": "lora", "memory_bytes": 1280000000, "time_hours": 476.19047619047626, "cost_usd": 952.3809523809525, "quality_loss": 0.5, "feasible": true },
+      { "mode": "qlora", "memory_bytes": 640000000, "time_hours": 666.6666666666666, "cost_usd": 1333.3333333333333, "quality_loss": 1, "feasible": true }
+    ]
+  },
+  "tco": {
+    "option": { "name": "golden", "purchaseUsd": 10000, "leaseUsdPerHour": 1.2, "utilization": 0.5, "years": 3, "hoursPerYear": 1000, "energyUsdPerHour": 0.1, "maintenancePct": 0.1, "priceLowUsd": 8000, "priceHighUsd": 12000 },
+    "expected": { "buy_usd_per_useful_hour": 7.533333333333334, "rent_usd_per_useful_hour": 2.6, "range_low": 6.2, "range_high": 8.866666666666665, "recommended": "rent" }
+  },
+  "rl": {
+    "problem": { "answerLengthP50": 128, "answerLengthP95": 512, "rolloutTokensPerSPerGpu": 1000, "trainTokensPerSPerGpu": 5000, "rewardTokensPerSPerGpu": 2000, "gpuCostPerHour": 2, "trainingTokensPerUpdate": 1000000, "targetSamplesPerHour": 100 },
+    "options": { "rolloutGpus": 2, "trainGpus": 4, "rewardGpus": 1, "colocated": false, "asynchronous": true, "batchSize": 8, "kvPrecision": "fp8" },
+    "expected": { "samples_per_hour": 4280.231070445469, "cost_usd_per_update": 0.0261668115942029, "step_seconds": 6.7286086956521745, "schedule": "async", "colocation": "separate", "feasible": true }
+  }
+}

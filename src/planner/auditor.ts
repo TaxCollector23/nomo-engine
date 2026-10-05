@@ -40,6 +40,48 @@ function positive(value: string | null, fallback: number | null = null): number 
   return Number.isFinite(result) && result > 0 ? result : fallback;
 }
 
+export function toMegatronArgs(run: AuditRun): string {
+  const args = ["torchrun", "pretrain.py", "--tensor-model-parallel-size", String(run.tensorParallel), "--pipeline-model-parallel-size", String(run.pipelineParallel)];
+  if (run.model) args.push("--model", run.model);
+  if (run.sequenceLength) args.push("--seq-length", String(run.sequenceLength));
+  if (run.microBatchSize) args.push("--micro-batch-size", String(run.microBatchSize));
+  if (run.dataParallel) args.push("--data-parallel-size", String(run.dataParallel));
+  if (run.precision === "bf16") args.push("--bf16");
+  else if (run.precision === "fp8") args.push("--fp8");
+  else if (run.precision === "fp16") args.push("--fp16");
+  return args.join(" ");
+}
+
+export function toVllmCommand(run: AuditRun): string {
+  const args = ["vllm", "serve", run.model ?? "<model>"];
+  if (run.tensorParallel > 1) args.push("--tensor-parallel-size", String(run.tensorParallel));
+  if (run.sequenceLength) args.push("--max-model-len", String(run.sequenceLength));
+  if (run.microBatchSize) args.push("--max-num-seqs", String(run.microBatchSize));
+  if (run.precision === "bf16") args.push("--dtype", "bfloat16");
+  else if (run.precision === "fp16") args.push("--dtype", "float16");
+  else if (run.precision !== "unknown") args.push("--dtype", run.precision);
+  return args.join(" ");
+}
+
+export function toDeepSpeedConfig(run: AuditRun): Record<string, unknown> {
+  const config: Record<string, unknown> = {
+    train_micro_batch_size_per_gpu: run.microBatchSize ?? "auto",
+    tensor_parallel: { tp_size: run.tensorParallel },
+    pipeline_parallel: { stages: run.pipelineParallel },
+  };
+  if (run.zeroStage !== null) config.zero_optimization = { stage: run.zeroStage };
+  if (run.precision === "bf16") config.bf16 = { enabled: true };
+  else if (run.precision === "fp16") config.fp16 = { enabled: true };
+  if (run.model) config.model_name_or_path = run.model;
+  return config;
+}
+
+export function exportSameFormat(run: AuditRun): string {
+  if (run.sourceFormat === "vllm") return toVllmCommand(run);
+  if (run.sourceFormat === "deepspeed-json") return JSON.stringify(toDeepSpeedConfig(run), null, 2);
+  return toMegatronArgs(run);
+}
+
 export function parseMegatronCommand(command: string): AuditRun {
   const values = tokens(command);
   const result = base("megatron", command);
@@ -75,9 +117,10 @@ export function parseDeepSpeedConfig(config: Record<string, unknown>, command: s
   const pipeline = (config.pipeline_parallel && typeof config.pipeline_parallel === "object" ? config.pipeline_parallel : config.pipeline_parallel) as Record<string, unknown> | number | undefined;
   const bf16 = (config.bf16 && typeof config.bf16 === "object" ? config.bf16 : {}) as Record<string, unknown>;
   const fp16 = (config.fp16 && typeof config.fp16 === "object" ? config.fp16 : {}) as Record<string, unknown>;
+  result.model = typeof config.model_name_or_path === "string" ? config.model_name_or_path : null;
   result.microBatchSize = positive(String(config.train_micro_batch_size_per_gpu ?? ""));
   result.tensorParallel = positive(String(tensor.tp_size ?? tensor.tp ?? 1), 1)!;
-  result.pipelineParallel = positive(String(typeof pipeline === "object" ? pipeline.stages ?? 1 : pipeline ?? 1), 1)!;
+  result.pipelineParallel = positive(String(pipeline && typeof pipeline === "object" ? pipeline.stages ?? 1 : pipeline ?? 1), 1)!;
   result.precision = bf16.enabled ? "bf16" : fp16.enabled ? "fp16" : "unknown";
   result.zeroStage = positive(String(zero.stage ?? ""));
   if (result.precision === "unknown") result.warnings.push("DeepSpeed JSON did not enable bf16 or fp16");

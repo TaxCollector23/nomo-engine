@@ -13,10 +13,14 @@ def test_megatron_command_extracts_topology_and_roundtrips_core_flags():
 
 
 def test_deepspeed_json_and_vllm_command_are_canonicalized():
-    deep = parse_deepspeed_config({"train_micro_batch_size_per_gpu": 4, "zero_optimization": {"stage": 2}, "tensor_parallel": {"tp_size": 2}, "bf16": {"enabled": True}})
+    deep = parse_deepspeed_config({"model_name_or_path": "meta/llama", "train_micro_batch_size_per_gpu": 4, "zero_optimization": {"stage": 2}, "tensor_parallel": {"tp_size": 2}, "bf16": {"enabled": True}})
     assert (deep.source_format, deep.micro_batch_size, deep.tensor_parallel, deep.zero_stage, deep.precision) == ("deepspeed-json", 4, 2, 2, "bf16")
+    deep_export = json.loads(deep.export_same_format())
+    assert deep_export["model_name_or_path"] == "meta/llama"
+    assert deep_export["tensor_parallel"]["tp_size"] == 2
     vllm = parse_vllm_command("vllm serve meta/llama --tensor-parallel-size 8 --max-model-len 8192 --dtype bfloat16")
     assert (vllm.source_format, vllm.model, vllm.sequence_length, vllm.tensor_parallel, vllm.precision) == ("vllm", "meta/llama", 8192, 8, "bf16")
+    assert "--tensor-parallel-size 8" in vllm.export_same_format()
 
 
 def test_log_metrics_are_attached_without_claiming_calibration():

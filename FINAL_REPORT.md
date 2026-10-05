@@ -1,45 +1,52 @@
 # Nomo Engine delivery report
 
-## Delivered in this release
+## Release scope
 
-The per-layer training slice now has a fair comparison baseline and auditable accounting. A “global baseline” is no longer BF16-only: it searches the same uniform precision, recompute, CPU-offload, and stage choices as the per-layer search. The UI separates the gain attributable to precision from the gain attributable to per-layer choices.
+This release completes the remaining safe, testable slices of the roadmap without presenting estimates as measurements.
 
-The cost model charges pipeline bubble, inter-stage activation transfer, and CPU activation offload. The latter is labelled as a PCIe/host bandwidth assumption and can be overridden in the planner inputs. Adaptive formatting avoids zero-looking timings/costs and shows estimated totals for a 1,000-step run beside per-step values.
+The shared model graph now powers layer-aware Train and a bounded per-layer Serve search. The engine reports precision
+gain separately from additional layer gain, charges pipeline bubble, inter-stage transfer, and CPU activation offload,
+and preserves locks and bounded-search labels. The historical Neuromorphic dashboard remains linked from the mode shell,
+but is not misrepresented as a new shared-graph compiler integration.
 
-The browser planner includes published config presets for Llama 3 8B, Llama 3 70B, and Mixtral 8x7B, defaults to Llama 3 8B, and keeps the tiny transformer only as an example. The Python reference and TypeScript browser engine agree on fixed-seed golden cases for all three.
+The run auditor parses Megatron commands, DeepSpeed JSON, vLLM commands, and selected log metrics into one canonical
+record. It can emit a corrected same-format representation of parsed fields. Customer CSV calibration and
+recommendation-sensitive experiment ranking run in the browser and are visibly labelled as local preview evidence.
 
-The shared graph now also drives a real serving search. It selects per-node weight precision and per-attention-node KV-cache precision, charges tensor-parallel weight memory and conservatively replicated KV memory, applies latency/cost/quality constraints, respects node locks, and reports whether the search was exhaustive or bounded. The Python reference is `nomo-planner/nomo_planner/serving.py`; the browser port is `src/planner/serving.ts`.
-
-The Phase 2 auditor is now a real Lab module. It parses Megatron and vLLM command lines plus DeepSpeed JSON into one canonical run record, attaches observed step-time/throughput/memory log metrics, supports core Megatron round-trip export, and marks absent fields or uncalibrated assumptions instead of filling them with invented values. The Python reference is `nomo-planner/nomo_planner/auditor.py`; the browser port is `src/planner/auditor.ts`.
+The Product Studio adds reference estimators for chip bottlenecks, RL scheduling, reliability/checkpoint goodput,
+serving fleet sizing, fine-tuning modes, and TCO. The Cost Tracker adds cited model-card GPU-hour and provider-token
+price rows plus a local physical-cost calculation from user-entered GPU rate and measured throughput.
 
 ## Verification
 
-- Python: 21 tests passed.
+- Python reference: 32 tests passed.
 - TypeScript production build: passed.
-- Python/TypeScript parity: `npm run verify` passed with 14,248 checks and worst relative difference `4.37e-16`.
-- Regression calibration checks: the existing 22 published calibration predictions still pass unchanged.
+- Python/TypeScript planner and product parity: 14,289 checks passed; worst relative difference 4.37e-16.
+- Existing 22-row calibration artifact and layer golden cases remain green.
+- Product estimator physics-sanity tests passed.
 
-## Honest boundaries
+## Gate status
 
-The current formulas are engineering estimates. FP8 quality, GPU memory bandwidth, framework overhead, batching behavior, and cluster utilisation need customer measurements. With the current assumptions, Llama 3 8B and 70B show about 15.8% training precision gain and 0% additional training per-layer gain; the engine reports that result instead of attributing the FP8 gain to layer decisions. The serving tab is now a real estimate/recommendation surface, but it remains calibration-dependent. Neuromorphic remains a contract surface until its shared-graph recommendation/export integration is implemented.
+| Gate | Status | Evidence / limitation |
+|---|---|---|
+| Gate 0 layer-aware training | Partial | Fair baseline and parity shipped; current assumptions show 0% extra per-layer gain; viewport evidence pending |
+| Gate 1 shared graph | Partial | Train and Serve are real; Neuromorphic graph-contract export is shipped, but placement/compiler integration remains |
+| Gate 2 auditor/calibration | Partial | Parsers, logs, same-format exports, local CSV fit, and experiment ranking shipped; held-out refit remains |
+| Gate 3 uncertainty | Partial foundation | Calibrated A100 bootstrap shipped; serving/co-design and safest-plan study remain |
+| Gate 4 product packs | Partial Preview | Six reference estimators, Python/browser goldens, and JSON preview export shipped; richer forms and customer data remain |
+| Gate 5 cost tracker | Partial Preview | Five cited rows plus physical-cost calculator; broader coverage and freshness checks remain |
 
-## Coverage of the pasted development prompt
+Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 
-| Requirement | Delivery status |
-|---|---|
-| Gate 0 Python-first layer accounting, fair baseline, cost model, presets, parity | Built and verified |
-| Gate 0 expected positive per-layer gain and 1440px/390px screenshot evidence | Not fully satisfied; current assumptions produce 0% extra layer gain and viewport evidence remains pending |
-| Phase 1 shared graph across Train, Serve, and Neuromorphic | Partial; Train and Serve are real, Neuromorphic links to the existing dashboard |
-| Phase 2 config auditor and customer-log calibration | Partial; auditor and log attachment are built, customer-log calibration/refitting remains |
-| Phase 3 full uncertainty trust layer and experiment designer | Partial foundation only |
-| Phase 4 chip/RL/reliability/fleet/fine-tuning/TCO products | Not built |
-| Phase 5 public cited cost tracker | Not built |
-| Final browser matrix, zip bundles, and all phase gate reports | Not complete |
+## Repositories and deployment
 
-The repository and live sites therefore represent a verified Gate 0 implementation plus the restored multi-mode product shell, not completion of the entire pasted roadmap. No later feature is represented as implemented without its engine, tests, and evidence.
+- Engine repository: https://github.com/TaxCollector23/nomo-engine
+- Landing repository: https://github.com/TaxCollector23/nomo-ai
+- Mode shell: https://frontend-gray-ten-c3tj1luab.vercel.app/
+- Historical Neuromorphic dashboard: https://nomo-engine-dashboard.vercel.app/
+- Landing page: https://nomoailanding.vercel.app/
 
-Current live deployment after this release: `dpl_39PKHAJUyv7uk53B15S8rhXnFpwK`. The public mode shell's Serve tab is smoke-tested and its Open Engine link still targets the neuromorphic dashboard.
+The engine repository is the only repository changed in this release. The landing repository has no required frontend
+change; its pre-existing untracked research/pilot directory was preserved.
 
-## Deployment
-
-The engine repository is deployed from `main`. The [frontend-gray-ten URL](https://frontend-gray-ten-c3tj1luab7.vercel.app/) is restored as the multi-mode shell and Lab, latest deployment `dpl_GoSQEvdBYdS6mWPCnqGkJg8h8NDV`; its Neuromorphic chips mode links to the separate [neuromorphic dashboard](https://nomo-engine-dashboard.vercel.app/), deployment `dpl_CyRWoKMFj8fjxx77VP5Y7BeXDgLS`. The [nomo-ai landing page](https://nomoailanding.vercel.app/) was refreshed successfully as deployment `dpl_9xqFV18tFwCVMRKQhV3AQqZ5E6C4`, and its Open Engine links point to the mode shell.
+Deployment IDs and smoke-test URLs are recorded in the release commit after the final production deployment.
