@@ -261,7 +261,7 @@
 /* ---- shared layer graph ---- */
 .layer-planner { display: flex; flex-direction: column; gap: 18px; }
 .layer-planner code, .layer-plan-summary { font-family: var(--mono); font-size: 0.84em; }
-.layer-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--soft-line); padding-bottom: 8px; }
+.layer-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--soft-line); padding-bottom: 8px; min-width: 0; max-width: 100%; }
 .layer-tabs button { border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); padding: 8px 12px; font: inherit; font-size: 0.84rem; cursor: pointer; }
 .layer-tabs button.is-on, .layer-tabs button:focus-visible { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .layer-input-grid, .layer-results-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); gap: 18px; align-items: start; }
