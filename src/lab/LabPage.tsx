@@ -7,7 +7,7 @@ import { CLUSTERS, MODELS } from "../planner/hardware";
 import { DEFAULT_ATTENTION_PENALTY, DEFAULT_QUALITY_LOSS, SCALING_LAWS, feasible, type Choice } from "../planner/packs";
 import { DEFAULT_SETTINGS, build, innerPack, withLocks, type DomainId, type Settings } from "../planner/registry";
 import { Planner, recommend, type Evaluated } from "../planner/search";
-import { uncertaintyForPlan, UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
+import { safestPlan, uncertaintyForPlan, UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 import Anatomy from "./Anatomy";
 import Auditor from "./Auditor";
 import { Chips, Field, Info, LinSlider, LogSlider, Segmented, Select, Toggle, fmtNum, fmtTokens } from "./controls";
@@ -280,6 +280,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const objs = pack?.objectives() ?? [];
   const calib = pack?.calibration ?? null;
   const selectedUncertainty = selected && res ? uncertaintyForPlan(res.uncertainty, selected.plan) : null;
+  const safe = useMemo(() => (res && computed?.pack ? safestPlan(res.uncertainty, res.front, computed.pack.objectives()) : null), [res, computed]);
   const reliability = domain === "llm_training"
     ? (calib ? (res?.uncertainty ? { cls: "warn", text: `Hardware calibrated on ${calib.observations} runs; 90% intervals covered ${UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${Math.round(UNCERTAINTY_VALIDATION.actual * UNCERTAINTY_VALIDATION.n!)} / ${UNCERTAINTY_VALIDATION.n}`} held-out runs` }
       : { cls: "ok", text: `Hardware calibrated on ${calib.observations} published runs (held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}%)` })
@@ -340,7 +341,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
         <main className="lab-main" id="lab-main">
           {module === "layers" && <LayerPlanner mode={mode} />}
           {module === "auditor" && <Auditor />}
-          {module === "products" && <ProductStudio />}
+          {module === "products" && <ProductStudio mode={mode} />}
           {module === "costs" && <CostTracker />}
           {module === "evidence" && <Evidence />}
           {module === "methods" && <Methods />}
@@ -509,6 +510,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                         <p>Intervals come from {res.uncertainty.sampleCount.toLocaleString("en-US")} stratified bootstrap refits of the 22 published A100 runs. Each draw keeps the fitted parameters together and adds a log-time residual draw.</p>
                         <p className="lab-note">Leave-one-out coverage was {UNCERTAINTY_VALIDATION.covered ?? Math.round((UNCERTAINTY_VALIDATION.actual ?? 0) * (UNCERTAINTY_VALIDATION.n ?? 0))}/{UNCERTAINTY_VALIDATION.n ?? "n/a"} ({UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${(UNCERTAINTY_VALIDATION.actual * 100).toFixed(1)}%`}) against a nominal 90% target. With 22 rows, this is validation evidence, not a future guarantee.</p>
                         <p className="lab-note">Source: {res.uncertainty.source}. Serving and co-design remain uncalibrated, so their intervals are not fabricated.</p>
+                        {safe && <p className="lab-note"><button type="button" className="lab-link" onClick={() => setSelKey(planKey(safe))}>Select the safest plan</button> — minimizes the worst normalized regret bound across the displayed interval limits. This is a conservative interval rule, not a guarantee.</p>}
                       </Card>
                     )}
                     {prefs.provenance && (

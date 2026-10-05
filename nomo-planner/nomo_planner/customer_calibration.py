@@ -33,7 +33,10 @@ class CalibrationFit:
     interval_low_scale: float
     interval_high_scale: float
     coverage: float
+    held_out_mape_pct: float | None
+    held_out_observations: int
     method: str = "median multiplicative refit in log-step-time space"
+    validation: str = "leave-one-out error on customer-supplied rows"
 
     def predict(self, predicted_step_s: float) -> float:
         return predicted_step_s * self.scale
@@ -42,7 +45,9 @@ class CalibrationFit:
         return {
             "cluster": self.cluster, "observations": self.observations, "scale": self.scale,
             "residual_sigma": self.residual_sigma, "interval_low_scale": self.interval_low_scale,
-            "interval_high_scale": self.interval_high_scale, "coverage": self.coverage, "method": self.method,
+            "interval_high_scale": self.interval_high_scale, "coverage": self.coverage,
+            "held_out_mape_pct": self.held_out_mape_pct, "held_out_observations": self.held_out_observations,
+            "method": self.method, "validation": self.validation,
         }
 
 
@@ -76,10 +81,18 @@ def fit_customer_scale(rows: Iterable[CustomerObservation], *, cluster: str | No
     low = scale * math.exp(-1.645 * sigma)
     high = scale * math.exp(1.645 * sigma)
     covered = sum(low <= ratio <= high for ratio in ratios) / len(ratios)
+    held_out_errors: list[float] = []
+    if len(ratios) >= 2:
+        for index, row in enumerate(selected):
+            training_ratios = ratios[:index] + ratios[index + 1:]
+            held_out_scale = median(training_ratios)
+            held_out_errors.append(abs((row.observed_step_s / row.predicted_step_s) / held_out_scale - 1) * 100)
     return CalibrationFit(
         cluster=cluster or (selected[0].cluster if len({row.cluster for row in selected}) == 1 else "mixed"),
         observations=len(selected), scale=scale, residual_sigma=sigma,
         interval_low_scale=low, interval_high_scale=high, coverage=covered,
+        held_out_mape_pct=(sum(held_out_errors) / len(held_out_errors)) if held_out_errors else None,
+        held_out_observations=len(held_out_errors),
     )
 
 

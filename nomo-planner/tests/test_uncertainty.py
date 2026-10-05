@@ -11,6 +11,7 @@ from nomo_planner.uncertainty import (  # noqa: E402
     measured_step,
     predictive_interval,
     predict_step,
+    safest_plan,
 )
 
 
@@ -42,3 +43,12 @@ def test_predictive_interval_is_ordered_and_contains_its_median():
     samples = fit_bootstrap(ROWS, replicates=12, seed=4)
     interval = predictive_interval(ROWS[0], samples, seed=8)
     assert interval["low"] <= interval["median"] <= interval["high"]
+
+
+def test_safest_plan_uses_interval_regret_bounds():
+    plans = [{"key": "a"}, {"key": "b"}]
+    intervals = {
+        "a": {"time": {"median": 10, "low": 8, "high": 14}},
+        "b": {"time": {"median": 11, "low": 9, "high": 12}},
+    }
+    assert safest_plan(plans, intervals, [("time", False)]) == plans[1]

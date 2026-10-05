@@ -13,6 +13,8 @@ def test_customer_csv_refit_recovers_known_scale_and_interval():
     assert interval["median"] == 12
     assert interval["low"] <= interval["median"] <= interval["high"]
     assert fit.coverage == 1
+    assert fit.held_out_observations == 3
+    assert fit.held_out_mape_pct is not None and fit.held_out_mape_pct < 1e-12
 
 
 def test_customer_fit_rejects_missing_or_invalid_values():
@@ -22,3 +24,13 @@ def test_customer_fit_rejects_missing_or_invalid_values():
         assert "missing columns" in str(error)
     else:
         raise AssertionError("missing columns should fail loudly")
+
+
+def test_customer_fit_reports_unfitted_error_for_noisy_rows():
+    rows = parse_customer_csv("run_id,cluster,predicted_step_s,observed_step_s\n"
+                             "a,h100,1,1\n"
+                             "b,h100,1,2\n"
+                             "c,h100,1,1\n")
+    fit = fit_customer_scale(rows, cluster="h100")
+    assert fit.held_out_observations == 3
+    assert fit.held_out_mape_pct is not None and fit.held_out_mape_pct > 0

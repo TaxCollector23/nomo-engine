@@ -154,4 +154,34 @@ export function uncertaintyForPlan(result: UncertaintyResult | null | undefined,
   return result?.byPlan[planKey(plan)] ?? null;
 }
 
+/**
+ * Select a conservative plan using the outer predictive interval bounds.
+ * This is an interval-regret safeguard, not a posterior probability claim:
+ * the UI labels it as such and only offers it when calibrated intervals exist.
+ */
+export function safestPlan(result: UncertaintyResult | null | undefined, plans: Evaluated[], objectives: Array<{ name: string; maximize?: boolean }>): Evaluated | null {
+  if (!result?.available || !plans.length || !objectives.length) return null;
+  const rows = plans.map((plan) => ({ plan, uncertainty: uncertaintyForPlan(result, plan.plan) }));
+  if (rows.some((row) => !row.uncertainty)) return null;
+  let best: Evaluated | null = null;
+  let bestRegret = Infinity;
+  for (const row of rows) {
+    let worstRegret = 0;
+    for (const objective of objectives) {
+      const intervals = rows.map((candidate) => candidate.uncertainty!.objectives[objective.name]).filter(Boolean);
+      const current = row.uncertainty!.objectives[objective.name];
+      if (!current || intervals.length !== rows.length) return null;
+      const scale = Math.max(...intervals.map((interval) => Math.abs(interval.median)), 1e-12);
+      const comparator = objective.maximize ? Math.max(...intervals.map((interval) => interval.high)) : Math.min(...intervals.map((interval) => interval.low));
+      const regret = objective.maximize ? Math.max(0, (comparator - current.low) / scale) : Math.max(0, (current.high - comparator) / scale);
+      worstRegret = Math.max(worstRegret, regret);
+    }
+    if (worstRegret < bestRegret - 1e-12 || (Math.abs(worstRegret - bestRegret) <= 1e-12 && (!best || planKey(row.plan.plan) < planKey(best.plan)))) {
+      best = row.plan;
+      bestRegret = worstRegret;
+    }
+  }
+  return best;
+}
+
 export { planKey };

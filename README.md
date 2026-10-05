@@ -123,16 +123,20 @@ The layer planner now ships published Llama 3 8B, Llama 3 70B, and Mixtral 8x7B 
 ### Phase 2–5 product slices
 
 The `Audit a run` module parses Megatron commands, DeepSpeed JSON, vLLM commands, and a small set of log metrics into
-one canonical record. It can re-serialize the fields it actually observed in the same source format. A local CSV fit can
-apply a multiplicative customer scale and central 90% range; this is explicitly a customer preview, not a held-out
-calibration claim. Recommendation-sensitive benchmark candidates are ranked by uncertainty divided by benchmark hours.
+one canonical record. It can re-serialize the fields it actually observed in the same source format and flags options it
+did not understand. A local CSV fit applies a multiplicative customer scale, central 90% range, and leave-one-out error;
+it remains a customer preview, not a published six-parameter refit. Recommendation-sensitive benchmark candidates are
+ranked by uncertainty divided by benchmark hours, and known published model names connect to the shared graph planner.
 DeepSpeed/vLLM export is intentionally loss-aware: unsupported framework fields are not fabricated.
 
 `Infrastructure products` contains reference estimators for chip bottlenecks, RL rollout/training/reward scheduling,
 checkpoint/restart goodput, hourly fleet sizing, fine-tuning modes, and buy/rent TCO. Values are user inputs or examples,
 with cited formulas and physics-sanity tests; they are not measured product specifications. `Cost tracker` contains cited
-model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator. Rows are hand-entered and
-not scraped at runtime, and provider prices must be rechecked before procurement.
+model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator and provider/physical
+comparison. Rows are hand-entered and not scraped at runtime, and provider prices must be rechecked before procurement.
 
-The gate reports in [docs/](docs/) record what is built and what remains partial. Generic serving uncertainty, full
-DeepSpeed/vLLM round-trip fixtures, pack-level browser goldens, and 1440px/390px screenshot evidence remain open items.
+The gate reports in [docs/](docs/) record what is built and what remains partial. The strict line-by-line audit is in
+[`docs/ROADMAP_AUDIT.md`](docs/ROADMAP_AUDIT.md). Core DeepSpeed/vLLM round-trip fixtures, editable product inputs and
+JSON/CSV exports, graph-contract re-import, and the conservative training “Safest plan” option are shipped. Binary
+ONNX/state-dict ingestion, the neuromorphic server adapter, customer/published serving calibration, and broader source
+coverage remain explicitly open.

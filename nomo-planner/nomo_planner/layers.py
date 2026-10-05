@@ -110,6 +110,12 @@ def build_neuromorphic_manifest(graph: ModelGraph) -> dict[str, Any]:
             "layers": graph.layers,
             "attention_heads": graph.attention_heads,
             "kv_heads": graph.kv_heads,
+            "intermediate_size": graph.intermediate_size,
+            "vocab_size": graph.vocab_size,
+            "tied_embeddings": graph.tied_embeddings,
+            "gated_mlp": graph.gated_mlp,
+            "experts": graph.experts,
+            "experts_per_token": graph.experts_per_token,
             "parameter_count": graph.parameter_count,
             "nodes": [asdict(node) for node in graph.nodes],
         },
@@ -118,9 +124,72 @@ def build_neuromorphic_manifest(graph: ModelGraph) -> dict[str, Any]:
     }
 
 
+def build_graph_from_contract(raw: Mapping[str, Any], *, seq_len: int | None = None,
+                              batch_size: int | None = None, source: str | None = None) -> ModelGraph:
+    """Re-import a Nomo graph contract without inferring omitted architecture facts."""
+    candidate = raw.get("graph") if isinstance(raw.get("graph"), Mapping) else raw
+    nodes_raw = candidate.get("nodes") if isinstance(candidate, Mapping) else None
+    if not isinstance(nodes_raw, list) or not nodes_raw:
+        raise ValueError("graph JSON must contain a non-empty nodes list")
+    nodes: list[GraphNode] = []
+    for index, value in enumerate(nodes_raw, start=1):
+        if not isinstance(value, Mapping):
+            raise ValueError(f"graph JSON node {index} is not an object")
+        kind = str(value.get("kind", ""))
+        if kind not in {"embedding", "attention", "mlp", "output"}:
+            raise ValueError(f"graph JSON node {index} has an unsupported kind")
+        def number(*keys: str, default: float = 0.0) -> float:
+            parsed = _first(value, *keys, default=default)
+            try:
+                result = float(parsed)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"graph JSON node {index} has invalid numeric accounting") from exc
+            if result < 0:
+                raise ValueError(f"graph JSON node {index} has negative accounting")
+            return result
+        layer = _first(value, "layer_index", "layerIndex")
+        nodes.append(GraphNode(
+            id=str(value.get("id", "")), kind=kind,
+            layer_index=None if layer is None else int(layer),
+            parameter_count=int(number("parameter_count", "parameterCount")),
+            forward_flops=number("forward_flops", "forwardFlops"),
+            activation_bytes=number("activation_bytes", "activationBytes"),
+            kv_cache_bytes=number("kv_cache_bytes", "kvCacheBytes"),
+            metadata=dict(value.get("metadata", {})) if isinstance(value.get("metadata"), Mapping) else {},
+        ))
+    def positive(*keys: str, default: int) -> int:
+        value = _first(candidate, *keys, default=default)
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("graph JSON has invalid architecture metadata") from exc
+        return parsed if parsed > 0 else default
+    assumptions = list(raw.get("assumptions", [])) if isinstance(raw.get("assumptions"), list) else []
+    assumptions.append("Imported from a Nomo graph contract; missing architecture metadata is not inferred")
+    return ModelGraph(
+        name=str(candidate.get("name", "uploaded-graph")), source=str(raw.get("source", source or "graph-json")),
+        seq_len=positive("seq_len", "seqLen", default=seq_len or 2048),
+        batch_size=positive("batch_size", "batchSize", default=batch_size or 1),
+        hidden_size=positive("hidden_size", "hiddenSize", default=1),
+        layers=positive("layers", default=max(1, max((node.layer_index or -1) + 1 for node in nodes))),
+        attention_heads=positive("attention_heads", "attentionHeads", default=1),
+        kv_heads=positive("kv_heads", "kvHeads", default=1),
+        intermediate_size=positive("intermediate_size", "intermediateSize", default=1),
+        vocab_size=positive("vocab_size", "vocabSize", default=1),
+        tied_embeddings=bool(_first(candidate, "tied_embeddings", "tiedEmbeddings", default=False)),
+        gated_mlp=bool(_first(candidate, "gated_mlp", "gatedMlp", default=False)),
+        experts=_first(candidate, "experts", default=None),
+        experts_per_token=_first(candidate, "experts_per_token", "expertsPerToken", default=None),
+        nodes=tuple(nodes), assumptions=tuple(sorted(set(map(str, assumptions)))),
+    )
+
+
 def build_graph(config: Mapping[str, Any], *, seq_len: int = 2048, batch_size: int = 1,
                 source: str = "huggingface-config") -> ModelGraph:
     """Expand a transformer config into one ordered, decision-addressable graph."""
+
+    if isinstance(config.get("nodes"), list) or isinstance(config.get("graph"), Mapping):
+        return build_graph_from_contract(config, seq_len=seq_len, batch_size=batch_size, source=source)
 
     if seq_len <= 0 or batch_size <= 0:
         raise ValueError("seq_len and batch_size must be positive")

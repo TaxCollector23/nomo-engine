@@ -162,7 +162,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
       <header className="lab-q">
         <p className="section-kicker">Shared model graph</p>
         <h2>Plan the same model layer by layer.</h2>
-        <p className="lab-lede">Upload a Hugging Face <code>config.json</code>. The same graph now drives layer-aware training and GPU serving decisions; neuromorphic exports remain owned by the validated compiler.</p>
+        <p className="lab-lede">Upload a Hugging Face <code>config.json</code> or a Nomo graph JSON contract. The same graph now drives layer-aware training and GPU serving decisions; neuromorphic exports remain owned by the validated compiler.</p>
       </header>
 
       <div className="layer-tabs" role="tablist" aria-label="Shared model graph tabs">
@@ -175,7 +175,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
 
       <div className="layer-input-grid">
         <section className="lab-card">
-          <div className="lab-card-head"><h3>Model config</h3><label className="ui-button ui-button--outline ui-button--compact" htmlFor="layer-config-file">Choose JSON</label></div>
+          <div className="lab-card-head"><h3>Model or graph JSON</h3><label className="ui-button ui-button--outline ui-button--compact" htmlFor="layer-config-file">Choose JSON</label></div>
           <label className="layer-model-select">Built-in model<select aria-label="Built-in model config" value={modelKey} onChange={(event) => selectModel(event.target.value as typeof modelKey)}>{MODEL_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <input id="layer-config-file" className="layer-file" type="file" accept="application/json,.json" onChange={(event) => {
             const file = event.target.files?.[0];
@@ -184,7 +184,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
           }} />
           <textarea aria-label="Hugging Face config JSON" className="layer-config" value={configText} onChange={(event) => setConfigText(event.target.value)} onBlur={() => parseConfig(configText)} spellCheck={false} />
           {error && <p className="layer-error" role="alert">{error}</p>}
-          <p className="lab-note">Default is the published Llama 3 8B config. Tiny demo is an example only. Uploaded fields are parsed from the config; aliases such as <code>n_layer</code> and <code>n_embd</code> are accepted.</p>
+           <p className="lab-note">Default is the published Llama 3 8B config. Tiny demo is an example only. Uploaded Hugging Face fields and exported Nomo graph contracts are parsed; aliases such as <code>n_layer</code> and <code>n_embd</code> are accepted. Binary ONNX/state-dict parsing is not claimed in this browser-only build; export a JSON graph/config first.</p>
         </section>
 
         <section className="lab-card layer-summary">

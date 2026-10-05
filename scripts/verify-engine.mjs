@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels";`));
+  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}auditor";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
@@ -18,6 +18,7 @@ const golden = JSON.parse(readFileSync(new URL("./golden.json", import.meta.url)
   (_k, v) => (v === "Infinity" ? Infinity : v === "-Infinity" ? -Infinity : v));
 const layerGolden = JSON.parse(readFileSync(new URL("./layer-golden.json", import.meta.url), "utf8"));
 const productGolden = JSON.parse(readFileSync(new URL("./product-golden.json", import.meta.url), "utf8"));
+const auditorGolden = JSON.parse(readFileSync(new URL("./auditor-golden.json", import.meta.url), "utf8"));
 
 let checks = 0, worst = 0;
 const fail = (msg) => { console.error("FAIL:", msg); process.exit(1); };
@@ -112,6 +113,21 @@ productExact(rlResult.schedule, rl.expected.schedule, "RL schedule");
 productExact(rlResult.colocation, rl.expected.colocation, "RL colocation");
 productExact(rlResult.feasible, rl.expected.feasible, "RL feasibility");
 console.log("ok  products: chip, reliability, fleet, fine-tune, TCO, RL goldens");
+
+for (const fixture of auditorGolden) {
+  const parsed = fixture.format === "deepspeed-json" ? E.parseDeepSpeedConfig(fixture.input) : fixture.format === "vllm" ? E.parseVllmCommand(fixture.input) : E.parseMegatronCommand(fixture.input);
+  for (const [key, value] of Object.entries(fixture.expected)) {
+    checks++;
+    if (parsed[key] !== value) fail(`auditor ${fixture.name} ${key}: ${parsed[key]} vs ${value}`);
+  }
+  const exported = E.exportSameFormat(parsed);
+  const roundTrip = fixture.format === "deepspeed-json" ? E.parseDeepSpeedConfig(JSON.parse(exported)) : fixture.format === "vllm" ? E.parseVllmCommand(exported) : E.parseMegatronCommand(exported);
+  for (const key of ["model", "sequenceLength", "microBatchSize", "tensorParallel", "pipelineParallel", "dataParallel", "precision", "zeroStage"]) {
+    checks++;
+    if (roundTrip[key] !== parsed[key]) fail(`auditor ${fixture.name} round-trip ${key}: ${roundTrip[key]} vs ${parsed[key]}`);
+  }
+  console.log(`ok  auditor ${fixture.name}`);
+}
 
 const pts = E.calibrationPoints();
 golden.calibration.forEach((g, i) => { close(pts[i].measured, g.measured_step_s, "calibration measured"); close(pts[i].predicted, g.predicted_step_s, "calibration predicted"); close(pts[i].uncalibrated, g.predicted_uncalibrated, "calibration uncalibrated"); });

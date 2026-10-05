@@ -146,9 +146,59 @@ function requiredInt(config: Record<string, unknown>, ...keys: string[]): number
   return Math.floor(value);
 }
 
+function finitePositive(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+/** Re-import the graph contract emitted by the shared graph and neuromorphic tab. */
+function buildGraphFromContract(raw: unknown, options: { seqLen?: number; batchSize?: number; source?: string }): LayerGraph | null {
+  const outer = asRecord(raw);
+  const candidate = asRecord(outer.graph ?? raw);
+  if (!Array.isArray(candidate.nodes)) return null;
+  if (!candidate.nodes.length) throw new Error("graph JSON must contain at least one node");
+  const nodes = candidate.nodes.map((value, index) => {
+    const node = asRecord(value);
+    const kind = String(node.kind ?? "");
+    if (!["embedding", "attention", "mlp", "output"].includes(kind)) throw new Error(`graph JSON node ${index + 1} has an unsupported kind`);
+    const parameterCount = Number(node.parameterCount ?? node.parameter_count);
+    const forwardFlops = Number(node.forwardFlops ?? node.forward_flops ?? 0);
+    const activationBytes = Number(node.activationBytes ?? node.activation_bytes ?? 0);
+    const kvCacheBytes = Number(node.kvCacheBytes ?? node.kv_cache_bytes ?? 0);
+    if (!String(node.id ?? "") || ![parameterCount, forwardFlops, activationBytes, kvCacheBytes].every((v) => Number.isFinite(v) && v >= 0)) {
+      throw new Error(`graph JSON node ${index + 1} is missing numeric accounting fields`);
+    }
+    const layerIndexRaw = node.layerIndex ?? node.layer_index;
+    const layerIndex = layerIndexRaw === null || layerIndexRaw === undefined ? null : Number(layerIndexRaw);
+    return {
+      id: String(node.id), kind: kind as LayerKind, layerIndex: layerIndex === null || !Number.isFinite(layerIndex) ? null : Math.floor(layerIndex),
+      parameterCount, forwardFlops, activationBytes, kvCacheBytes, metadata: asRecord(node.metadata),
+    };
+  });
+  const seqLen = finitePositive(candidate.seqLen ?? candidate.seq_len ?? options.seqLen, 2048);
+  const batchSize = finitePositive(candidate.batchSize ?? candidate.batch_size ?? options.batchSize, 1);
+  const layers = finitePositive(candidate.layers, Math.max(1, ...nodes.map((node) => (node.layerIndex ?? -1) + 1)));
+  const attentionHeads = finitePositive(candidate.attentionHeads ?? candidate.attention_heads, 1);
+  const kvHeads = finitePositive(candidate.kvHeads ?? candidate.kv_heads, attentionHeads);
+  const assumptions = Array.isArray(outer.assumptions) ? outer.assumptions.map(String) : [];
+  assumptions.push("Imported from a Nomo graph contract; missing architecture metadata is not inferred");
+  return {
+    name: String(candidate.name ?? "uploaded-graph"), source: String(outer.source ?? options.source ?? "graph-json"),
+    seqLen, batchSize, hiddenSize: finitePositive(candidate.hiddenSize ?? candidate.hidden_size, 1), layers,
+    attentionHeads, kvHeads, intermediateSize: finitePositive(candidate.intermediateSize ?? candidate.intermediate_size, 1),
+    vocabSize: finitePositive(candidate.vocabSize ?? candidate.vocab_size, 1),
+    tiedEmbeddings: Boolean(candidate.tiedEmbeddings ?? candidate.tied_embeddings), gatedMlp: Boolean(candidate.gatedMlp ?? candidate.gated_mlp),
+    experts: candidate.experts === null || candidate.experts === undefined ? null : finitePositive(candidate.experts, 1),
+    expertsPerToken: candidate.expertsPerToken === null || candidate.expertsPerToken === undefined ? null : finitePositive(candidate.expertsPerToken, 1),
+    nodes, assumptions: [...new Set(assumptions)], parameterCount: nodes.reduce((total, node) => total + node.parameterCount, 0),
+  };
+}
+
 /** Expand a Hugging Face config.json object into the shared ordered graph. */
 export function buildLayerGraph(raw: unknown, options: { seqLen?: number; batchSize?: number; source?: string } = {}): LayerGraph {
   const config = asRecord(raw);
+  const imported = buildGraphFromContract(raw, options);
+  if (imported) return imported;
   const seqLen = options.seqLen ?? 2048;
   const batchSize = options.batchSize ?? 1;
   if (seqLen <= 0 || batchSize <= 0) throw new Error("sequence length and batch size must be positive");
@@ -228,6 +278,12 @@ export function buildNeuromorphicManifest(graph: LayerGraph) {
       layers: graph.layers,
       attentionHeads: graph.attentionHeads,
       kvHeads: graph.kvHeads,
+      intermediateSize: graph.intermediateSize,
+      vocabSize: graph.vocabSize,
+      tiedEmbeddings: graph.tiedEmbeddings,
+      gatedMlp: graph.gatedMlp,
+      experts: graph.experts,
+      expertsPerToken: graph.expertsPerToken,
       parameterCount: graph.parameterCount,
       nodes: graph.nodes,
     },

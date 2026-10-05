@@ -259,6 +259,40 @@ def predictive_interval(row: Observation, samples: Sequence[PosteriorSample], se
     return {"median": _quantile(draws, 0.5), "low": _quantile(draws, 0.05), "high": _quantile(draws, 0.95)}
 
 
+def safest_plan(plans: Sequence[Mapping[str, object]], intervals: Mapping[str, Mapping[str, Mapping[str, float]]],
+                objectives: Sequence[tuple[str, bool]]) -> Mapping[str, object] | None:
+    """Choose the plan with the smallest worst normalized interval-regret bound.
+
+    ``objectives`` contains ``(name, maximize)`` pairs. This is intentionally
+    an interval safeguard, not a claim that correlated posterior regret has
+    been observed; callers should label it accordingly.
+    """
+    if not plans or not objectives:
+        return None
+    rows = [(plan, intervals.get(str(plan.get("key", "")))) for plan in plans]
+    if any(interval is None for _, interval in rows):
+        return None
+    best: Mapping[str, object] | None = None
+    best_regret = float("inf")
+    for plan, interval in rows:
+        assert interval is not None
+        worst = 0.0
+        for name, maximize in objectives:
+            values = [candidate[name] for _, candidate in rows if candidate is not None and name in candidate]
+            current = interval.get(name)
+            if len(values) != len(rows) or current is None:
+                return None
+            scale = max(max(abs(value["median"]) for value in values), 1e-12)
+            comparator = max(value["high"] for value in values) if maximize else min(value["low"] for value in values)
+            regret = max(0.0, (comparator - current["low"]) / scale) if maximize else max(0.0, (current["high"] - comparator) / scale)
+            worst = max(worst, regret)
+        key = str(plan.get("key", ""))
+        best_key = str(best.get("key", "")) if best else ""
+        if worst < best_regret - 1e-12 or (abs(worst - best_regret) <= 1e-12 and key < best_key):
+            best, best_regret = plan, worst
+    return best
+
+
 def sample_manifest(samples: Iterable[PosteriorSample], *, cluster: str, seed: int, source: str) -> dict[str, object]:
     materialized = list(samples)
     return {

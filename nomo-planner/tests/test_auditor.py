@@ -31,6 +31,15 @@ def test_log_metrics_are_attached_without_claiming_calibration():
     assert "calibrated" not in json.dumps(run.as_dict()).lower()
 
 
+def test_unsupported_options_are_flagged_instead_of_silently_dropped():
+    run = parse_megatron_command("torchrun pretrain.py --model meta/llama --bf16 --untested-new-flag 1")
+    assert "--untested-new-flag" in run.unrecognized_options
+    assert "not interpreted" in " ".join(run.warnings)
+
+    deep = parse_deepspeed_config({"bf16": {"enabled": True}, "new_optimizer": {"foo": 1}})
+    assert deep.unrecognized_options == ("new_optimizer",)
+
+
 def test_audit_text_dispatches_json_and_logs():
     run = audit_text('{"fp16":{"enabled":true},"zero_optimization":{"stage":1}}', log="iteration time = 2 s")
     assert run.source_format == "deepspeed-json"

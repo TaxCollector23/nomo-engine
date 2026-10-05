@@ -13,7 +13,10 @@ export interface CalibrationFit {
   intervalLowScale: number;
   intervalHighScale: number;
   coverage: number;
+  heldOutMapePct: number | null;
+  heldOutObservations: number;
   method: string;
+  validation: string;
 }
 
 export function parseCustomerCsv(text: string): CustomerObservation[] {
@@ -49,7 +52,19 @@ export function fitCustomerScale(rows: CustomerObservation[], cluster?: string):
   const intervalLowScale = scale * Math.exp(-1.645 * residualSigma);
   const intervalHighScale = scale * Math.exp(1.645 * residualSigma);
   const coverage = ratios.filter((ratio) => ratio >= intervalLowScale && ratio <= intervalHighScale).length / ratios.length;
-  return { cluster: cluster ?? (new Set(selected.map((row) => row.cluster)).size === 1 ? selected[0]!.cluster : "mixed"), observations: selected.length, scale, residualSigma, intervalLowScale, intervalHighScale, coverage, method: "median multiplicative refit in log-step-time space" };
+  const heldOutErrors = selected.length >= 2 ? ratios.map((_, index) => {
+    const train = ratios.filter((_ratio, trainIndex) => trainIndex !== index);
+    const heldOutScale = median(train);
+    return Math.abs(ratios[index]! / heldOutScale - 1) * 100;
+  }) : [];
+  return {
+    cluster: cluster ?? (new Set(selected.map((row) => row.cluster)).size === 1 ? selected[0]!.cluster : "mixed"),
+    observations: selected.length, scale, residualSigma, intervalLowScale, intervalHighScale, coverage,
+    heldOutMapePct: heldOutErrors.length ? heldOutErrors.reduce((sum, value) => sum + value, 0) / heldOutErrors.length : null,
+    heldOutObservations: heldOutErrors.length,
+    method: "median multiplicative refit in log-step-time space",
+    validation: "leave-one-out error on customer-supplied rows",
+  };
 }
 
 export function applyCustomerFit(predictedStepS: number, fit: CalibrationFit): { median: number; low: number; high: number } {

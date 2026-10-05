@@ -15,3 +15,9 @@ export function physicalCostPerMTok(gpuHourlyCostUsd: number, measuredTokensPerS
   if (!(gpuHourlyCostUsd > 0) || !(measuredTokensPerSecond > 0)) throw new Error("GPU hourly cost and measured throughput must be positive");
   return gpuHourlyCostUsd / 3600 / measuredTokensPerSecond * 1_000_000;
 }
+
+export function compareProviderToPhysical(row: CostRow, gpuHourlyCostUsd: number, measuredTokensPerSecond: number) {
+  if (row.kind !== "provider" || row.outputUsdPerMTok === null) throw new Error("physical comparison requires a provider output-token row");
+  const physical = physicalCostPerMTok(gpuHourlyCostUsd, measuredTokensPerSecond);
+  return { item: row.item, providerOutputUsdPerMTok: row.outputUsdPerMTok, physicalOutputUsdPerMTok: physical, ratio: physical / row.outputUsdPerMTok };
+}

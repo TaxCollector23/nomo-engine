@@ -49,6 +49,7 @@ class AuditRun:
     observed_tokens_per_s: float | None
     observed_memory_bytes: float | None
     warnings: tuple[str, ...] = ()
+    unrecognized_options: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self) | {"warnings": list(self.warnings)}
@@ -119,10 +120,16 @@ def _base(source_format: str, *, command: str | None = None) -> AuditRun:
     return AuditRun(source_format, None, None, None, 1, 1, None, "unknown", None, command, None, None, None, ())
 
 
+def _unknown_options(tokens: list[str], known: set[str]) -> tuple[str, ...]:
+    names = {token.split("=", 1)[0] for token in tokens if token.startswith("--")}
+    return tuple(sorted(names - known))
+
+
 def parse_megatron_command(command: str) -> AuditRun:
     tokens = shlex.split(command)
     result = _base("megatron", command=command)
     warnings: list[str] = []
+    unknown = _unknown_options(tokens, {"--model", "--model-name", "--model-type", "--seq-length", "--max-position-embeddings", "--micro-batch-size", "--micro-batch-size-per-gpu", "--tensor-model-parallel-size", "--tensor-parallel-size", "--pipeline-model-parallel-size", "--pipeline-parallel-size", "--data-parallel-size", "--fp8", "--bf16", "--fp16"})
     result = replace(
         result,
         model=_option(tokens, "--model", "--model-name", "--model-type"),
@@ -137,7 +144,9 @@ def parse_megatron_command(command: str) -> AuditRun:
         warnings.append("model name was not present in the command")
     if result.precision == "unknown":
         warnings.append("precision flag was not present; quality impact is unknown")
-    return replace(result, warnings=tuple(warnings))
+    if unknown:
+        warnings.append(f"options were not interpreted: {', '.join(unknown)}")
+    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown)
 
 
 def parse_vllm_command(command: str) -> AuditRun:
@@ -147,6 +156,7 @@ def parse_vllm_command(command: str) -> AuditRun:
         dtype = "bf16" if dtype == "bfloat16" else "fp16"
     result = _base("vllm", command=command)
     warnings: list[str] = []
+    unknown = _unknown_options(tokens, {"--max-model-len", "--max-seq-len", "--max-num-seqs", "--tensor-parallel-size", "--dtype"})
     result = replace(
         result,
         model=next((token for token in tokens[1:] if not token.startswith("-") and "/" in token), None),
@@ -157,7 +167,9 @@ def parse_vllm_command(command: str) -> AuditRun:
     )
     if result.model is None:
         warnings.append("model path was not detected; pass a Hugging Face model path")
-    return replace(result, warnings=tuple(warnings))
+    if unknown:
+        warnings.append(f"options were not interpreted: {', '.join(unknown)}")
+    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown)
 
 
 def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = None) -> AuditRun:
@@ -168,8 +180,11 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
     fp16 = config.get("fp16") if isinstance(config.get("fp16"), Mapping) else {}
     precision = "bf16" if bf16.get("enabled") else "fp16" if fp16.get("enabled") else "unknown"
     warnings: list[str] = []
+    unknown = tuple(sorted(set(config) - {"model_name_or_path", "train_micro_batch_size_per_gpu", "tensor_parallel", "pipeline_parallel", "zero_optimization", "bf16", "fp16"}))
     if precision == "unknown":
         warnings.append("DeepSpeed JSON did not enable bf16 or fp16")
+    if unknown:
+        warnings.append(f"DeepSpeed fields were not interpreted: {', '.join(unknown)}")
     return replace(
         _base("deepspeed-json", command=command),
         model=str(config.get("model_name_or_path")) if config.get("model_name_or_path") else None,
@@ -178,7 +193,7 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
         pipeline_parallel=int(_number(pipeline.get("stages", pipeline) if isinstance(pipeline, Mapping) else pipeline, 1) or 1),
         precision=precision,
         zero_stage=int(_number(zero.get("stage"), 0) or 0) or None,
-        warnings=tuple(warnings),
+        warnings=tuple(warnings), unrecognized_options=unknown,
     )
 
 

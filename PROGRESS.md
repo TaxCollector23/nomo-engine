@@ -1,6 +1,7 @@
 # Nomo Engine progress
 
-Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; release committed, pushed, deployed, and responsive-smoke-tested.
+Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; the strict roadmap audit and the
+remaining safe implementation slices are committed, pushed, deployed, and responsive-smoke-tested.
 
 ## Completed
 
@@ -8,16 +9,18 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 - Shared-graph Train and bounded Serve recommendations with explicit assumptions and locks.
 - Restored multi-mode shell with the historical Neuromorphic dashboard link.
 - Run auditor for Megatron, DeepSpeed JSON, vLLM, and log metrics, with loss-aware same-format export.
-- Browser-local customer CSV scale fit and recommendation-sensitive experiment ranking.
-- Reference product estimators and browser Product Studio for chip design, RL scheduling, reliability/goodput, fleet sizing, fine-tuning, and TCO.
-- Cited cost tracker with model-card compute rows, provider token-price rows, and a local physical-cost calculator.
+- Browser-local customer CSV scale fit with leave-one-out error, recommendation-sensitive experiment ranking, unknown-option warnings, and a known-preset recommendation bridge.
+- Reference product estimators and editable browser Product Studio for chip design, RL scheduling, reliability/goodput, fleet sizing, fine-tuning, and TCO, with JSON/CSV exports.
+- Cited cost tracker with model-card compute rows, provider token-price rows, a local physical-cost calculator, and provider-versus-physical comparison.
+- Nomo graph-contract re-import and a conservative interval-regret “Safest plan” option for calibrated training.
 - Gate reports for Gates 0–5 in docs/.
+- Line-by-line roadmap audit in `docs/ROADMAP_AUDIT.md`.
 
 ## Verification evidence
 
-- Python: 32 tests passed in nomo-planner.
+- Python: 36 tests passed in nomo-planner.
 - TypeScript production build: passed.
-- Python/TypeScript parity: npm run verify passed, 14,289 checks, worst relative difference 4.37e-16.
+- Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16.
 - Existing 22-row calibration artifact and fixed-seed layer goldens remain green.
 - Product estimators pass Python physics-sanity tests and browser product golden parity.
 
@@ -26,18 +29,18 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 - Gate 0 remains partial because current assumptions show 0% additional per-layer gain for Llama 3 8B/70B, even though precision gain is approximately 15.8%.
 - Neuromorphic remains the existing validated dashboard, not a new shared-graph compiler adapter.
 - Serving and co-design intervals are not calibrated; only A100 training has a published calibration artifact.
-- Customer CSV fitting is local preview evidence, not held-out validation.
-- Product Studio values are examples/user inputs, not measured silicon, queueing, quality, or procurement guarantees.
+- Customer CSV fitting is local preview evidence; leave-one-out error is reported but it is not the published six-parameter hardware refit.
+- Product Studio values are user inputs, not measured silicon, queueing, quality, or procurement guarantees.
 - Cost tracker rows are hand-entered and must be rechecked before procurement.
 
 ## Remaining roadmap work
 
-- Full Neuromorphic shared-graph placement recommendation and compiler adapter; the graph contract export is now shipped.
-- Full DeepSpeed/vLLM option round-trip fixtures and auditor-to-recommendation connection.
-- Generic serving/co-design uncertainty with customer-held-out validation and safest-plan UI.
-- Product pack richer input forms and per-pack CSV/config exports; JSON preview export and browser goldens are shipped.
+- Binary ONNX/state-dict ingestion and the Neuromorphic shared-graph placement/compiler adapter.
+- Full DeepSpeed/vLLM option preservation and arbitrary-model/hardware auditor recommendation.
+- Customer-held-out uncertainty for serving/co-design and automatic experiment-result ingestion.
+- Product pack joint chip/software optimization, customer calibration, and richer procurement uncertainty.
 - Broader cost history/coverage and source-freshness checks.
-- Dedicated 1440px/390px live viewport checks pass with no horizontal overflow; source bundles are built below.
+- Dedicated 1440px/390px live viewport checks pass with no horizontal overflow; a complete every-control accessibility matrix remains open.
 
 ## Deployment evidence
 

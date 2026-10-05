@@ -56,6 +56,13 @@
 
 /* ---- controls ---- */
 .lab-fields { display: flex; flex-direction: column; gap: 16px; }
+.product-input-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 16px; }
+.product-input-grid > div { min-width: 0; }
+.product-field { display: flex; flex-direction: column; gap: 6px; color: var(--ink); font-size: 0.84rem; }
+.product-field input, .product-field select { width: 100%; box-sizing: border-box; font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+.product-check { flex-direction: row; align-items: center; gap: 8px; padding-top: 8px; }
+.product-check input { width: auto; }
+.product-result { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--soft-line); }
 .lab-field-label { font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
 .lab-field-hint { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
 .lab-select { width: 100%; font: inherit; font-size: 0.9rem; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
@@ -317,6 +324,7 @@
   .lab-method-grid, .lab-method-eqs { grid-template-columns: 1fr 1fr; }
   .lab-modal-body { grid-template-columns: 1fr; }
   .layer-input-grid, .layer-results-grid { grid-template-columns: 1fr; }
+  .product-input-grid { grid-template-columns: 1fr; }
   .layer-node-detail { align-items: start; flex-direction: column; }
 }
 @media (max-width: 600px) {

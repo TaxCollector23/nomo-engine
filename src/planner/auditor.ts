@@ -15,10 +15,25 @@ export interface AuditRun {
   observedTokensPerS: number | null;
   observedMemoryBytes: number | null;
   warnings: string[];
+  unrecognizedOptions: string[];
+}
+
+/** Match only the published presets shipped with the shared graph. Unknown model names stay unknown. */
+export function modelConfigKey(model: string | null): "llama3_8b" | "llama3_70b" | "mixtral_8x7b" | null {
+  const value = (model ?? "").toLowerCase();
+  if (value.includes("llama-3-8b") || value.includes("llama3-8b")) return "llama3_8b";
+  if (value.includes("llama-3-70b") || value.includes("llama3-70b")) return "llama3_70b";
+  if (value.includes("mixtral-8x7b") || value.includes("mixtral_8x7b")) return "mixtral_8x7b";
+  return null;
 }
 
 function base(sourceFormat: AuditRun["sourceFormat"], command: string | null = null): AuditRun {
-  return { sourceFormat, model: null, sequenceLength: null, microBatchSize: null, tensorParallel: 1, pipelineParallel: 1, dataParallel: null, precision: "unknown", zeroStage: null, command, observedStepTimeS: null, observedTokensPerS: null, observedMemoryBytes: null, warnings: [] };
+  return { sourceFormat, model: null, sequenceLength: null, microBatchSize: null, tensorParallel: 1, pipelineParallel: 1, dataParallel: null, precision: "unknown", zeroStage: null, command, observedStepTimeS: null, observedTokensPerS: null, observedMemoryBytes: null, warnings: [], unrecognizedOptions: [] };
+}
+
+function unknownOptions(values: string[], known: string[]): string[] {
+  const allowed = new Set(known);
+  return [...new Set(values.filter((value) => value.startsWith("--")).map((value) => value.split("=", 1)[0]).filter((value) => !allowed.has(value)))].sort();
 }
 
 function tokens(command: string): string[] {
@@ -94,6 +109,8 @@ export function parseMegatronCommand(command: string): AuditRun {
   result.precision = values.includes("--fp8") ? "fp8" : values.includes("--bf16") ? "bf16" : values.includes("--fp16") ? "fp16" : "unknown";
   if (!result.model) result.warnings.push("model name was not present in the command");
   if (result.precision === "unknown") result.warnings.push("precision flag was not present; quality impact is unknown");
+  result.unrecognizedOptions = unknownOptions(values, ["--model", "--model-name", "--model-type", "--seq-length", "--max-position-embeddings", "--micro-batch-size", "--micro-batch-size-per-gpu", "--tensor-model-parallel-size", "--tensor-parallel-size", "--pipeline-model-parallel-size", "--pipeline-parallel-size", "--data-parallel-size", "--fp8", "--bf16", "--fp16"]);
+  if (result.unrecognizedOptions.length) result.warnings.push(`options were not interpreted: ${result.unrecognizedOptions.join(", ")}`);
   return result;
 }
 
@@ -107,6 +124,8 @@ export function parseVllmCommand(command: string): AuditRun {
   const dtype = (option(values, "--dtype") ?? "unknown").toLowerCase();
   result.precision = dtype === "bfloat16" ? "bf16" : dtype === "half" || dtype === "float16" ? "fp16" : dtype;
   if (!result.model) result.warnings.push("model path was not detected; pass a Hugging Face model path");
+  result.unrecognizedOptions = unknownOptions(values, ["--max-model-len", "--max-seq-len", "--max-num-seqs", "--tensor-parallel-size", "--dtype"]);
+  if (result.unrecognizedOptions.length) result.warnings.push(`options were not interpreted: ${result.unrecognizedOptions.join(", ")}`);
   return result;
 }
 
@@ -124,6 +143,8 @@ export function parseDeepSpeedConfig(config: Record<string, unknown>, command: s
   result.precision = bf16.enabled ? "bf16" : fp16.enabled ? "fp16" : "unknown";
   result.zeroStage = positive(String(zero.stage ?? ""));
   if (result.precision === "unknown") result.warnings.push("DeepSpeed JSON did not enable bf16 or fp16");
+  result.unrecognizedOptions = Object.keys(config).filter((key) => !["model_name_or_path", "train_micro_batch_size_per_gpu", "tensor_parallel", "pipeline_parallel", "zero_optimization", "bf16", "fp16"].includes(key)).sort();
+  if (result.unrecognizedOptions.length) result.warnings.push(`DeepSpeed fields were not interpreted: ${result.unrecognizedOptions.join(", ")}`);
   return result;
 }
 

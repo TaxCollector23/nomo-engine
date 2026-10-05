@@ -4,6 +4,7 @@ from nomo_planner.layers import (
     TrainingProblem,
     balanced_stages,
     build_neuromorphic_manifest,
+    build_graph_from_contract,
     build_graph,
     repair_plan,
     search,
@@ -44,6 +45,14 @@ def test_neuromorphic_manifest_preserves_shared_graph_and_declares_boundary():
     assert manifest["status"] == "contract-only"
     assert len(manifest["graph"]["nodes"]) == len(graph.nodes)
     assert "NIR/C11/RTL" in manifest["export_boundary"]
+
+
+def test_graph_contract_can_be_reimported_without_reducing_nodes():
+    graph = build_graph(config(), seq_len=16, batch_size=2)
+    restored = build_graph_from_contract(build_neuromorphic_manifest(graph))
+    assert restored.nodes == graph.nodes
+    assert restored.parameter_count == graph.parameter_count
+    assert restored.seq_len == graph.seq_len and restored.batch_size == graph.batch_size
 
 
 def test_repair_makes_stages_contiguous_and_locks_are_absolute():
