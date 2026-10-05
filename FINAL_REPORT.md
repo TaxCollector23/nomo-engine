@@ -36,6 +36,8 @@ The current formulas are engineering estimates. FP8 quality, GPU memory bandwidt
 
 The repository and live sites therefore represent a verified Gate 0 implementation plus the restored multi-mode product shell, not completion of the entire pasted roadmap. No later feature is represented as implemented without its engine, tests, and evidence.
 
+Current live deployment after this release: `dpl_39PKHAJUyv7uk53B15S8rhXnFpwK`. The public mode shell's Serve tab is smoke-tested and its Open Engine link still targets the neuromorphic dashboard.
+
 ## Deployment
 
 The engine repository is deployed from `main`. The [frontend-gray-ten URL](https://frontend-gray-ten-c3tj1luab7.vercel.app/) is restored as the multi-mode shell and Lab, latest deployment `dpl_GoSQEvdBYdS6mWPCnqGkJg8h8NDV`; its Neuromorphic chips mode links to the separate [neuromorphic dashboard](https://nomo-engine-dashboard.vercel.app/), deployment `dpl_CyRWoKMFj8fjxx77VP5Y7BeXDgLS`. The [nomo-ai landing page](https://nomoailanding.vercel.app/) was refreshed successfully as deployment `dpl_9xqFV18tFwCVMRKQhV3AQqZ5E6C4`, and its Open Engine links point to the mode shell.

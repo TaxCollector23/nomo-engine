@@ -29,7 +29,7 @@ Status: Gate 0 implementation is complete, but its acceptance checklist is not f
 - Phase 4 products (chip design, RL post-training, reliability/goodput, serving fleets, fine-tuning, and TCO/procurement) are not implemented.
 - Phase 5 public cost tracker is not implemented.
 - Final zip packaging and full 1440px/390px browser evidence are not complete.
-- Live smoke check: the engine URL resolves to the neuromorphic dashboard and the landing page's Open Engine links resolve to it. Dedicated 1440px/390px screenshot evidence remains a follow-up because the current browser harness does not expose viewport controls in this run.
+- Live smoke check: the public mode shell loads, its Serve tab shows a bounded per-layer recommendation, and its Open Engine link resolves to the neuromorphic dashboard. Dedicated 1440px/390px screenshot evidence remains a follow-up because the current browser harness does not expose viewport controls in this run.
 
 ## Prompt completion matrix
 
