@@ -93,7 +93,7 @@ nomo-plan_<question>_<date>/
 ### Engine and verification
 `src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
 on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22
-calibration predictions and product golden cases (14,289 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
+calibration predictions, layer goldens, product goldens, and auditor fixtures (14,332 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
 Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
 attention-type quality effects, prices and training utilisation are labelled assumptions.
 
