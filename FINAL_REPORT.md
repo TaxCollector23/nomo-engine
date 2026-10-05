@@ -29,7 +29,7 @@ price rows plus a local physical-cost calculation from user-entered GPU rate and
 
 | Gate | Status | Evidence / limitation |
 |---|---|---|
-| Gate 0 layer-aware training | Partial | Fair baseline and parity shipped; current assumptions show 0% extra per-layer gain; viewport evidence pending |
+| Gate 0 layer-aware training | Partial | Fair baseline and parity shipped; current assumptions show 0% extra per-layer gain; 1440px/390px live viewport checks pass |
 | Gate 1 shared graph | Partial | Train and Serve are real; Neuromorphic graph-contract export is shipped, but placement/compiler integration remains |
 | Gate 2 auditor/calibration | Partial | Parsers, logs, same-format exports, local CSV fit, and experiment ranking shipped; held-out refit remains |
 | Gate 3 uncertainty | Partial foundation | Calibrated A100 bootstrap shipped; serving/co-design and safest-plan study remain |
@@ -49,12 +49,12 @@ Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 The engine repository is the only repository changed in this release. The landing repository has no required frontend
 change; its pre-existing untracked research/pilot directory was preserved.
 
-Production deployment: dpl_7DGMkL1bXMiqKXNEN9LdYozXSB6a at
-https://nomo-engine-8k0dif0wq-rangan-alt.vercel.app/. The stable mode-shell alias
+Production deployment: dpl_FjUvGXnLiCr4U5GoTSDWf1zsCKoe at
+https://nomo-engine-7mnxyawpw-rangan-alt.vercel.app/. The stable mode-shell alias
 https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
-index-qN5pH8rH.js bundle. The unique URL also returned HTTP 200. Browser module smoke tests
-were run after cache-busting the stable alias.
+index-Bvqy1GcW.js bundle. The unique URL also returned HTTP 200. Browser module smoke tests
+were run after cache-busting the stable alias. The live Product Studio was also checked at
+1440×900 and 390×844; both viewports contained the document without horizontal overflow.
 
-Source bundles are available at C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-7193351/
-(engine, planner, and landing archives). The only evidence item still open is dedicated 1440px/390px
-screenshot capture.
+Source bundles are available at C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29b8503/
+(engine, planner, and landing archives).

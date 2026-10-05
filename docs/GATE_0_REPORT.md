@@ -19,5 +19,5 @@ Evidence:
 Open acceptance items:
 
 - A positive per-layer gain is not demonstrated by the current assumptions. This is reported, not manufactured.
-- Dedicated 1440px and 390px screenshots are not part of the current evidence bundle.
+- Live 1440px/390px viewport checks pass with no document overflow; screenshot captures were used during the smoke pass.
 - FP8 quality, framework overhead, utilization, and offload bandwidth remain customer-overridable assumptions.
