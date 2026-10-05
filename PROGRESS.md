@@ -1,8 +1,8 @@
 # Nomo Engine progress
 
-Current phase: Gate 0 — per-layer training integrity
+Current phase: Gate 0 closeout / Phase 1 pending
 
-Status: Gate 0 implementation and parity checks complete. The multi-mode shell and neuromorphic dashboard are both live.
+Status: Gate 0 implementation is complete, but its acceptance checklist is not fully closed: the expected positive per-layer gain is not demonstrated under the current assumptions, and dedicated 1440px/390px screenshot evidence is still pending. The multi-mode shell and neuromorphic dashboard are live.
 
 ## Completed
 
@@ -23,6 +23,23 @@ Status: Gate 0 implementation and parity checks complete. The multi-mode shell a
 
 ## Remaining / next
 
-- Serve and neuromorphic per-layer recommendation packs remain Preview/contract surfaces; no recommendation is fabricated there.
-- Auditor/log calibration, calibrated uncertainty for new packs, product packs, and the cost tracker are not yet implemented.
+- Phase 1 is partial: the shared graph and Train recommendation exist; Serve has no real per-layer recommendation, and Neuromorphic is a link to the existing dashboard rather than a shared-graph recommendation/export surface.
+- Phase 2 auditor/log parsing and customer-log calibration are not implemented.
+- Phase 3 has the earlier calibrated-training uncertainty artifact, but the full experiment designer and end-to-end trust layer are not implemented.
+- Phase 4 products (chip design, RL post-training, reliability/goodput, serving fleets, fine-tuning, and TCO/procurement) are not implemented.
+- Phase 5 public cost tracker is not implemented.
+- Final zip packaging and full 1440px/390px browser evidence are not complete.
 - Live smoke check: the engine URL resolves to the neuromorphic dashboard and the landing page's Open Engine links resolve to it. Dedicated 1440px/390px screenshot evidence remains a follow-up because the current browser harness does not expose viewport controls in this run.
+
+## Prompt completion matrix
+
+| Scope | Status | Evidence / limitation |
+|---|---|---|
+| Gate 0 reference + TypeScript cost/baseline work | Built | 13 pytest tests, `npm run build`, 14,248 parity checks |
+| Gate 0 acceptance | Partial | 0% extra per-layer gain for Llama 3 8B/70B under current assumptions; viewport screenshots pending |
+| Phase 1 shared graph | Partial | Train slice is real; Serve/Neuromorphic shared-graph recommendations are not |
+| Phase 2 auditor/calibration | Not built | No parser, round-trip fixtures, or customer-log refit |
+| Phase 3 uncertainty | Partial foundation | Existing calibrated-training bootstrap only; no experiment designer/full coverage |
+| Phase 4 product packs | Not built | No new packs beyond existing planner domains |
+| Phase 5 cost tracker | Not built | No cited public tracker |
+| Final delivery zips | Not built | Reports and repositories are updated; zips are still outstanding |
