@@ -49,4 +49,8 @@ Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 The engine repository is the only repository changed in this release. The landing repository has no required frontend
 change; its pre-existing untracked research/pilot directory was preserved.
 
-Deployment IDs and smoke-test URLs are recorded in the release commit after the final production deployment.
+Production deployment: dpl_CiCpKxCbzX4dqgxMpS7aFX1sMorw at
+https://nomo-engine-30c55bbyz-rangan-alt.vercel.app/. The stable mode-shell alias
+https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
+index-qN5pH8rH.js bundle. The unique URL also returned HTTP 200. Browser module smoke tests
+were run after cache-busting the stable alias.

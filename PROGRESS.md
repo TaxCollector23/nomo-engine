@@ -1,6 +1,6 @@
 # Nomo Engine progress
 
-Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; final audit/deployment in progress.
+Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; release committed, pushed, deployed, and smoke-tested.
 
 ## Completed
 
@@ -38,3 +38,11 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 - Product pack richer input forms and per-pack CSV/config exports; JSON preview export and browser goldens are shipped.
 - Broader cost history/coverage and source-freshness checks.
 - Dedicated 1440px/390px screenshots and final zip bundles.
+
+## Deployment evidence
+
+- Commit: 3a8adac on main, pushed to github.com/TaxCollector23/nomo-engine.
+- Vercel production deployment: dpl_CiCpKxCbzX4dqgxMpS7aFX1sMorw.
+- Unique URL: https://nomo-engine-30c55bbyz-rangan-alt.vercel.app/
+- Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
+- Both URLs returned HTTP 200 and served the new index-qN5pH8rH.js bundle.
