@@ -299,7 +299,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
           </p>
         </div>
         <div className="lab-top-stats" aria-label="Lab facts">
-          <div className="lab-stat"><b>14,194</b><span>checks against the reference engine</span></div>
+          <div className="lab-stat"><b>14,289</b><span>checks against the reference engine</span></div>
           <div className="lab-stat"><b>22</b><span>published runs used for calibration</span></div>
           <div className="lab-stat"><b>0</b><span>servers: everything runs in this page</span></div>
         </div>
