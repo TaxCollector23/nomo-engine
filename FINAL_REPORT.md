@@ -12,9 +12,10 @@ Simulation Workbench and Evidence registry, and the platform layer persists proj
 HTML/PDF reports, and preview simulations through a CLI, HTTP API, SDK, and MCP-style JSON-RPC surface.
 
 The serious-criteria boundary is explicit. The checked-in Study 1 training artifact retains 5.9% held-out PTD-P,
-0.94 Spearman, and 18/22 (81.8%) nominal-90% interval coverage. The serving simulator is fully implemented and
-tested, but no numeric public serving trace or customer telemetry was supplied, so serving/customer validation stays
-Preview and is not presented as measured.
+0.94 Spearman, and 18/22 (81.8%) nominal-90% interval coverage. The serving simulator is fully implemented and tested
+against 12 measured Sarathi-Serve Table 4 rows. The derived replay matches all 12 rows with 72.98% MAPE; because the
+paper's raw request trace was not supplied, this is traceable comparison evidence rather than a claim of raw-trace
+reproduction. Customer validation remains Preview and is not presented as measured.
 
 This release closes the remaining safe, testable slices identified by the strict roadmap audit without presenting
 estimates as measurements. It does not claim that data-dependent or cross-repository compiler work is complete.
@@ -41,13 +42,17 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 94 tests passed.
+- Python reference: 103 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
 - Python/TypeScript planner, product, layer, and auditor parity: 14,332 checks passed; worst relative difference 4.37e-16.
 - Serious simulation golden: 123 checks passed, including zero-bubble, parallel-collective, embedding-dependency, and
   repaired NSGA-II coverage.
+- Public serving validation: Sarathi-Serve Table 4 fixture contains 12 measured rows; the reproducible replay matched
+  12/12 and reported 72.98% MAPE without filling missing data.
+- Artifact boundaries: Hugging Face/Nomo JSON, safetensors metadata, Prometheus text, and safe ONNX/state-dict preview
+  inspection are tested; full ONNX lowering and unsafe pickle loading remain explicit boundaries.
 - Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.

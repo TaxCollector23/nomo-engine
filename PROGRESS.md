@@ -1,8 +1,8 @@
 # Nomo Engine progress
 
-Current release status: the serious simulation-core implementation is committed, pushed, deployed, and smoke-tested
-across the Lab and the historical Neuromorphic dashboard link. Evidence-dependent serving/customer rows remain
-explicitly Preview until auditable measurement artifacts are supplied.
+Current release status: the serious simulation-core implementation and the cited public serving comparison are
+implemented, tested, and ready for the next production deployment. Customer evidence, raw serving traces, and the
+neuromorphic compiler adapter remain explicitly Preview/open where the required artifacts or server contract are absent.
 
 ## 2026-10-05 simulation-core implementation
 
@@ -19,7 +19,19 @@ explicitly Preview until auditable measurement artifacts are supplied.
 - Added a deterministic, repair-aware NSGA-II search utility with population/generation/evaluation provenance and
   focused tests for constrained genomes.
 - Honest gate boundary: Study 1 training evidence is present (5.9% PTD-P, 0.94 Spearman, 18/22 interval coverage),
-  but no customer telemetry or numeric public serving validation fixture has been invented; those rows remain Preview.
+  and 12 measured Sarathi-Serve Table 4 serving rows are imported. The derived replay matches all 12 rows but has
+  72.98% MAPE because the paper's raw request trace is unavailable; customer telemetry remains Preview.
+
+## 2026-10-06 evidence and input-boundary pass
+
+- Added the cited Sarathi-Serve Table 4 fixture, reproducible derived replay, 12/12 matching-row report, and Evidence
+  dashboard row with a direct source link and explicit 72.98% MAPE Preview boundary.
+- Added safe Hugging Face/Nomo JSON, safetensors metadata, Prometheus text, and optional ONNX/state-dict inspection;
+  binary weights are never implicitly unpickled. Exposed model inspection through the platform service and CLI.
+- Preserved unknown Megatron/vLLM CLI tokens and DeepSpeed JSON fields in same-format audit exports while flagging them
+  as semantically unvalidated.
+- Verification after this pass: 103 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
+  simulation golden checks.
 
 ## Completed
 
@@ -39,7 +51,7 @@ explicitly Preview until auditable measurement artifacts are supplied.
 
 ## Verification evidence
 
-- Python: 94 tests passed in nomo-planner.
+- Python: 103 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
@@ -58,7 +70,8 @@ explicitly Preview until auditable measurement artifacts are supplied.
 
 ## Remaining roadmap work
 
-- Binary ONNX/state-dict ingestion and the Neuromorphic shared-graph placement/compiler adapter.
+- Safe ONNX/state-dict inspection is implemented in the Python boundary; full binary graph lowering and the
+  Neuromorphic shared-graph placement/compiler adapter still require the hosted compiler contract.
 - Full DeepSpeed/vLLM option preservation and arbitrary-model/hardware auditor recommendation.
 - Customer-held-out uncertainty for serving/co-design and server-side/published experiment-result ingestion.
 - Product pack joint chip/software optimization, customer calibration, and richer procurement uncertainty.

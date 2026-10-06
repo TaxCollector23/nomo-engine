@@ -150,6 +150,25 @@ def test_training_simulation_uses_stored_artifacts_and_is_labeled_preview(store)
     assert preview["timeline"]
 
 
+def test_model_artifact_inspection_is_available_through_the_service(store):
+    service = PlatformService(store)
+    inspected = service.dispatch("artifacts.inspect_model", {"content": {
+        "model_type": "llama", "hidden_size": 8, "num_hidden_layers": 1,
+        "num_attention_heads": 2, "intermediate_size": 16, "vocab_size": 32,
+    }})
+    assert inspected["format"] == "huggingface-config"
+    assert inspected["status"] == "ready"
+
+    project = store.create_project("artifact inspection")
+    stored = store.create_artifact(project["id"], "config.json", {
+        "model_type": "llama", "hidden_size": 8, "num_hidden_layers": 1,
+        "num_attention_heads": 2, "intermediate_size": 16, "vocab_size": 32,
+    })
+    stored_result = service.dispatch("artifacts.inspect_model", {"artifact_id": stored["id"]})
+    assert stored_result["stored_artifact"]["id"] == stored["id"]
+    assert stored_result["artifact"]["status"] == "ready"
+
+
 def test_serving_simulation_and_http_surface_include_preview_and_comparison(store):
     local = PlatformClient(store=store)
     project = local.create_project("api sim")

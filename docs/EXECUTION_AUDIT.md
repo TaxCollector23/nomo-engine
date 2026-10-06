@@ -11,7 +11,9 @@ The simulation core is Python-first in `nomo-planner/nomo_planner/` so calibrati
 and reference behavior remain inspectable. A deterministic TypeScript/Web Worker port is required for
 browser-visible simulations and is verified against Python goldens. Large searches and uncertainty
 sampling may run through the Python API/CLI; the browser uses a Worker for responsive local runs and
-shows measured runtime. This decision is provisional until the first benchmark records both paths.
+shows measured runtime. Representative Python workloads are recorded at 2.12 ms training, 13.16 ms serving, and
+1.24 ms product; the TypeScript golden run is 173.90 ms including bundling, and the production Worker dispatch path
+is smoke-tested. Large searches remain server-side because their input and sampling sizes are not a browser budget.
 
 ## Layer 1 — simulation core and Gate A
 
@@ -21,18 +23,18 @@ shows measured runtime. This decision is provisional until the first benchmark r
 | C2 | Shape/precision-aware roofline kernel model | IMPLEMENTED / PREVIEW | Roofline functions support precision/shape efficiency curves and provenance; `simcalibration.py` imports measured operator/topology CSV. No customer microbenchmark artifact is checked in, so absolute hardware numbers stay Preview. |
 | C3 | Hardware topology and collective model | IMPLEMENTED / PREVIEW | Topology IR includes devices, hosts, switches, NIC/fabric links, bandwidth/latency, path routing, and ring/tree/hierarchical planning. Default browser links are placeholders until measured topology input is supplied. |
 | C4 | Training discrete-event simulator | IMPLEMENTED / PREVIEW | Compute/communication streams, dependencies, pipeline transfers, GPipe/1F1B/interleaved/zero-bubble policy labels, data/tensor/sequence/context/expert parallel, ZeRO/FSDP flags, recompute/offload, and memory timelines are implemented and tested. Zero-bubble ordering is explicitly analytical, not a runtime scheduler. |
-| C5 | Request-level serving simulator | IMPLEMENTED / PREVIEW | `serving_sim.py` supports replay/generated arrivals, prompt/answer distributions, batching, paged KV, eviction/preemption, prefix caching, chunked prefill, speculation, PD disaggregation, TP/replicas, and TTFT/ITL/goodput/KV distributions. No public serving measurement fixture is imported yet. |
+| C5 | Request-level serving simulator | IMPLEMENTED / PREVIEW | `serving_sim.py` supports replay/generated arrivals, prompt/answer distributions, batching, paged KV, eviction/preemption, prefix caching, chunked prefill, speculation, PD disaggregation, TP/replicas, and TTFT/ITL/goodput/KV distributions. The cited Sarathi-Serve Table 4 fixture imports 12 measured rows; the derived replay matches all rows but reports 72.98% MAPE because the raw trace is unavailable. |
 | C6 | Parameter distributions and interval reporting | IMPLEMENTED / PREVIEW | Product distributions and deterministic intervals are implemented; `simcalibration.py` fits measured groups, bootstrap intervals, held-out error, rank, and coverage. Checked-in Study 1 interval coverage is 18/22 (81.8%) against a nominal 90% target. |
-| C7 | Calibration pipeline | PARTIAL | The 22-row Narayanan training artifact, provenance checks, strategy-specific fits, bootstrap intervals, and held-out reports are wired. Customer telemetry and cited serving rows are intentionally not fabricated or promoted. |
-| Gate A | Study 1 parity, serving validation, rendered timelines, performance budget | PARTIAL | Study 1 evidence records 5.9% held-out PTD-P and 0.94 Spearman; browser/Python timelines and runtime are checked. Serving validation remains open until a cited numeric serving trace is imported. |
+| C7 | Calibration pipeline | PARTIAL | The 22-row Narayanan training artifact and 12-row Sarathi-Serve serving fixture have provenance checks, strategy-specific comparison, bootstrap/held-out reporting, and explicit error labels. Customer telemetry, raw serving traces, and co-design calibration remain open. |
+| Gate A | Study 1 parity, serving validation, rendered timelines, performance budget | PARTIAL | Study 1 evidence records 5.9% held-out PTD-P and 0.94 Spearman; 12 cited Sarathi-Serve measurements are imported and compared by a derived replay. Raw trace fidelity and customer validation remain Preview. |
 
 ## Layer 2 — modules
 
 | ID | Requirement | Status | Core dependency | Verification required |
 |---|---|---|---|---|
 | M1 | Train on core; Gantt/memory/intervals; Megatron/DeepSpeed/torchtitan exports | IMPLEMENTED / PREVIEW | Gate A | Core simulator, schedule tests, golden parity, and `simulation_exports.py`; calibrated evidence is training-only and browser defaults are assumptions. |
-| M2 | Serve on core; latency/goodput/KV timeline; vLLM/SGLang/TensorRT-LLM exports | IMPLEMENTED / PREVIEW | Gate A | Serving simulator, trace replay, exports, and UI metrics are present; numeric public held-out validation is still required. |
-| M3 | Audit real configs/logs; current-vs-best; same-format diff; PDF/HTML report | IMPLEMENTED / PREVIEW | M1/M2 | Existing parsers plus `audit_reports.py` provide lossless diff, same-format exports, escaped HTML, and dependency-free PDF. Customer-held-out logs remain unsupplied. |
+| M2 | Serve on core; latency/goodput/KV timeline; vLLM/SGLang/TensorRT-LLM exports | IMPLEMENTED / PREVIEW | Gate A | Serving simulator, trace replay, exports, UI metrics, and 12-row Sarathi-Serve comparison are present; raw-trace fidelity and customer held-out validation remain Preview. |
+| M3 | Audit real configs/logs; current-vs-best; same-format diff; PDF/HTML report | IMPLEMENTED / PREVIEW | M1/M2 | Existing parsers plus `audit_reports.py` provide lossless diff, same-format exports, escaped HTML, and dependency-free PDF. Unknown CLI flags and DeepSpeed fields are preserved in same-format exports while remaining semantically unvalidated; customer-held-out logs remain unsupplied. |
 | M4 | Architecture search with multiple scaling laws and joint train/serve costs | IMPLEMENTED / PREVIEW | M1/M2 | `product_simulations.py` carries scaling-law artifacts, train/serve timelines, intervals, constrained Pareto search, deterministic repair, and a reusable NSGA-II search path; validation is Preview without measured architecture rows. |
 | M5 | Joint chip/software design-space search and report | IMPLEMENTED / PREVIEW | M1/M2 | Chip/software candidates, Pareto/bottleneck outputs, sensitivities, provenance, and exports exist; PPA is not claimed measured. |
 | M6 | RL rollout/reward/train/sync simulation and scheduling search | IMPLEMENTED / PREVIEW | M1/M2 | Phase timelines, asynchronous staleness, interval outputs, and schedule search are tested; measured RL loop validation is open. |
@@ -47,10 +49,10 @@ shows measured runtime. This decision is provisional until the first benchmark r
 | ID | Requirement | Status | Evidence / next action |
 |---|---|---|---|
 | P1 | Projects, saved artifacts, history, side-by-side timeline diffs | IMPLEMENTED | SQLite project/artifact/run store, run comparison, persisted reports, and evidence panel are implemented and tested. |
-| P2 | Real model/topology/CSV/log/Prometheus/trace inputs | PARTIAL | JSON contracts, CSV evidence ingestion, logs, and serving trace replay are implemented with provenance; Prometheus/ONNX/state-dict connectors remain open. |
+| P2 | Real model/topology/CSV/log/Prometheus/trace inputs | IMPLEMENTED / PREVIEW | JSON/Hugging Face graph contracts, CSV evidence, logs, serving traces, Prometheus text, safetensors metadata, and safe ONNX/state-dict boundaries are implemented with provenance. Full ONNX lowering and unsafe pickle loading remain intentionally unsupported. |
 | P3 | Shareable PDF/HTML reports with methods/evidence | IMPLEMENTED / PREVIEW | Escaped HTML and valid dependency-free PDF audit/run reports are exported; report content remains explicit about assumptions/evidence. |
 | P4 | API, CLI, Python SDK, MCP with UI-equivalent capabilities | IMPLEMENTED | Local/HTTP API, CLI, SDK, MCP-style JSON-RPC, run comparison, and preview simulations share the platform service. |
-| P5 | Evidence dashboard with held-out error/coverage/sources | IMPLEMENTED / PREVIEW | Lab Simulation Workbench and Evidence module show source, held-out error/rank/coverage, and server-only boundaries; serving/customer rows remain visibly Preview. |
+| P5 | Evidence dashboard with held-out error/coverage/sources | IMPLEMENTED / PREVIEW | Lab Simulation Workbench and Evidence module show Study 1 source/error/rank/coverage, Sarathi-Serve 12-row MAPE and match count, and server-only boundaries; customer rows remain visibly Preview. |
 
 ## Cross-cutting gates
 
@@ -69,11 +71,12 @@ shows measured runtime. This decision is provisional until the first benchmark r
 | Date | Check | Result | Notes |
 |---|---|---|---|
 | 2026-10-05 | Baseline audit | STARTED | Existing v5 surface is mostly closed-form; this prompt requires a new simulation layer. |
-| 2026-10-05 | Python simulator suite | PASS | 94 tests passed from `nomo-planner`; product, serving, calibration, core, platform, export, regression, and repaired-search coverage are green. |
+| 2026-10-05 | Python simulator suite | PASS | 103 tests passed from `nomo-planner`; product, serving, calibration, artifact-ingestion, core, platform, export, regression, and repaired-search coverage are green. |
 | 2026-10-05 | Browser simulation suite | PASS | `npm run build`; `npm run verify`; `npm run simulation:golden`; GraphIR and Python-core fixtures pass. |
 | 2026-10-05 | Browser simulation suite | PASS | Production build emits the dedicated Worker bundle; the Lab workbench dispatches its local run through `src/simulation/worker.ts` with a synchronous fallback. |
-| 2026-10-05 | Golden and Python search suite | PASS | TypeScript golden: 123 checks; Python suite: 94 tests; deterministic repaired NSGA-II search has a focused test. |
+| 2026-10-05 | Golden and Python search suite | PASS | TypeScript golden: 123 checks; Python suite: 103 tests; deterministic repaired NSGA-II search and public serving comparison have focused tests. |
 | 2026-10-05 | Representative runtime | PASS | Python train 2.12 ms / 172 events, serving 13.16 ms / 32 requests, product 1.24 ms / 32 candidates; TS golden 173.90 ms including bundling. |
 | 2026-10-05 | Production deployment and browser smoke | PASS | Engine commit `aa266fa` is pushed; Vercel deployment `dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf` is live. Stable mode-shell HTTP 200 serves the Simulation Worker bundle; Training, Serving, Preview labels, and Neuromorphic link were checked with no console errors/warnings. |
 | 2026-10-05 | Release archives and report | PASS | Engine, planner, and landing tracked-file archives plus this final report are recorded under `release-bundles-aa266fa`. |
+| 2026-10-05 | Public serving validation | PASS / PREVIEW | Sarathi-Serve Table 4: 12/12 rows matched by the reproducible Nomo replay; 72.98% MAPE is reported honestly. The input trace is derived from published length summaries because the raw trace is not included. |
 

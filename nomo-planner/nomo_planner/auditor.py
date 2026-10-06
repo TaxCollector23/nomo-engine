@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Mapping
 
 
@@ -50,6 +50,8 @@ class AuditRun:
     observed_memory_bytes: float | None
     warnings: tuple[str, ...] = ()
     unrecognized_options: tuple[str, ...] = ()
+    passthrough_tokens: tuple[str, ...] = ()
+    passthrough_fields: Mapping[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self) | {"warnings": list(self.warnings)}
@@ -71,6 +73,7 @@ class AuditRun:
             args.append("--bf16")
         elif self.precision == "fp8":
             args.append("--fp8")
+        args.extend(self.passthrough_tokens)
         return " ".join(shlex.quote(value) for value in args)
 
     def to_vllm_command(self) -> str:
@@ -88,6 +91,7 @@ class AuditRun:
             args += ["--dtype", "float16"]
         elif self.precision != "unknown":
             args += ["--dtype", self.precision]
+        args.extend(self.passthrough_tokens)
         return " ".join(shlex.quote(value) for value in args)
 
     def to_deepspeed_config(self) -> dict[str, Any]:
@@ -97,6 +101,7 @@ class AuditRun:
             "tensor_parallel": {"tp_size": self.tensor_parallel},
             "pipeline_parallel": {"stages": self.pipeline_parallel},
         }
+        config.update(dict(self.passthrough_fields))
         if self.zero_stage is not None:
             config["zero_optimization"] = {"stage": self.zero_stage}
         if self.precision == "bf16":
@@ -125,6 +130,26 @@ def _unknown_options(tokens: list[str], known: set[str]) -> tuple[str, ...]:
     return tuple(sorted(names - known))
 
 
+def _passthrough_tokens(tokens: list[str], unknown: tuple[str, ...]) -> tuple[str, ...]:
+    """Keep unknown CLI options losslessly visible in same-format exports."""
+
+    if not unknown:
+        return ()
+    names = set(unknown)
+    result: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        name = token.split("=", 1)[0]
+        if name in names:
+            result.append(token)
+            if "=" not in token and index + 1 < len(tokens) and not tokens[index + 1].startswith("-"):
+                result.append(tokens[index + 1])
+                index += 1
+        index += 1
+    return tuple(result)
+
+
 def parse_megatron_command(command: str) -> AuditRun:
     tokens = shlex.split(command)
     result = _base("megatron", command=command)
@@ -146,7 +171,8 @@ def parse_megatron_command(command: str) -> AuditRun:
         warnings.append("precision flag was not present; quality impact is unknown")
     if unknown:
         warnings.append(f"options were not interpreted: {', '.join(unknown)}")
-    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown)
+    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown,
+                   passthrough_tokens=_passthrough_tokens(tokens, unknown))
 
 
 def parse_vllm_command(command: str) -> AuditRun:
@@ -169,7 +195,8 @@ def parse_vllm_command(command: str) -> AuditRun:
         warnings.append("model path was not detected; pass a Hugging Face model path")
     if unknown:
         warnings.append(f"options were not interpreted: {', '.join(unknown)}")
-    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown)
+    return replace(result, warnings=tuple(warnings), unrecognized_options=unknown,
+                   passthrough_tokens=_passthrough_tokens(tokens, unknown))
 
 
 def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = None) -> AuditRun:
@@ -194,6 +221,7 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
         precision=precision,
         zero_stage=int(_number(zero.get("stage"), 0) or 0) or None,
         warnings=tuple(warnings), unrecognized_options=unknown,
+        passthrough_fields={key: config[key] for key in unknown},
     )
 
 

@@ -9,7 +9,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | 26–29 | Python reference first, TypeScript port, goldens, fixed seeds | Built | `nomo-planner/`, `src/planner/`, `npm run verify`; 14,332 checks after the auditor and contract fixtures. |
 | 30–31 | No invented data; cite rows; omit unknowns | Built | `nomo-planner/data/`, model-card URLs, cost rows, parser warnings, and explicit user-input labels. |
 | 32–33 | Honest provenance labels | Built | Guided/Explore/Rigor labels; customer input, assumption, calibrated, spec, and placeholder boundaries are visible. |
-| 34–35 | Held-out validation for predictions/calibration | Preview | A100 study: 18/22 (81.8%) held out; customer CSV now reports leave-one-out error. Serving/co-design still have no published held-out data. |
+| 34–35 | Held-out validation for predictions/calibration | Preview | A100 study: 18/22 (81.8%) held out; customer CSV reports leave-one-out error; the cited Sarathi-Serve fixture has 12 measured rows and a 12/12 derived replay with 72.98% MAPE. Serving raw-trace fidelity and co-design still lack held-out data. |
 | 36 | Formula citations in code, Methods, exports | Built | Planner docstrings, `src/lab/Methods.tsx`, export `references.bib`; product references include Young, Daly, and Erlang. |
 | 37–39 | Three modes, accessibility, reduced motion, adaptive formatting, export tree | Built | Lab mode shell, labelled controls/dialog, `prefers-reduced-motion`, adaptive formatters, and five-folder planner export. Product packs also export JSON/CSV. |
 | 40–41 | Study 1 regression numbers | Built | `npm run verify`; 5.9%, Spearman 0.94, and 6.4% LOO remain in the evidence/docs. |
@@ -32,7 +32,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON now re-import into the shared graph; node accounting, map, locks, and what-if surfaces are shared. ONNX and binary state-dict parsing are not bundled in the browser and remain open. |
+| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON re-import into the shared graph; the Python boundary safely inspects safetensors metadata and exposes optional ONNX/state-dict preview diagnostics. Browser binary lowering remains open; node accounting, map, locks, and what-if surfaces are shared for JSON inputs. |
 | 88–90 | Train per-layer decisions, repair, locks, verified browser port | Preview | Per-layer precision/recompute/offload/stages and absolute locks are implemented and tested. The current bounded search is deterministic exhaustive/capped enumeration, not a full NSGA-II implementation. |
 | 91–92 | Serve per-layer weight/KV precision with cost recommendation | Built | `serving.py` / `serving.ts`, bounded serving search, quality effects labelled assumptions. |
 | 93 | Neuromorphic shared graph through existing engine with unchanged exports | Preview | Contract JSON export and historical dashboard link are live. The cross-repository compiler/server adapter and placement recommendation are not claimed. |
@@ -84,8 +84,8 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | 161 | Every module at 1440px and 390px with no console errors | Preview | Desktop/mobile smoke covered the mode shell, Lab, Product Studio, Auditor, Cost Tracker, and graph surfaces; a full scripted every-control accessibility matrix is still open. |
 | 162 | README, Methods, Evidence, docs, PROGRESS | Built | Updated repository documentation and gate reports. |
 | 163–164 | Feature-by-feature final report, verification, assumptions, limitations | Built | `FINAL_REPORT.md` plus this line audit. |
-| 165 | Three updated codebase zips | Built | `release-bundles-29bbd00/nomo-engine-29bbd00.zip`, `nomo-planner-29bbd00.zip`, and `nomo-ai-29bbd00.zip`; landing archive contains no changes beyond its preserved pre-existing files. |
+| 165 | Three updated codebase zips | Built | Current tracked-file archives are recorded under `release-bundles-aa266fa/` for engine, planner, and landing; landing contains no source changes beyond its preserved pre-existing files. |
 
 ## Verdict
 
-The release is materially more complete than the previous audit, but it is not honest to call the roadmap 100% complete. The remaining blockers are not hidden implementation oversights: binary ONNX/state-dict ingestion, a true neuromorphic server/compiler adapter, full framework-option round trips, customer/published serving and co-design calibration, measured chip/quality/queueing data, broader sourced cost history/freshness, and a complete every-control browser/accessibility matrix. Closing those requires the corresponding formats, server contract, hardware measurements, customer logs/evaluations, and source disclosures.
+The release is materially more complete than the previous audit, but it is not honest to call the roadmap 100% complete. The remaining blockers are not hidden implementation oversights: full ONNX graph lowering beyond the safe inspection boundary, a true neuromorphic server/compiler adapter, full framework-option round trips, customer/raw-trace serving and co-design calibration, measured chip/quality/queueing data, broader sourced cost history/freshness, and a complete every-control browser/accessibility matrix. Closing those requires the corresponding formats, server contract, hardware measurements, customer logs/evaluations, and source disclosures.

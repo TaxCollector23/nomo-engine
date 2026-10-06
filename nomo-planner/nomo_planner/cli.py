@@ -57,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--media-type", default="application/json"); add.add_argument("--run-id"); add.add_argument("--metadata", type=_json_arg, default={})
     artifact_get = artifact_actions.add_parser("get"); artifact_get.add_argument("artifact_id")
     artifact_list = artifact_actions.add_parser("list"); artifact_list.add_argument("project_id"); artifact_list.add_argument("--run-id")
+    inspect_model = artifact_actions.add_parser("inspect-model", help="inspect a JSON model config or safe metadata boundary")
+    inspect_model.add_argument("source", help="path to a model artifact")
 
     report = commands.add_parser("report", help="render run report artifacts")
     report.add_argument("run_id")
@@ -95,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
                 except json.JSONDecodeError as exc: raise ValueError(f"content is not valid JSON: {exc}") from exc
                 value = store.create_artifact(args.project_id, args.name, content, media_type=args.media_type, run_id=args.run_id, metadata=args.metadata)
             elif args.action == "get": value = store.get_artifact(args.artifact_id)
+            elif args.action == "inspect-model":
+                from .artifact_ingestion import load_model_artifact
+                value = load_model_artifact(args.source).as_dict()
             else: value = store.list_artifacts(args.project_id, run_id=args.run_id)
         elif args.command == "report":
             value = store.render_report(args.run_id)

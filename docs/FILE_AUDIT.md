@@ -1,6 +1,6 @@
 # File-level audit record
 
-Audit date: 2026-10-05 (America/Los_Angeles).
+Audit date: 2026-10-06 (America/Los_Angeles).
 
 This record is the file-level companion to `ROADMAP_AUDIT.md`. The review used `git ls-files` as the scope, read the
 tracked text/config/source files, checked binary assets and generated fixtures by type/size and build usage, searched
@@ -14,7 +14,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 | `nomo-engine` root metadata, package files, entrypoint, README, reports | 12 | Used by build/deploy or documentation; stale deployment evidence refreshed. |
 | `nomo-engine/docs/` | 18 after this record | Gate reports, serious-simulation audit/gates, prior-art citations, and reports retained; `SPEC.md`, `DEPLOY.md`, and `OBSERVABILITY.md` resolve the public documentation links. |
 | `nomo-engine/frontend/` | 39 | Next.js neuromorphic launcher/dashboard, telemetry client, export UI, and admin surface typecheck/build successfully. The disabled unimplemented phase-coding control was removed. |
-| `nomo-engine/nomo-planner/` | 41 | Python reference planner, serious simulation core, platform/API/SDK/CLI, studies, data, and tests; experiment-result CSV parsing and tests added. |
+| `nomo-engine/nomo-planner/` | 47 | Python reference planner, serious simulation core, platform/API/SDK/CLI, public serving fixture/replay, safe artifact and Prometheus ingestion, studies, data, and tests; experiment-result CSV parsing and tests added. |
 | `nomo-engine/scripts/` | 7 | Golden fixtures, parity verifier, benchmark runner, and simulation golden runner; `npm run verify` remains green. |
 | `nomo-engine/src/` | 50 | Browser planner, Lab modules, product/cost/auditor surfaces, exports, styling, GraphIR, topology/timeline/distribution contracts, Python-core parity, and the Worker-backed Simulation Workbench; calibration file/result ingestion is local-only. |
 | `nomo-engine/public/` | 2 | Favicon/logo assets used by the root app. |
@@ -22,12 +22,14 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 
 ## Checks
 
-- `nomo-planner`: Python tests pass, including the new completed-experiment CSV to local-calibration test.
-- Serious simulation layer: 94 Python tests pass; `nsga2_search` repairs constrained genomes and records its search
-  provenance; training/serving/product runtime fixtures and report/export paths are covered.
+- `nomo-planner`: 103 Python tests pass, including the completed-experiment CSV to local-calibration test, public
+  Sarathi-Serve serving comparison, safetensors metadata inspection, safe state-dict boundaries, and Prometheus parsing.
+- Serious simulation layer: `nsga2_search` repairs constrained genomes and records its search provenance;
+  training/serving/product runtime fixtures, public evidence, and report/export paths are covered.
 - Root Lab: production build and Python/TypeScript parity verifier pass.
 - Browser simulation: `npm run simulation:golden` passes 123 checks, and the production build emits the Worker bundle
-  consumed by `SimulationWorkbench` with a deterministic synchronous fallback.
+  consumed by `SimulationWorkbench` with a deterministic synchronous fallback. The evidence panel now displays the
+  cited 12-row Sarathi comparison and its 72.98% replay MAPE.
 - Neuromorphic dashboard: `npm run typecheck` and `npm run build` pass; a live built-in Event-camera/AKD1500 search
   completed and exposed 550 designs, seven trade-offs, layer inspection, and export controls.
 - Landing: production build passes; documentation links now resolve to tracked engine documents.
@@ -35,7 +37,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 
 ## Remaining boundaries
 
-The audit does not turn data-dependent claims into code claims. Binary parser implementation behind the hosted API,
-the shared-graph neuromorphic placement/compiler adapter, full framework-option round trips, serving/co-design
-calibration, measured product data, broad sourced cost history/freshness, and a complete every-control browser
-accessibility matrix remain explicitly listed as preview/open in `ROADMAP_AUDIT.md`.
+The audit does not turn data-dependent claims into code claims. Full ONNX graph lowering, the shared-graph
+neuromorphic placement/compiler adapter, full framework-option round trips, customer/co-design calibration, measured
+product data, broad sourced cost history/freshness, and a complete every-control browser accessibility matrix remain
+explicitly listed as preview/open in `ROADMAP_AUDIT.md`.

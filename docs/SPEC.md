@@ -22,9 +22,11 @@ builder in `src/planner/layers.ts` computes resident parameters, FLOPs, activati
 decision nodes for the Train, Serve, and contract-export tabs.
 
 The hosted dashboard upload surface accepts `.onnx`, `.pt` / `.pth`, and Nomo JSON graph files through the API. The
-binary parsers live behind that server boundary; the browser-only shared Lab does not claim to parse binary ONNX or
-state-dict files. This distinction is intentional because a JSON graph/config is the only input that can stay fully
-local in the Lab.
+dependency-free Python boundary now inspects Hugging Face/Nomo JSON, safetensors headers, Prometheus text, and safe
+ONNX/state-dict boundaries via `nomo_planner.artifact_ingestion`; optional ONNX graph inspection is used when the
+server has the `onnx` package. Binary weights are never implicitly unpickled, and full ONNX lowering still requires a
+framework adapter. The browser-only shared Lab does not claim to parse binary ONNX or state-dict files. This
+distinction is intentional because a JSON graph/config is the only input that can stay fully local in the Lab.
 
 ## 3. Search and evidence boundary
 

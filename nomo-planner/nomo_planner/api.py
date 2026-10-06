@@ -32,6 +32,20 @@ class PlatformService:
             return self.store.get_artifact(args["artifact_id"])
         if method == "artifacts.list":
             return self.store.list_artifacts(args["project_id"], run_id=args.get("run_id"))
+        if method == "artifacts.inspect_model":
+            from .artifact_ingestion import load_model_artifact
+
+            artifact_id = args.get("artifact_id")
+            if artifact_id:
+                artifact = self.store.get_artifact(str(artifact_id))
+                result = load_model_artifact(artifact["content"])
+                return {
+                    "artifact": result.as_dict(),
+                    "stored_artifact": {"id": artifact["id"], "sha256": artifact["sha256"]},
+                }
+            if "content" not in args:
+                raise ValueError("content or artifact_id is required")
+            return load_model_artifact(args["content"]).as_dict()
         if method == "runs.create":
             return self.store.create_run(args["project_id"], name=args.get("name", "run"), config=args.get("config"),
                 result=args.get("result"), status=args.get("status", "completed"), metadata=args.get("metadata"))
@@ -214,6 +228,7 @@ _TOOLS = [
     ("artifacts.create", "Create a project artifact", {"type": "object", "required": ["project_id", "name", "content"], "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "content": {}, "media_type": {"type": "string"}, "run_id": {"type": "string"}}}),
     ("artifacts.get", "Get an artifact", {"type": "object", "required": ["artifact_id"], "properties": {"artifact_id": {"type": "string"}}}),
     ("artifacts.list", "List project artifacts", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}, "run_id": {"type": "string"}}}),
+    ("artifacts.inspect_model", "Inspect a model config or stored model artifact without unsafe deserialization", {"type": "object", "properties": {"artifact_id": {"type": "string"}, "content": {}}}),
     ("runs.create", "Create a run", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "config": {"type": "object"}, "result": {"type": "object"}, "status": {"type": "string"}}}),
     ("runs.get", "Get a run", {"type": "object", "required": ["run_id"], "properties": {"run_id": {"type": "string"}}}),
     ("runs.list", "List project runs", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}}}),

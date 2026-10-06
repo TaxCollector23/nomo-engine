@@ -11,6 +11,16 @@ from .uncertainty import (
 )
 from .audit_reports import compare_audits, render_audit_html, render_audit_pdf
 from .simulation_exports import export_serving_config, export_training_config
+from .public_validation import (
+    compare_serving_predictions,
+    load_sarathi_table4,
+    run_sarathi_table4_replay,
+)
+from .artifact_ingestion import (
+    load_model_artifact,
+    load_prometheus_text,
+    parse_prometheus_text,
+)
 
 __all__ = [
     "CALIBRATED_PARAMS",
@@ -25,4 +35,10 @@ __all__ = [
     "render_audit_pdf",
     "export_serving_config",
     "export_training_config",
+    "compare_serving_predictions",
+    "load_sarathi_table4",
+    "run_sarathi_table4_replay",
+    "load_model_artifact",
+    "load_prometheus_text",
+    "parse_prometheus_text",
 ]

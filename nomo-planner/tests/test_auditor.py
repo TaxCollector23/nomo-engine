@@ -35,9 +35,14 @@ def test_unsupported_options_are_flagged_instead_of_silently_dropped():
     run = parse_megatron_command("torchrun pretrain.py --model meta/llama --bf16 --untested-new-flag 1")
     assert "--untested-new-flag" in run.unrecognized_options
     assert "not interpreted" in " ".join(run.warnings)
+    assert "--untested-new-flag 1" in run.export_same_format()
 
     deep = parse_deepspeed_config({"bf16": {"enabled": True}, "new_optimizer": {"foo": 1}})
     assert deep.unrecognized_options == ("new_optimizer",)
+    assert json.loads(deep.export_same_format())["new_optimizer"] == {"foo": 1}
+
+    vllm = parse_vllm_command("vllm serve meta/llama --dtype bfloat16 --new-scheduler-flag 7")
+    assert "--new-scheduler-flag 7" in vllm.export_same_format()
 
 
 def test_audit_text_dispatches_json_and_logs():
