@@ -26,11 +26,12 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 - Added the cited Sarathi-Serve Table 4 fixture, reproducible derived replay, 12/12 matching-row report, and Evidence
   dashboard row with a direct source link and explicit 72.98% MAPE Preview boundary.
-- Added safe Hugging Face/Nomo JSON, safetensors metadata, Prometheus text, and optional ONNX/state-dict inspection;
-  binary weights are never implicitly unpickled. Exposed model inspection through the platform service and CLI.
-- Preserved unknown Megatron/vLLM CLI tokens and DeepSpeed JSON fields in same-format audit exports while flagging them
-  as semantically unvalidated.
-- Verification after this pass: 103 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
+- Added safe Hugging Face/Nomo JSON structural validation and bounded transformer-skeleton lowering, safetensors metadata,
+  Prometheus text, and optional ONNX/state-dict inspection; binary weights are never implicitly unpickled. Exposed model
+  inspection through the platform service and CLI.
+- Preserved unknown Megatron/vLLM CLI tokens, opaque option values, and nested DeepSpeed JSON fields in same-format audit
+  exports while flagging them as semantically unvalidated.
+- Verification after this pass: 112 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
   simulation golden checks.
 
 ## 2026-10-06 production refresh and live verification
@@ -64,7 +65,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 103 tests passed in nomo-planner.
+- Python: 112 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
@@ -83,9 +84,11 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Remaining roadmap work
 
-- Safe ONNX/state-dict inspection is implemented in the Python boundary; full binary graph lowering and the
-  Neuromorphic shared-graph placement/compiler adapter still require the hosted compiler contract.
-- Full DeepSpeed/vLLM option preservation and arbitrary-model/hardware auditor recommendation.
+- Safe ONNX/state-dict inspection and bounded HF/Nomo structural lowering are implemented in the Python boundary; full
+  binary graph lowering and the Neuromorphic shared-graph placement/compiler adapter still require the hosted compiler
+  contract.
+- Framework-option semantic validation and arbitrary-model/hardware auditor recommendation remain open; opaque
+  Megatron/DeepSpeed/vLLM options are now preserved in same-format exports.
 - Customer-held-out uncertainty for serving/co-design and server-side/published experiment-result ingestion.
 - Product pack joint chip/software optimization, customer calibration, and richer procurement uncertainty.
 - Broader cost history/coverage and source-freshness checks.

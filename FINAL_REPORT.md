@@ -42,7 +42,7 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 103 tests passed.
+- Python reference: 112 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
@@ -51,8 +51,11 @@ The landing page now links to real engine specification, deployment, observabili
   repaired NSGA-II coverage.
 - Public serving validation: Sarathi-Serve Table 4 fixture contains 12 measured rows; the reproducible replay matched
   12/12 and reported 72.98% MAPE without filling missing data.
-- Artifact boundaries: Hugging Face/Nomo JSON, safetensors metadata, Prometheus text, and safe ONNX/state-dict preview
-  inspection are tested; full ONNX lowering and unsafe pickle loading remain explicit boundaries.
+- Artifact boundaries: Hugging Face/Nomo JSON structural validation and bounded transformer-skeleton lowering, safetensors
+  metadata, Prometheus text, and safe ONNX/state-dict preview inspection are tested; full framework-specific ONNX
+  lowering and unsafe pickle loading remain explicit boundaries.
+- Auditor boundaries: opaque Megatron/vLLM tokens and nested DeepSpeed fields round-trip in same-format exports; their
+  semantics remain explicitly unvalidated without versioned framework fixtures.
 - Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.

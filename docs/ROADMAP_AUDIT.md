@@ -32,7 +32,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON re-import into the shared graph; the Python boundary safely inspects safetensors metadata and exposes optional ONNX/state-dict preview diagnostics. Browser binary lowering remains open; node accounting, map, locks, and what-if surfaces are shared for JSON inputs. |
+| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON now receive structural validation and bounded transformer-skeleton lowering; the Python boundary safely inspects safetensors metadata and exposes optional ONNX/state-dict preview diagnostics. Browser binary lowering remains open; node accounting, map, locks, and what-if surfaces are shared for JSON inputs. |
 | 88–90 | Train per-layer decisions, repair, locks, verified browser port | Preview | Per-layer precision/recompute/offload/stages and absolute locks are implemented and tested. The current bounded search is deterministic exhaustive/capped enumeration, not a full NSGA-II implementation. |
 | 91–92 | Serve per-layer weight/KV precision with cost recommendation | Built | `serving.py` / `serving.ts`, bounded serving search, quality effects labelled assumptions. |
 | 93 | Neuromorphic shared graph through existing engine with unchanged exports | Preview | Contract JSON export and historical dashboard link are live. The cross-repository compiler/server adapter and placement recommendation are not claimed. |
@@ -42,10 +42,10 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 100–101 | Parse Megatron, DeepSpeed JSON, vLLM, logs; reject/flag unknowns | Preview | Core topology/precision fields and selected step/throughput/memory metrics parse in both engines. Unknown CLI flags and JSON fields are now surfaced; exhaustive framework-option coverage is open. |
+| 100–101 | Parse Megatron, DeepSpeed JSON, vLLM, logs; reject/flag unknowns | Preview | Core topology/precision fields and selected step/throughput/memory metrics parse in both engines. Unknown CLI flags, opaque values, and nested DeepSpeed fields are surfaced and preserved; exhaustive version-specific semantic coverage is open. |
 | 102–103 | Current vs recommended, exact changes, same-format correction, readable/exportable audit | Preview | Same-format loss-aware export and CSV experiment template are shipped. Known published models connect to the shared bounded recommendation; arbitrary model/hardware current-vs-dollar diff still needs a complete framework mapping. |
 | 104–105 | Browser-local customer refit and calibration badge | Preview | Local multiplicative refit, 90% range, in-sample coverage, and leave-one-out error are displayed; no data leaves the browser. It is not the six-parameter published hardware refit. |
-| 106–107 | Round-trip fixtures and synthetic calibration recovery | Built for the supported core fields | `scripts/auditor-golden.json`, Python tests, and `npm run verify` cover Megatron, DeepSpeed, and vLLM core fields. Full framework-option preservation remains open by design. |
+| 106–107 | Round-trip fixtures and synthetic calibration recovery | Built for the supported core fields | `scripts/auditor-golden.json`, Python tests, and `npm run verify` cover Megatron, DeepSpeed, and vLLM core fields; opaque options and nested fields now round-trip. Semantic validation of every framework option remains open by design. |
 
 ## Phase 3 — uncertainty
 
