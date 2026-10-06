@@ -84,7 +84,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | 161 | Every module at 1440px and 390px with no console errors | Preview | Desktop/mobile smoke covered the mode shell, Lab, Product Studio, Auditor, Cost Tracker, and graph surfaces; a full scripted every-control accessibility matrix is still open. |
 | 162 | README, Methods, Evidence, docs, PROGRESS | Built | Updated repository documentation and gate reports. |
 | 163–164 | Feature-by-feature final report, verification, assumptions, limitations | Built | `FINAL_REPORT.md` plus this line audit. |
-| 165 | Three updated codebase zips | Built | Current tracked-file archives are recorded under `release-bundles-aa266fa/` for engine, planner, and landing; landing contains no source changes beyond its preserved pre-existing files. |
+| 165 | Three updated codebase zips | Built | Current tracked-file archives are recorded under `release-bundles-a314204/` for engine, planner, and landing; landing contains no source changes beyond its preserved pre-existing files. |
 
 ## Verdict
 

@@ -1,8 +1,8 @@
 # Nomo Engine progress
 
 Current release status: the serious simulation-core implementation and the cited public serving comparison are
-implemented, tested, and ready for the next production deployment. Customer evidence, raw serving traces, and the
-neuromorphic compiler adapter remain explicitly Preview/open where the required artifacts or server contract are absent.
+implemented, tested, and deployed. Customer evidence, raw serving traces, and the neuromorphic compiler adapter remain
+explicitly Preview/open where the required artifacts or server contract are absent.
 
 ## 2026-10-05 simulation-core implementation
 
@@ -32,6 +32,19 @@ neuromorphic compiler adapter remain explicitly Preview/open where the required 
   as semantically unvalidated.
 - Verification after this pass: 103 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
   simulation golden checks.
+
+## 2026-10-06 production refresh and live verification
+
+- Pushed engine commit `a314204` to `main` after the public-serving and safe-artifact boundary pass.
+- Vercel deployment `dpl_3gzfHs74ffGVFby1M7hSSsW9tCpZ` is READY at
+  `https://nomo-engine-7ujourbmj-rangan-alt.vercel.app/`; the canonical mode-shell alias was explicitly reassigned to
+  this deployment and now serves the same `index-8B-nBfyb.js` bundle.
+- Live browser verification exercised the restored mode shell, Simulation core, Training/Serving controls, Evidence
+  panel, cited Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
+  Event-camera/AKD1500 search (`/runs/620b864c08bd`) with 550 designs tried, seven trade-offs, layer inspection, and no
+  console errors or warnings.
+- The landing source tree remains unchanged at `98a91d7`; its pre-existing `research/pilot/` directory remains
+  untracked and preserved.
 
 ## Completed
 
@@ -80,14 +93,15 @@ neuromorphic compiler adapter remain explicitly Preview/open where the required 
 
 ## Deployment evidence
 
-- Engine serious-simulation release commit: aa266fa on main, pushed to github.com/TaxCollector23/nomo-engine.
-- Mode-shell Vercel production deployment: dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf.
-- Mode-shell unique URL: https://nomo-engine-jj9797idp-rangan-alt.vercel.app/
+- Engine current release commit: a314204520bd75aea4ae883dd77f5b9e31820a69 on main, pushed to
+  github.com/TaxCollector23/nomo-engine.
+- Mode-shell Vercel production deployment: dpl_3gzfHs74ffGVFby1M7hSSsW9tCpZ.
+- Mode-shell unique URL: https://nomo-engine-7ujourbmj-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both mode-shell URLs returned HTTP 200; the stable alias was explicitly refreshed and serves index-CEditFYn.js,
-  index-DefewnCY.css, and the dedicated worker-C-FLG9f1.js simulation bundle.
-- Live browser smoke showed the Simulation core module, Training/Serving controls, Preview evidence labels, and the
-  historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
+- Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
+  `index-8B-nBfyb.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-DMBnj76E.js`.
+- Live browser smoke showed the Simulation core module, Training/Serving controls, the cited Evidence rows and Preview
+  labels, and the historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
 - Landing deployment: dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ; stable alias https://nomoailanding.vercel.app/.
 - The landing repository had no source change in this simulation release; master remains at 98a91d7 and its existing
@@ -96,6 +110,6 @@ neuromorphic compiler adapter remain explicitly Preview/open where the required 
 
 ## Delivery bundles
 
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-engine-aa266fa.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-planner-aa266fa.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-ai-aa266fa.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-a314204.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-a314204.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-ai-a314204.zip

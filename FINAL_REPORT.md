@@ -99,18 +99,20 @@ The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.m
 C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/ (historical engine, planner, and landing archives),
 generated from the baseline audited tree after its pushed source commit.
 
-## Latest serious-simulation release
+## Latest release and live verification
 
-Engine commit `aa266fa` was pushed to `main`. Vercel production deployment
-`dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf` is live at
-https://nomo-engine-jj9797idp-rangan-alt.vercel.app/ and the stable mode-shell alias is
-https://frontend-gray-ten-c3tj1luab.vercel.app/. The stable alias was explicitly refreshed after deployment and
-serves `index-CEditFYn.js`, `index-DefewnCY.css`, and `worker-C-FLG9f1.js`.
+Engine commit `a314204520bd75aea4ae883dd77f5b9e31820a69` was pushed to `main`. Vercel production deployment
+`dpl_3gzfHs74ffGVFby1M7hSSsW9tCpZ` is live at
+https://nomo-engine-7ujourbmj-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and
+serves `index-8B-nBfyb.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-DMBnj76E.js`.
 
-Browser smoke verified the Simulation core module, Training and Serving modes, explicit Preview evidence labels, and
-the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. The stable tab had no console errors or warnings.
+Browser smoke verified the Simulation core module, Training and Serving modes, the cited Sarathi Evidence row and
+explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live
+Event-camera/AKD1500 dashboard search completed at `/runs/620b864c08bd`, reporting 550 designs tried and seven
+trade-offs with layer inspection available. The checked tabs had no console errors or warnings.
 The landing repository stayed at pushed commit `98a91d7` with its existing deployment; no landing source change was
 needed for this engine-only simulation release.
 
 The current release archives are at
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/.
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/.
