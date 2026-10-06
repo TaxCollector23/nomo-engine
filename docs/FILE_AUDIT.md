@@ -22,9 +22,9 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 
 ## Checks
 
-- `nomo-planner`: 112 Python tests pass, including the completed-experiment CSV to local-calibration test, public
+- `nomo-planner`: 114 Python tests pass, including the completed-experiment CSV to local-calibration test, public
   Sarathi-Serve serving comparison, HF/Nomo structural lowering, safetensors metadata inspection, safe state-dict
-  boundaries, Prometheus parsing, and opaque framework-option round-trips.
+  boundaries, Prometheus parsing, opaque framework-option round-trips, and HTTP/SDK model inspection.
 - Serious simulation layer: `nsga2_search` repairs constrained genomes and records its search provenance;
   training/serving/product runtime fixtures, public evidence, and report/export paths are covered.
 - Root Lab: production build and Python/TypeScript parity verifier pass.

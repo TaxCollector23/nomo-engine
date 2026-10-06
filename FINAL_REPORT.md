@@ -42,7 +42,7 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 112 tests passed.
+- Python reference: 114 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
@@ -56,6 +56,8 @@ The landing page now links to real engine specification, deployment, observabili
   lowering and unsafe pickle loading remain explicit boundaries.
 - Auditor boundaries: opaque Megatron/vLLM tokens and nested DeepSpeed fields round-trip in same-format exports; their
   semantics remain explicitly unvalidated without versioned framework fixtures.
+- Platform parity: safe model inspection is available through the shared service, `POST /artifacts/inspect-model`, the
+  Python SDK, CLI, and MCP tool.
 - Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
@@ -104,7 +106,7 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine commits `c777a1f`, `cab46e7`, and `b08e5fb` were pushed to `main` after the `a314204` runtime release. Vercel
+Engine commits `c777a1f`, `cab46e7`, `b08e5fb`, and `631e040` were pushed to `main` after the `a314204` runtime release. Vercel
 production deployment `dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz` is live at
 https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/ and the canonical mode-shell alias is
 https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and

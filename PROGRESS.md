@@ -31,13 +31,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
   inspection through the platform service and CLI.
 - Preserved unknown Megatron/vLLM CLI tokens, opaque option values, and nested DeepSpeed JSON fields in same-format audit
   exports while flagging them as semantically unvalidated.
-- Verification after this pass: 112 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
+- Verification after this pass: 114 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
   simulation golden checks.
 
 ## 2026-10-06 production refresh and live verification
 
-- Pushed engine commits `c777a1f`, `cab46e7`, and `b08e5fb` to `main` after the public-serving and safe-artifact boundary
-  pass.
+- Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, and `631e040` to `main` after the public-serving and safe-artifact
+  boundary pass.
 - Vercel deployment `dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz` is READY at
   `https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
   deployment and serves the same `index-8B-nBfyb.js` bundle.
@@ -66,7 +66,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 112 tests passed in nomo-planner.
+- Python: 114 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
@@ -88,6 +88,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Safe ONNX/state-dict inspection and bounded HF/Nomo structural lowering are implemented in the Python boundary; full
   binary graph lowering and the Neuromorphic shared-graph placement/compiler adapter still require the hosted compiler
   contract.
+- Model inspection now has matching PlatformService, HTTP, Python SDK, CLI, and MCP entry points.
 - Framework-option semantic validation and arbitrary-model/hardware auditor recommendation remain open; opaque
   Megatron/DeepSpeed/vLLM options are now preserved in same-format exports.
 - Customer-held-out uncertainty for serving/co-design and server-side/published experiment-result ingestion.
@@ -97,8 +98,8 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current release commits: c777a1f, cab46e7, and b08e5fb on main, pushed to github.com/TaxCollector23/nomo-engine
-  after the a314204 runtime release.
+- Engine current release commits: c777a1f, cab46e7, b08e5fb, and 631e040 on main, pushed to
+  github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
 - Mode-shell Vercel production deployment: dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz.
 - Mode-shell unique URL: https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
