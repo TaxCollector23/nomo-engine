@@ -31,8 +31,15 @@ match the current candidates. It turns observed step times into explicit local
 calibration observations and rejects unknown experiments instead of guessing.
 
 `nomo_planner.artifact_ingestion` safely inspects Hugging Face/Nomo JSON,
-safetensors metadata, Prometheus text, and optional ONNX graph nodes. It never
-implicitly unpickles `.pt`/`.pth` files; full binary graph lowering remains an
-explicit adapter boundary. The platform service exposes the same model
-inspection through `artifacts.inspect_model`, and the CLI provides
+safetensors metadata, Prometheus text, and optional ONNX graph nodes. Complete
+Hugging Face configs are lowered to a bounded transformer skeleton containing
+only config-derived structure; incomplete configs remain `preview` and do not
+receive inferred fields or performance numbers. Nomo graph JSON is checked for
+non-empty unique node IDs and well-typed inputs/outputs. When the optional
+`onnx` package is installed, `onnx.checker` validates an ONNX graph before its
+node metadata is exposed; without it, the result is explicitly `preview`.
+None of these paths load pickle-backed `.pt`/`.pth` files or claim hardware
+measurements. Full framework-specific binary lowering remains an explicit
+adapter boundary. The platform service exposes the same model inspection
+through `artifacts.inspect_model`, and the CLI provides
 `nomo-platform artifacts inspect-model PATH`.

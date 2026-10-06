@@ -1,4 +1,6 @@
 import json
+import sys
+import types
 
 import pytest
 
@@ -24,6 +26,99 @@ def test_huggingface_config_is_a_ready_real_artifact_boundary():
     assert artifact.status == "ready"
     assert artifact.config["model_type"] == "llama"
     assert artifact.provenance["measured"] is False
+
+
+def test_complete_huggingface_config_lowers_to_bounded_structural_nodes_only():
+    artifact = load_model_artifact({
+        "model_type": "llama",
+        "hidden_size": 8,
+        "num_hidden_layers": 2,
+        "num_attention_heads": 2,
+        "intermediate_size": 16,
+        "vocab_size": 32,
+    })
+
+    assert [node["id"] for node in artifact.graph_nodes] == [
+        "embedding", "block.0.attention", "block.0.mlp",
+        "block.1.attention", "block.1.mlp", "output",
+    ]
+    assert artifact.validation["lowering"] == "transformer-skeleton-v1"
+    assert artifact.validation["valid"] is True
+    assert all("flops" not in node and "bytes" not in node for node in artifact.graph_nodes)
+    assert artifact.provenance["graph_lowering"] == "structural-config-only"
+
+
+def test_incomplete_huggingface_config_stays_preview_without_inferred_fields():
+    artifact = load_model_artifact({"model_type": "llama", "hidden_size": 8})
+
+    assert artifact.status == "preview"
+    assert artifact.graph_nodes == ()
+    assert artifact.validation["valid"] is False
+    assert set(artifact.validation["missing"]) == {"layers", "attention_heads", "vocab_size"}
+    assert any("no values were inferred" in warning for warning in artifact.warnings)
+
+
+def test_huggingface_structural_validation_rejects_incompatible_heads():
+    with pytest.raises(ValueError, match="divisible"):
+        load_model_artifact({
+            "model_type": "llama",
+            "hidden_size": 10,
+            "num_hidden_layers": 1,
+            "num_attention_heads": 3,
+            "vocab_size": 32,
+        })
+
+
+def test_nomo_graph_json_validates_ids_and_contract_fields_without_rewriting_the_contract():
+    artifact = load_model_artifact({
+        "format": "nomo.graph/1",
+        "nodes": [
+            {"id": "input", "kind": "embedding", "outputs": ["x"]},
+            {"id": "output", "kind": "custom", "inputs": ["x"]},
+        ],
+    })
+
+    assert artifact.validation["lowering"] == "pass-through-contract"
+    assert artifact.graph_nodes[1]["kind"] == "custom"
+
+    with pytest.raises(ValueError, match="duplicate node id"):
+        load_model_artifact({"nodes": [{"id": "same", "kind": "a"}, {"id": "same", "kind": "b"}]})
+
+
+def test_onnx_without_optional_reader_is_an_explicit_preview_boundary(tmp_path, monkeypatch):
+    path = tmp_path / "model.onnx"
+    path.write_bytes(b"onnx bytes are not parsed without the optional reader")
+    monkeypatch.setitem(sys.modules, "onnx", None)
+
+    artifact = load_model_artifact(path)
+
+    assert artifact.format == "onnx"
+    assert artifact.status == "preview"
+    assert artifact.validation["valid"] is None
+    assert artifact.graph_nodes == ()
+
+
+def test_onnx_reader_path_runs_structural_checker_before_exposing_nodes(tmp_path, monkeypatch):
+    path = tmp_path / "model.onnx"
+    path.write_bytes(b"safe test fixture")
+    calls = []
+
+    node = types.SimpleNamespace(op_type="Add", name="add", input=["x", "y"], output=["z"])
+    model = types.SimpleNamespace(graph=types.SimpleNamespace(node=[node]))
+    fake_onnx = types.ModuleType("onnx")
+    fake_onnx.load_model_from_string = lambda raw: model
+    fake_onnx.checker = types.SimpleNamespace(check_model=lambda checked: calls.append(checked))
+    monkeypatch.setitem(sys.modules, "onnx", fake_onnx)
+
+    artifact = load_model_artifact(path)
+
+    assert calls == [model]
+    assert artifact.status == "graph-inspected"
+    assert artifact.validation["lowering"] == "node-metadata-only"
+    assert artifact.graph_nodes == ({
+        "id": "add", "kind": "Add", "op_type": "Add", "name": "add",
+        "inputs": ["x", "y"], "outputs": ["z"],
+    },)
 
 
 def test_safetensors_header_is_inspected_without_loading_weights(tmp_path):

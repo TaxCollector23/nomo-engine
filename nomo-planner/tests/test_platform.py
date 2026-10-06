@@ -158,6 +158,8 @@ def test_model_artifact_inspection_is_available_through_the_service(store):
     }})
     assert inspected["format"] == "huggingface-config"
     assert inspected["status"] == "ready"
+    assert inspected["validation"]["lowering"] == "transformer-skeleton-v1"
+    assert inspected["graph_nodes"][0]["id"] == "embedding"
 
     project = store.create_project("artifact inspection")
     stored = store.create_artifact(project["id"], "config.json", {
@@ -167,6 +169,7 @@ def test_model_artifact_inspection_is_available_through_the_service(store):
     stored_result = service.dispatch("artifacts.inspect_model", {"artifact_id": stored["id"]})
     assert stored_result["stored_artifact"]["id"] == stored["id"]
     assert stored_result["artifact"]["status"] == "ready"
+    assert stored_result["artifact"]["validation"]["valid"] is True
 
 
 def test_serving_simulation_and_http_surface_include_preview_and_comparison(store):
