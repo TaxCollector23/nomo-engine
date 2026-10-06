@@ -62,16 +62,18 @@ shows measured runtime. This decision is provisional until the first benchmark r
 - [x] `PROGRESS.md` updated at every gate.
 - [x] Every module has hand-checked cases, physics sanity tests, evidence-dashboard validation, tested exports,
   and 1440px/390px browser evidence.
-- [ ] Updated engine/planner/landing archives and final report.
+- [x] Updated engine/planner/landing archives and final report.
 
 ## Verification log
 
 | Date | Check | Result | Notes |
 |---|---|---|---|
 | 2026-10-05 | Baseline audit | STARTED | Existing v5 surface is mostly closed-form; this prompt requires a new simulation layer. |
-| 2026-10-05 | Python simulator suite | PASS | 93 tests passed from `nomo-planner`; product, serving, calibration, core, platform, export, and regression coverage are green. |
+| 2026-10-05 | Python simulator suite | PASS | 94 tests passed from `nomo-planner`; product, serving, calibration, core, platform, export, regression, and repaired-search coverage are green. |
 | 2026-10-05 | Browser simulation suite | PASS | `npm run build`; `npm run verify`; `npm run simulation:golden`; GraphIR and Python-core fixtures pass. |
 | 2026-10-05 | Browser simulation suite | PASS | Production build emits the dedicated Worker bundle; the Lab workbench dispatches its local run through `src/simulation/worker.ts` with a synchronous fallback. |
 | 2026-10-05 | Golden and Python search suite | PASS | TypeScript golden: 123 checks; Python suite: 94 tests; deterministic repaired NSGA-II search has a focused test. |
 | 2026-10-05 | Representative runtime | PASS | Python train 2.12 ms / 172 events, serving 13.16 ms / 32 requests, product 1.24 ms / 32 candidates; TS golden 173.90 ms including bundling. |
+| 2026-10-05 | Production deployment and browser smoke | PASS | Engine commit `aa266fa` is pushed; Vercel deployment `dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf` is live. Stable mode-shell HTTP 200 serves the Simulation Worker bundle; Training, Serving, Preview labels, and Neuromorphic link were checked with no console errors/warnings. |
+| 2026-10-05 | Release archives and report | PASS | Engine, planner, and landing tracked-file archives plus this final report are recorded under `release-bundles-aa266fa`. |
 

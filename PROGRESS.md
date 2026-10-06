@@ -1,8 +1,8 @@
 # Nomo Engine progress
 
-Current release status: Phase 1 serving slice and Phase 2–5 preview slices shipped; the strict roadmap audit and the
-remaining safe implementation slices are committed, pushed, deployed, and smoke-tested across the Lab, dashboard, and
-landing page.
+Current release status: the serious simulation-core implementation is committed, pushed, deployed, and smoke-tested
+across the Lab and the historical Neuromorphic dashboard link. Evidence-dependent serving/customer rows remain
+explicitly Preview until auditable measurement artifacts are supplied.
 
 ## 2026-10-05 simulation-core implementation
 
@@ -67,17 +67,22 @@ landing page.
 
 ## Deployment evidence
 
-- Engine final commit: 29bbd00 on main, pushed to github.com/TaxCollector23/nomo-engine.
-- Mode-shell Vercel production deployment: dpl_V495J7gBMhyQQ83HTXP585hPz6AM.
-- Mode-shell unique URL: https://nomo-engine-hdw7htt2j-rangan-alt.vercel.app/
+- Engine serious-simulation release commit: aa266fa on main, pushed to github.com/TaxCollector23/nomo-engine.
+- Mode-shell Vercel production deployment: dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf.
+- Mode-shell unique URL: https://nomo-engine-jj9797idp-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both mode-shell URLs returned HTTP 200 and served index-Cy47kWqD.js with index-BYBpg4SO.css.
+- Both mode-shell URLs returned HTTP 200; the stable alias was explicitly refreshed and serves index-CEditFYn.js,
+  index-DefewnCY.css, and the dedicated worker-C-FLG9f1.js simulation bundle.
+- Live browser smoke showed the Simulation core module, Training/Serving controls, Preview evidence labels, and the
+  historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
 - Landing deployment: dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ; stable alias https://nomoailanding.vercel.app/.
-- Responsive smoke: 1440×900 and 390×844 both passed with document width contained by the viewport; shared graph tabs also fit at 390px.
+- The landing repository had no source change in this simulation release; master remains at 98a91d7 and its existing
+  production deployment remains intact. The untracked research/pilot directory was preserved and not deployed.
+- Responsive layout code and Worker packaging are present; prior 1440×900 and 390×844 smoke evidence remains recorded.
 
 ## Delivery bundles
 
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-engine-29bbd00.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-planner-29bbd00.zip
-- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/nomo-ai-29bbd00.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-engine-aa266fa.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-planner-aa266fa.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/nomo-ai-aa266fa.zip

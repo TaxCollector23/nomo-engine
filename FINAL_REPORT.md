@@ -41,11 +41,14 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 37 tests passed.
+- Python reference: 94 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
 - Python/TypeScript planner, product, layer, and auditor parity: 14,332 checks passed; worst relative difference 4.37e-16.
+- Serious simulation golden: 123 checks passed, including zero-bubble, parallel-collective, embedding-dependency, and
+  repaired NSGA-II coverage.
+- Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
 
@@ -70,11 +73,12 @@ Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 - Historical Neuromorphic dashboard: https://nomo-engine-dashboard.vercel.app/
 - Landing page: https://nomoailanding.vercel.app/
 
-Both repositories changed in this release. The landing repository's pre-existing untracked `research/pilot` directory
-was preserved and was not committed or deployed as source.
+The earlier landing repair is already present in the landing repository. This serious simulation release changes the
+engine repository only; the landing repository's pre-existing untracked `research/pilot` directory was preserved and
+was not committed or deployed as source.
 
-Engine final commit 29bbd00 and landing commit 98a91d7 were pushed to their respective default branches. Mode-shell
-production deployment: dpl_V495J7gBMhyQQ83HTXP585hPz6AM at
+Historical baseline details retained for traceability: engine commit 29bbd00 and landing commit 98a91d7 were pushed
+to their respective default branches. The baseline mode-shell production deployment was dpl_V495J7gBMhyQQ83HTXP585hPz6AM at
 https://nomo-engine-hdw7htt2j-rangan-alt.vercel.app/. The stable mode-shell alias
 https://frontend-gray-ten-c3tj1luab.vercel.app/ returned HTTP 200 and served the new
 index-Cy47kWqD.js bundle with index-BYBpg4SO.css. The unique URL also returned HTTP 200. Browser module smoke tests
@@ -87,5 +91,21 @@ dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ both completed successfully and were aliased to
 
 The line-by-line requirement map is [docs/ROADMAP_AUDIT.md](docs/ROADMAP_AUDIT.md); the file-level review is in
 [docs/FILE_AUDIT.md](docs/FILE_AUDIT.md). Source bundles are available at
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/ (engine, planner, and landing archives), generated
-from the final audited tree after the final pushed source commit.
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-29bbd00/ (historical engine, planner, and landing archives),
+generated from the baseline audited tree after its pushed source commit.
+
+## Latest serious-simulation release
+
+Engine commit `aa266fa` was pushed to `main`. Vercel production deployment
+`dpl_9DwMQDg45MiAvNktnV7QHMyaMBFf` is live at
+https://nomo-engine-jj9797idp-rangan-alt.vercel.app/ and the stable mode-shell alias is
+https://frontend-gray-ten-c3tj1luab.vercel.app/. The stable alias was explicitly refreshed after deployment and
+serves `index-CEditFYn.js`, `index-DefewnCY.css`, and `worker-C-FLG9f1.js`.
+
+Browser smoke verified the Simulation core module, Training and Serving modes, explicit Preview evidence labels, and
+the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. The stable tab had no console errors or warnings.
+The landing repository stayed at pushed commit `98a91d7` with its existing deployment; no landing source change was
+needed for this engine-only simulation release.
+
+The current release archives are at
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-aa266fa/.
