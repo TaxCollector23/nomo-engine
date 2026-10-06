@@ -2,6 +2,20 @@
 
 ## Release scope
 
+### Serious simulation-core expansion (2026-10-05)
+
+The new implementation adds a Python-first simulation reference and a deterministic TypeScript/Worker contract.
+It covers operator graphs (forward/backward, attention, MoE, optimizer, FLOPs/bytes/lifetimes), roofline and
+topology/collective models, training timelines/memory, serving request timelines/KV/cache/SLO metrics, calibrated
+distributions and held-out reporting, plus artifact-driven M4–M11 product simulations. The Lab now exposes a
+Simulation Workbench and Evidence registry, and the platform layer persists projects, artifacts, runs, comparisons,
+HTML/PDF reports, and preview simulations through a CLI, HTTP API, SDK, and MCP-style JSON-RPC surface.
+
+The serious-criteria boundary is explicit. The checked-in Study 1 training artifact retains 5.9% held-out PTD-P,
+0.94 Spearman, and 18/22 (81.8%) nominal-90% interval coverage. The serving simulator is fully implemented and
+tested, but no numeric public serving trace or customer telemetry was supplied, so serving/customer validation stays
+Preview and is not presented as measured.
+
 This release closes the remaining safe, testable slices identified by the strict roadmap audit without presenting
 estimates as measurements. It does not claim that data-dependent or cross-repository compiler work is complete.
 

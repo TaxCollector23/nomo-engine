@@ -17,10 +17,11 @@ import LayerPlanner from "./LayerPlanner";
 import Methods, { Equations } from "./Methods";
 import ProductStudio from "./ProductStudio";
 import CostTracker from "./CostTracker";
+import SimulationWorkbench, { SimulationEvidencePanel } from "./SimulationWorkbench";
 import TradeoffChart from "./TradeoffChart";
 import "./lab.css";
 
-type ModuleId = DomainId | "layers" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic";
+type ModuleId = DomainId | "layers" | "simulation" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic";
 type Mode = "guided" | "explore" | "rigor";
 interface Prefs { animate: boolean; anatomy: boolean; whatif: boolean; table: boolean; equations: boolean; provenance: boolean }
 
@@ -32,15 +33,16 @@ const MODE_PREFS: Record<Mode, Prefs> = {
 
 const MODULES: { id: ModuleId; n: string; title: string; blurb: string }[] = [
   { id: "layers", n: "01", title: "Shared model graph", blurb: "Train, serve and deploy the same layers" },
-  { id: "llm_training", n: "02", title: "Train a model", blurb: "Split a training run across GPUs" },
-  { id: "llm_inference", n: "03", title: "Serve a model", blurb: "Cheapest tokens at your speed limit" },
-  { id: "arch_codesign", n: "04", title: "Design a model", blurb: "What to build for your budget" },
-  { id: "neuromorphic", n: "05", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
-  { id: "auditor", n: "06", title: "Audit a run", blurb: "Parse configs and observed logs" },
-  { id: "products", n: "07", title: "Infrastructure products", blurb: "RL, reliability, fleets, TCO" },
-  { id: "costs", n: "08", title: "Cost tracker", blurb: "Cited compute and token prices" },
-  { id: "evidence", n: "09", title: "Evidence", blurb: "22 published runs, predicted" },
-  { id: "methods", n: "10", title: "Methods", blurb: "Equations, verification, references" },
+  { id: "simulation", n: "02", title: "Simulation core", blurb: "Account for operators, time and memory" },
+  { id: "llm_training", n: "03", title: "Train a model", blurb: "Split a training run across GPUs" },
+  { id: "llm_inference", n: "04", title: "Serve a model", blurb: "Cheapest tokens at your speed limit" },
+  { id: "arch_codesign", n: "05", title: "Design a model", blurb: "What to build for your budget" },
+  { id: "neuromorphic", n: "06", title: "Neuromorphic chips", blurb: "Spiking and physics-based layers" },
+  { id: "auditor", n: "07", title: "Audit a run", blurb: "Parse configs and observed logs" },
+  { id: "products", n: "08", title: "Infrastructure products", blurb: "RL, reliability, fleets, TCO" },
+  { id: "costs", n: "09", title: "Cost tracker", blurb: "Cited compute and token prices" },
+  { id: "evidence", n: "10", title: "Evidence", blurb: "22 published runs, predicted" },
+  { id: "methods", n: "11", title: "Methods", blurb: "Equations, verification, references" },
 ];
 
 const QUESTIONS: Record<DomainId, string> = {
@@ -340,10 +342,11 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
 
         <main className="lab-main" id="lab-main">
           {module === "layers" && <LayerPlanner mode={mode} />}
+          {module === "simulation" && <SimulationWorkbench />}
           {module === "auditor" && <Auditor />}
           {module === "products" && <ProductStudio mode={mode} />}
           {module === "costs" && <CostTracker />}
-          {module === "evidence" && <Evidence />}
+          {module === "evidence" && <><Evidence /><SimulationEvidencePanel /></>}
           {module === "methods" && <Methods />}
           {module === "neuromorphic" && (
             <div className="lab-neuro">

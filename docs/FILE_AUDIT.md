@@ -12,18 +12,22 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 | Repository / area | Files reviewed | Disposition |
 |---|---:|---|
 | `nomo-engine` root metadata, package files, entrypoint, README, reports | 12 | Used by build/deploy or documentation; stale deployment evidence refreshed. |
-| `nomo-engine/docs/` | 14 after this record | Gate reports and audit retained; `SPEC.md`, `DEPLOY.md`, and `OBSERVABILITY.md` added because the landing page previously linked to missing documents. |
+| `nomo-engine/docs/` | 18 after this record | Gate reports, serious-simulation audit/gates, prior-art citations, and reports retained; `SPEC.md`, `DEPLOY.md`, and `OBSERVABILITY.md` resolve the public documentation links. |
 | `nomo-engine/frontend/` | 39 | Next.js neuromorphic launcher/dashboard, telemetry client, export UI, and admin surface typecheck/build successfully. The disabled unimplemented phase-coding control was removed. |
-| `nomo-engine/nomo-planner/` | 25 | Python reference planner, studies, data, and tests; experiment-result CSV parsing and tests added. |
-| `nomo-engine/scripts/` | 6 | Golden fixtures, parity verifier, and benchmark runner; `npm run verify` remains green. |
-| `nomo-engine/src/` | 35 | Browser planner, Lab modules, product/cost/auditor surfaces, exports, and styling; calibration file/result ingestion is local-only. |
+| `nomo-engine/nomo-planner/` | 41 | Python reference planner, serious simulation core, platform/API/SDK/CLI, studies, data, and tests; experiment-result CSV parsing and tests added. |
+| `nomo-engine/scripts/` | 7 | Golden fixtures, parity verifier, benchmark runner, and simulation golden runner; `npm run verify` remains green. |
+| `nomo-engine/src/` | 50 | Browser planner, Lab modules, product/cost/auditor surfaces, exports, styling, GraphIR, topology/timeline/distribution contracts, Python-core parity, and the Worker-backed Simulation Workbench; calibration file/result ingestion is local-only. |
 | `nomo-engine/public/` | 2 | Favicon/logo assets used by the root app. |
 | `nomo-ai` tracked tree | 25 | Landing routes, research pages, styling, package/deployment files, and assets reviewed; the only landing source change is the documentation/audit link repair. |
 
 ## Checks
 
 - `nomo-planner`: Python tests pass, including the new completed-experiment CSV to local-calibration test.
+- Serious simulation layer: 94 Python tests pass; `nsga2_search` repairs constrained genomes and records its search
+  provenance; training/serving/product runtime fixtures and report/export paths are covered.
 - Root Lab: production build and Python/TypeScript parity verifier pass.
+- Browser simulation: `npm run simulation:golden` passes 123 checks, and the production build emits the Worker bundle
+  consumed by `SimulationWorkbench` with a deterministic synchronous fallback.
 - Neuromorphic dashboard: `npm run typecheck` and `npm run build` pass; a live built-in Event-camera/AKD1500 search
   completed and exposed 550 designs, seven trade-offs, layer inspection, and export controls.
 - Landing: production build passes; documentation links now resolve to tracked engine documents.

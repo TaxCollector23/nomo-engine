@@ -4,6 +4,23 @@ Current release status: Phase 1 serving slice and Phase 2–5 preview slices shi
 remaining safe implementation slices are committed, pushed, deployed, and smoke-tested across the Lab, dashboard, and
 landing page.
 
+## 2026-10-05 simulation-core implementation
+
+- Added a Python-first serious-simulation layer: operator graph, roofline efficiency curves, topology/collectives,
+  training Gantt and memory events, serving request simulation, distributions, calibration/held-out metrics, and
+  artifact-driven M4–M11 product simulations.
+- Added deterministic TypeScript GraphIR/Worker contracts, Python-core aliases, topology/timeline/distribution
+  contracts, a production Worker bundle, and `npm run simulation:golden` parity fixtures (123 checks).
+- Added the Lab Simulation Workbench and Evidence registry with explicit Preview labels, source/provenance, training
+  and serving timelines, metrics, server-only boundaries, and JSON export.
+- Added the SQLite platform store, run comparison, HTML/PDF reports, local/HTTP API, CLI, Python SDK, and MCP-style
+  JSON-RPC operations including `simulations.run`.
+- Added tested M1/M2 framework projections, M3 audit diff/report exports, and a living `docs/EXECUTION_AUDIT.md`.
+- Added a deterministic, repair-aware NSGA-II search utility with population/generation/evaluation provenance and
+  focused tests for constrained genomes.
+- Honest gate boundary: Study 1 training evidence is present (5.9% PTD-P, 0.94 Spearman, 18/22 interval coverage),
+  but no customer telemetry or numeric public serving validation fixture has been invented; those rows remain Preview.
+
 ## Completed
 
 - Python-first layer graph with fair global comparison, separate precision/per-layer gain, pipeline/communication/offload accounting, published model presets, and fixed-seed browser parity.
@@ -22,10 +39,11 @@ landing page.
 
 ## Verification evidence
 
-- Python: 37 tests passed in nomo-planner.
+- Python: 94 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
-- Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16.
+- Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
+  golden passed 123 checks including zero-bubble, parallel-collective, and embedding-dependency coverage.
 - Existing 22-row calibration artifact and fixed-seed layer goldens remain green.
 - Product estimators pass Python physics-sanity tests and browser product golden parity.
 
