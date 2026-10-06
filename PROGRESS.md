@@ -36,10 +36,11 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## 2026-10-06 production refresh and live verification
 
-- Pushed engine commit `a314204` to `main` after the public-serving and safe-artifact boundary pass.
-- Vercel deployment `dpl_3gzfHs74ffGVFby1M7hSSsW9tCpZ` is READY at
-  `https://nomo-engine-7ujourbmj-rangan-alt.vercel.app/`; the canonical mode-shell alias was explicitly reassigned to
-  this deployment and now serves the same `index-8B-nBfyb.js` bundle.
+- Pushed engine commits `c777a1f`, `cab46e7`, and `b08e5fb` to `main` after the public-serving and safe-artifact boundary
+  pass.
+- Vercel deployment `dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz` is READY at
+  `https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
+  deployment and serves the same `index-8B-nBfyb.js` bundle.
 - Live browser verification exercised the restored mode shell, Simulation core, Training/Serving controls, Evidence
   panel, cited Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
   Event-camera/AKD1500 search (`/runs/620b864c08bd`) with 550 designs tried, seven trade-offs, layer inspection, and no
@@ -96,10 +97,10 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current release commit: a314204520bd75aea4ae883dd77f5b9e31820a69 on main, pushed to
-  github.com/TaxCollector23/nomo-engine.
-- Mode-shell Vercel production deployment: dpl_3gzfHs74ffGVFby1M7hSSsW9tCpZ.
-- Mode-shell unique URL: https://nomo-engine-7ujourbmj-rangan-alt.vercel.app/
+- Engine current release commits: c777a1f, cab46e7, and b08e5fb on main, pushed to github.com/TaxCollector23/nomo-engine
+  after the a314204 runtime release.
+- Mode-shell Vercel production deployment: dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz.
+- Mode-shell unique URL: https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
   `index-8B-nBfyb.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-DMBnj76E.js`.
