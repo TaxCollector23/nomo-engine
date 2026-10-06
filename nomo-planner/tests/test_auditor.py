@@ -12,6 +12,18 @@ def test_megatron_command_extracts_topology_and_roundtrips_core_flags():
     assert (roundtrip.tensor_parallel, roundtrip.pipeline_parallel, roundtrip.precision) == (4, 2, "bf16")
 
 
+def test_megatron_fp16_and_unknown_values_roundtrip_without_validation():
+    run = parse_megatron_command(
+        "torchrun pretrain.py --model meta/llama --fp16 --untested-token -opaque-value"
+    )
+    exported = run.to_megatron_args()
+    assert "--fp16" in exported
+    assert "--untested-token -opaque-value" in exported
+    roundtrip = parse_megatron_command(exported)
+    assert roundtrip.precision == "fp16"
+    assert "--untested-token" in roundtrip.unrecognized_options
+
+
 def test_deepspeed_json_and_vllm_command_are_canonicalized():
     deep = parse_deepspeed_config({"model_name_or_path": "meta/llama", "train_micro_batch_size_per_gpu": 4, "zero_optimization": {"stage": 2}, "tensor_parallel": {"tp_size": 2}, "bf16": {"enabled": True}})
     assert (deep.source_format, deep.micro_batch_size, deep.tensor_parallel, deep.zero_stage, deep.precision) == ("deepspeed-json", 4, 2, 2, "bf16")
@@ -43,6 +55,51 @@ def test_unsupported_options_are_flagged_instead_of_silently_dropped():
 
     vllm = parse_vllm_command("vllm serve meta/llama --dtype bfloat16 --new-scheduler-flag 7")
     assert "--new-scheduler-flag 7" in vllm.export_same_format()
+
+
+def test_deepspeed_preserves_uninterpreted_nested_fields_in_known_blocks():
+    deep = parse_deepspeed_config(
+        {
+            "model_name_or_path": "meta/llama",
+            "train_micro_batch_size_per_gpu": 4,
+            "zero_optimization": {
+                "stage": 3,
+                "offload_optimizer": {"device": "cpu", "pin_memory": True},
+                "overlap_comm": True,
+            },
+            "tensor_parallel": {"tp_size": 2, "tp_grain_size": 128},
+            "pipeline_parallel": {"stages": 2, "activation_checkpoint_interval": 4},
+            "bf16": {"enabled": True, "loss_scale": 0},
+            "optimizer": {"type": "OneBitAdam", "params": {"lr": 1e-4}},
+        }
+    )
+    exported = json.loads(deep.export_same_format())
+    assert exported["zero_optimization"]["stage"] == 3
+    assert exported["zero_optimization"]["offload_optimizer"] == {"device": "cpu", "pin_memory": True}
+    assert exported["zero_optimization"]["overlap_comm"] is True
+    assert exported["tensor_parallel"]["tp_grain_size"] == 128
+    assert exported["pipeline_parallel"]["activation_checkpoint_interval"] == 4
+    assert exported["bf16"]["loss_scale"] == 0
+    assert exported["optimizer"] == {"type": "OneBitAdam", "params": {"lr": 1e-4}}
+    assert "zero_optimization.offload_optimizer" in deep.unrecognized_options
+    assert "pipeline_parallel.activation_checkpoint_interval" in deep.unrecognized_options
+    assert "optimizer" in deep.unrecognized_options
+    assert "not interpreted" in " ".join(deep.warnings)
+
+
+def test_vllm_framework_options_are_preserved_without_semantic_interpretation():
+    run = parse_vllm_command(
+        "vllm serve meta/llama --dtype bfloat16 --enable-prefix-caching "
+        "--max-num-batched-tokens 4096 --quantization awq"
+    )
+    exported = run.export_same_format()
+    assert "--enable-prefix-caching" in exported
+    assert "--max-num-batched-tokens 4096" in exported
+    assert "--quantization awq" in exported
+    assert "--enable-prefix-caching" in run.unrecognized_options
+    assert "--max-num-batched-tokens" in run.unrecognized_options
+    assert "--quantization" in run.unrecognized_options
+    assert "not interpreted" in " ".join(run.warnings)
 
 
 def test_audit_text_dispatches_json_and_logs():

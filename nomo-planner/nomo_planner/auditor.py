@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Mapping
 
@@ -73,6 +74,8 @@ class AuditRun:
             args.append("--bf16")
         elif self.precision == "fp8":
             args.append("--fp8")
+        elif self.precision == "fp16":
+            args.append("--fp16")
         args.extend(self.passthrough_tokens)
         return " ".join(shlex.quote(value) for value in args)
 
@@ -101,13 +104,29 @@ class AuditRun:
             "tensor_parallel": {"tp_size": self.tensor_parallel},
             "pipeline_parallel": {"stages": self.pipeline_parallel},
         }
-        config.update(dict(self.passthrough_fields))
+        # Preserve fields that were not interpreted, including fields nested in
+        # blocks that the auditor projects.  The canonical fields win on a key
+        # collision; passthrough data is not a semantic validation mechanism.
+        for key, value in self.passthrough_fields.items():
+            current = config.get(key)
+            if isinstance(current, Mapping) and isinstance(value, Mapping):
+                merged = deepcopy(dict(value))
+                merged.update(deepcopy(dict(current)))
+                config[key] = merged
+            elif key not in config:
+                config[key] = deepcopy(value)
         if self.zero_stage is not None:
-            config["zero_optimization"] = {"stage": self.zero_stage}
+            zero = config.get("zero_optimization")
+            if isinstance(zero, Mapping):
+                config["zero_optimization"] = deepcopy(dict(zero)) | {"stage": self.zero_stage}
+            else:
+                config["zero_optimization"] = {"stage": self.zero_stage}
         if self.precision == "bf16":
-            config["bf16"] = {"enabled": True}
+            bf16 = config.get("bf16")
+            config["bf16"] = (deepcopy(dict(bf16)) if isinstance(bf16, Mapping) else {}) | {"enabled": True}
         elif self.precision == "fp16":
-            config["fp16"] = {"enabled": True}
+            fp16 = config.get("fp16")
+            config["fp16"] = (deepcopy(dict(fp16)) if isinstance(fp16, Mapping) else {}) | {"enabled": True}
         if self.model:
             config["model_name_or_path"] = self.model
         return config
@@ -143,11 +162,67 @@ def _passthrough_tokens(tokens: list[str], unknown: tuple[str, ...]) -> tuple[st
         name = token.split("=", 1)[0]
         if name in names:
             result.append(token)
-            if "=" not in token and index + 1 < len(tokens) and not tokens[index + 1].startswith("-"):
+            if (
+                "=" not in token
+                and index + 1 < len(tokens)
+                # The auditor only treats long options as option boundaries.
+                # Preserve a single-dash token as an opaque value because its
+                # meaning is framework-specific and cannot be validated here.
+                and not tokens[index + 1].startswith("--")
+            ):
                 result.append(tokens[index + 1])
                 index += 1
         index += 1
     return tuple(result)
+
+
+_DEEPSPEED_TOP_LEVEL_FIELDS = {
+    "model_name_or_path",
+    "train_micro_batch_size_per_gpu",
+    "tensor_parallel",
+    "pipeline_parallel",
+    "zero_optimization",
+    "bf16",
+    "fp16",
+}
+
+_DEEPSPEED_INTERPRETED_NESTED_FIELDS = {
+    "zero_optimization": {"stage"},
+    "tensor_parallel": {"tp_size", "tp"},
+    "pipeline_parallel": {"stages"},
+    "bf16": {"enabled"},
+    "fp16": {"enabled"},
+}
+
+
+def _deepspeed_passthrough_fields(config: Mapping[str, Any]) -> tuple[tuple[str, ...], dict[str, Any]]:
+    """Return unparsed DeepSpeed fields without asserting their semantics."""
+
+    unknown: list[str] = []
+    passthrough: dict[str, Any] = {}
+    for key, value in config.items():
+        if key not in _DEEPSPEED_TOP_LEVEL_FIELDS:
+            unknown.append(str(key))
+            passthrough[key] = deepcopy(value)
+
+    for section, interpreted in _DEEPSPEED_INTERPRETED_NESTED_FIELDS.items():
+        if section not in config:
+            continue
+        value = config[section]
+        if isinstance(value, Mapping):
+            extra = {key: deepcopy(item) for key, item in value.items() if key not in interpreted}
+            if extra:
+                passthrough[section] = extra
+                unknown.extend(f"{section}.{key}" for key in extra)
+            continue
+        # A scalar pipeline_parallel value is a supported shorthand. Other
+        # shapes are retained because this parser cannot interpret them safely.
+        if section == "pipeline_parallel" and _number(value) is not None:
+            continue
+        unknown.append(section)
+        passthrough[section] = deepcopy(value)
+
+    return tuple(sorted(set(unknown))), passthrough
 
 
 def parse_megatron_command(command: str) -> AuditRun:
@@ -207,7 +282,7 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
     fp16 = config.get("fp16") if isinstance(config.get("fp16"), Mapping) else {}
     precision = "bf16" if bf16.get("enabled") else "fp16" if fp16.get("enabled") else "unknown"
     warnings: list[str] = []
-    unknown = tuple(sorted(set(config) - {"model_name_or_path", "train_micro_batch_size_per_gpu", "tensor_parallel", "pipeline_parallel", "zero_optimization", "bf16", "fp16"}))
+    unknown, passthrough = _deepspeed_passthrough_fields(config)
     if precision == "unknown":
         warnings.append("DeepSpeed JSON did not enable bf16 or fp16")
     if unknown:
@@ -221,7 +296,7 @@ def parse_deepspeed_config(config: Mapping[str, Any], *, command: str | None = N
         precision=precision,
         zero_stage=int(_number(zero.get("stage"), 0) or 0) or None,
         warnings=tuple(warnings), unrecognized_options=unknown,
-        passthrough_fields={key: config[key] for key in unknown},
+        passthrough_fields=passthrough,
     )
 
 
