@@ -63,6 +63,24 @@ class PlatformClient:
         suffix = f"?run_id={run_id}" if run_id else ""
         return self._request("GET", f"/projects/{project_id}/artifacts{suffix}")
 
+    def inspect_model(self, *, content: Any | None = None, artifact_id: str | None = None):
+        """Inspect inline model JSON or a stored model artifact safely.
+
+        The embedded client dispatches through the same service method as the
+        HTTP API; the remote client uses ``POST /artifacts/inspect-model``.
+        Binary pickle-backed weights are never deserialized implicitly by the
+        inspection service.
+        """
+        params: dict[str, Any] = {}
+        if content is not None:
+            params["content"] = content
+        if artifact_id is not None:
+            params["artifact_id"] = artifact_id
+        if self.store:
+            from .api import PlatformService
+            return PlatformService(self.store).dispatch("artifacts.inspect_model", params)
+        return self._request("POST", "/artifacts/inspect-model", params)
+
     def create_run(self, project_id: str, *, name: str = "run", config: Mapping[str, Any] | None = None,
                    result: Mapping[str, Any] | None = None, status: str = "completed",
                    metadata: Mapping[str, Any] | None = None):

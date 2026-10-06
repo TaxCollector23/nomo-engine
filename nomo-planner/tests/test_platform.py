@@ -172,6 +172,54 @@ def test_model_artifact_inspection_is_available_through_the_service(store):
     assert stored_result["artifact"]["validation"]["valid"] is True
 
 
+def test_sdk_inspects_inline_hf_and_nomo_json_over_http(store):
+    server = PlatformHTTPServer(("127.0.0.1", 0), store)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        client = PlatformClient(base_url=f"http://127.0.0.1:{server.server_port}")
+        hf = client.inspect_model(content={
+            "model_type": "llama", "hidden_size": 8, "num_hidden_layers": 1,
+            "num_attention_heads": 2, "intermediate_size": 16, "vocab_size": 32,
+        })
+        assert hf["format"] == "huggingface-config"
+        assert hf["status"] == "ready"
+        assert hf["validation"]["lowering"] == "transformer-skeleton-v1"
+
+        nomo = client.inspect_model(content={
+            "schema_version": 1,
+            "nodes": [
+                {"id": "input", "kind": "input", "outputs": ["hidden"]},
+                {"id": "output", "kind": "output", "inputs": ["hidden"]},
+            ],
+        })
+        assert nomo["format"] == "nomo-graph-json"
+        assert nomo["status"] == "ready"
+        assert [node["id"] for node in nomo["graph_nodes"]] == ["input", "output"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_sdk_model_inspection_reports_missing_content_or_artifact_id(store):
+    local = PlatformClient(store=store)
+    with pytest.raises(ValueError, match="content or artifact_id is required"):
+        local.inspect_model()
+
+    server = PlatformHTTPServer(("127.0.0.1", 0), store)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        remote = PlatformClient(base_url=f"http://127.0.0.1:{server.server_port}")
+        with pytest.raises(RuntimeError, match="content or artifact_id is required"):
+            remote.inspect_model()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_serving_simulation_and_http_surface_include_preview_and_comparison(store):
     local = PlatformClient(store=store)
     project = local.create_project("api sim")

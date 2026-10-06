@@ -323,6 +323,8 @@ class PlatformHTTPServer(ThreadingHTTPServer):
                     self._respond(200, service.dispatch("artifacts.list", args)); return
                 if len(path) == 3 and path[0] == "projects" and path[2] == "artifacts" and method == "POST":
                     self._respond(201, service.dispatch("artifacts.create", {**body, "project_id": path[1]})); return
+                if path == ["artifacts", "inspect-model"] and method == "POST":
+                    self._respond(200, service.dispatch("artifacts.inspect_model", body)); return
                 if len(path) == 2 and path[0] == "artifacts" and method == "GET":
                     self._respond(200, service.dispatch("artifacts.get", {"artifact_id": path[1]})); return
                 if len(path) == 2 and path[0] == "runs":
