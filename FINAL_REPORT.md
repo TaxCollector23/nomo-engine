@@ -116,11 +116,13 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine commit `27b8824` was pushed to `main` after the previous runtime release and includes the evidence/cost/
-calibration boundary pass. Vercel production deployment `dpl_5sxB78cDXJhiV1JaEi22aJ2wrKq4` is live at
-https://nomo-engine-8kchdj44b-rangan-alt.vercel.app/ and the canonical mode-shell alias is
-https://frontend-gray-ten-c3tj1luab7.vercel.app/. Both return HTTP 200; the deployed JavaScript contains the
-14,337 verification count, cost coverage boundary, undated-source label, and non-predictive interval disclaimer.
+Engine commits `27b8824`, `3610bb9`, and `edd3a49` were pushed to `main` after the previous runtime release and
+include the evidence/cost/calibration boundary pass plus the measured benchmark surface. Vercel production
+deployment `dpl_64zXrB6nm3rc2uLX6ab9isCxGxRP` is live at
+https://nomo-engine-n83ultg7g-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+https://frontend-gray-ten-c3tj1luab.vercel.app/. Both return HTTP 200; the deployed JavaScript contains the
+14,337 verification count, the four measured benchmark rows, cost coverage boundary, undated-source label, and
+non-predictive interval disclaimer.
 
 Browser smoke verified all 11 Lab routes at 1440×900 and 390×844, the Simulation core module, Training and Serving
 modes, the cited Sarathi Evidence row and explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live
