@@ -113,11 +113,11 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine runtime commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, `126326c`, `e300b1c`, and `19dd854` were pushed to `main` after the `a314204` runtime release; the audit/deployment records were pushed alongside them. Vercel
-production deployment `dpl_88jwbgJb6otFxUwcNe5zUpbT2fDe` is live at
-https://nomo-engine-klb7z3drv-rangan-alt.vercel.app/ and the canonical mode-shell alias is
-https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and
-serves `index-c-I02bbG.js`, `index-DR3mSem2.css`, `worker-C-FLG9f1.js`, and `jszip.min-DuFMEDAl.js`.
+Engine commit `27b8824` was pushed to `main` after the previous runtime release and includes the evidence/cost/
+calibration boundary pass. Vercel production deployment `dpl_5sxB78cDXJhiV1JaEi22aJ2wrKq4` is live at
+https://nomo-engine-8kchdj44b-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+https://frontend-gray-ten-c3tj1luab7.vercel.app/. Both return HTTP 200; the deployed JavaScript contains the
+14,337 verification count, cost coverage boundary, undated-source label, and non-predictive interval disclaimer.
 
 Browser smoke verified all 11 Lab routes at 1440×900 and 390×844, the Simulation core module, Training and Serving
 modes, the cited Sarathi Evidence row and explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live
@@ -126,5 +126,6 @@ trade-offs with layer inspection available. The checked tabs had no console erro
 The landing repository stayed at pushed commit `98a91d7` with its existing deployment; no landing source change was
 needed for this engine-only simulation release.
 
-The current release archives are at
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/.
+The current engine/planner release archives are
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-27b8824.zip and
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-27b8824.zip.

@@ -50,6 +50,9 @@ explicitly Preview/open where the required artifacts or server contract are abse
   console errors or warnings.
 - The landing source tree remains unchanged at `98a91d7`; its pre-existing `research/pilot/` directory remains
   untracked and preserved.
+- Evidence/cost/calibration boundary refresh is pushed as engine commit `27b8824`; Vercel deployment
+  `dpl_5sxB78cDXJhiV1JaEi22aJ2wrKq4` is READY at `https://nomo-engine-8kchdj44b-rangan-alt.vercel.app/` and
+  the stable mode-shell alias `https://frontend-gray-ten-c3tj1luab7.vercel.app/` serves the same build.
 
 ## Completed
 
@@ -106,13 +109,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current runtime release commits: c777a1f, cab46e7, b08e5fb, 631e040, 126326c, e300b1c, and 19dd854 on main, with the
-  audit/deployment records also pushed to github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
-- Mode-shell Vercel production deployment: dpl_88jwbgJb6otFxUwcNe5zUpbT2fDe.
-- Mode-shell unique URL: https://nomo-engine-klb7z3drv-rangan-alt.vercel.app/
+- Engine current runtime release commit: 27b8824 on main, with the audit/deployment records also pushed to
+  github.com/TaxCollector23/nomo-engine.
+- Mode-shell Vercel production deployment: dpl_5sxB78cDXJhiV1JaEi22aJ2wrKq4.
+- Mode-shell unique URL: https://nomo-engine-8kchdj44b-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
-- Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
-  `index-c-I02bbG.js`, `index-DR3mSem2.css`, `worker-C-FLG9f1.js`, and `jszip.min-DuFMEDAl.js`.
+- Both mode-shell URLs returned HTTP 200; the canonical stable alias serves the current
+  `index-U27ufyOc.js`, `index-DR3mSem2.css`, `worker-C-FLG9f1.js`, and `jszip.min-DYT7US4q.js` build.
 - Live browser smoke showed the Simulation core module, Training/Serving controls, the cited Evidence rows and Preview
   labels, and the historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
@@ -127,3 +130,5 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-a314204.zip
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-a314204.zip
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-ai-a314204.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-27b8824.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-27b8824.zip
