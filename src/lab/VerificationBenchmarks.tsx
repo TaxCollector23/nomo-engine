@@ -1,8 +1,8 @@
 const SEARCH_BENCHMARKS = [
-  { workload: "llm_training · default", plans: "7,680", search: "75 ms", explain: "1 ms" },
-  { workload: "llm_training · 64–4,096 devices", plans: "13,440", search: "146 ms", explain: "1 ms" },
+  { workload: "llm_training · default", plans: "7,680", search: "63 ms", explain: "1 ms" },
+  { workload: "llm_training · 64–4,096 devices", plans: "13,440", search: "150 ms", explain: "1 ms" },
   { workload: "llm_inference · default", plans: "216", search: "2 ms", explain: "0 ms" },
-  { workload: "arch_codesign · $5M budget", plans: "1,215", search: "18 ms", explain: "0 ms" },
+  { workload: "arch_codesign · $5M budget", plans: "1,215", search: "13 ms", explain: "0 ms" },
 ];
 
 /** Checked-in results from the repository's deterministic benchmark command. */
