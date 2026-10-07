@@ -42,7 +42,7 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 114 tests passed.
+- Python reference: 116 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
@@ -106,11 +106,11 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine commits `c777a1f`, `cab46e7`, `b08e5fb`, and `631e040` were pushed to `main` after the `a314204` runtime release. Vercel
-production deployment `dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz` is live at
-https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+Engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` were pushed to `main` after the `a314204` runtime release. Vercel
+production deployment `dpl_8xahQuMz34mutsCbQPUGXkCH8hNg` is live at
+https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/ and the canonical mode-shell alias is
 https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and
-serves `index-8B-nBfyb.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-DMBnj76E.js`.
+serves `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
 
 Browser smoke verified the Simulation core module, Training and Serving modes, the cited Sarathi Evidence row and
 explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live

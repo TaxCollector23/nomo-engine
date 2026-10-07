@@ -22,7 +22,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 
 ## Checks
 
-- `nomo-planner`: 114 Python tests pass, including the completed-experiment CSV to local-calibration test, public
+- `nomo-planner`: 116 Python tests pass, including the completed-experiment CSV to local-calibration test, public
   Sarathi-Serve serving comparison, HF/Nomo structural lowering, safetensors metadata inspection, safe state-dict
   boundaries, Prometheus parsing, opaque framework-option round-trips, and HTTP/SDK model inspection.
 - Serious simulation layer: `nsga2_search` repairs constrained genomes and records its search provenance;
@@ -33,7 +33,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
   cited 12-row Sarathi comparison and its 72.98% replay MAPE.
 - Neuromorphic dashboard: `npm run typecheck` and `npm run build` pass; a live built-in Event-camera/AKD1500 search
   completed and exposed 550 designs, seven trade-offs, layer inspection, and export controls.
-- Production refresh: engine commits `c777a1f`, `cab46e7`, and `b08e5fb` are pushed, the canonical mode-shell alias
+- Production refresh: engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` are pushed, the canonical mode-shell alias
   serves the current Worker bundle, the Simulation/Evidence surfaces were checked live, and the neuromorphic run
   completed without console errors.
 - Landing: production build passes; documentation links now resolve to tracked engine documents.

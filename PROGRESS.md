@@ -31,16 +31,16 @@ explicitly Preview/open where the required artifacts or server contract are abse
   inspection through the platform service and CLI.
 - Preserved unknown Megatron/vLLM CLI tokens, opaque option values, and nested DeepSpeed JSON fields in same-format audit
   exports while flagging them as semantically unvalidated.
-- Verification after this pass: 114 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
+- Verification after this pass: 116 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
   simulation golden checks.
 
 ## 2026-10-06 production refresh and live verification
 
-- Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, and `631e040` to `main` after the public-serving and safe-artifact
+- Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` to `main` after the public-serving and safe-artifact
   boundary pass.
-- Vercel deployment `dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz` is READY at
-  `https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
-  deployment and serves the same `index-8B-nBfyb.js` bundle.
+- Vercel deployment `dpl_8xahQuMz34mutsCbQPUGXkCH8hNg` is READY at
+  `https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
+  deployment and serves the same `index-BmNxTOYX.js` bundle.
 - Live browser verification exercised the restored mode shell, Simulation core, Training/Serving controls, Evidence
   panel, cited Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
   Event-camera/AKD1500 search (`/runs/620b864c08bd`) with 550 designs tried, seven trade-offs, layer inspection, and no
@@ -66,7 +66,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 114 tests passed in nomo-planner.
+- Python: 116 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
@@ -98,13 +98,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current release commits: c777a1f, cab46e7, b08e5fb, and 631e040 on main, pushed to
+- Engine current release commits: c777a1f, cab46e7, b08e5fb, 631e040, and 126326c on main, pushed to
   github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
-- Mode-shell Vercel production deployment: dpl_8zH3TrjGnqdutQJEgTZGuGbZeywz.
-- Mode-shell unique URL: https://nomo-engine-cvt11oeaf-rangan-alt.vercel.app/
+- Mode-shell Vercel production deployment: dpl_8xahQuMz34mutsCbQPUGXkCH8hNg.
+- Mode-shell unique URL: https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
-  `index-8B-nBfyb.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-DMBnj76E.js`.
+  `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
 - Live browser smoke showed the Simulation core module, Training/Serving controls, the cited Evidence rows and Preview
   labels, and the historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
