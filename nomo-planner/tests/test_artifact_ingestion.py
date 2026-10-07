@@ -1,3 +1,4 @@
+import base64
 import json
 import sys
 import types
@@ -103,8 +104,24 @@ def test_onnx_reader_path_runs_structural_checker_before_exposing_nodes(tmp_path
     path.write_bytes(b"safe test fixture")
     calls = []
 
-    node = types.SimpleNamespace(op_type="Add", name="add", input=["x", "y"], output=["z"])
-    model = types.SimpleNamespace(graph=types.SimpleNamespace(node=[node]))
+    tensor_type = types.SimpleNamespace(
+        elem_type=1,
+        shape=types.SimpleNamespace(dim=[
+            types.SimpleNamespace(dim_value=1, dim_param=""),
+            types.SimpleNamespace(dim_value=0, dim_param="sequence"),
+        ]),
+    )
+    graph_input = types.SimpleNamespace(name="input_ids", type=types.SimpleNamespace(tensor_type=tensor_type))
+    initializer = types.SimpleNamespace(name="weight", data_type=1, dims=[2, 2])
+    graph_output = types.SimpleNamespace(name="logits", type=types.SimpleNamespace(tensor_type=tensor_type))
+    attribute = types.SimpleNamespace(name="axis", type=2, i=1)
+    node = types.SimpleNamespace(
+        op_type="MatMul", name="matmul", domain="", input=["input_ids", "weight"],
+        output=["logits"], attribute=[attribute],
+    )
+    model = types.SimpleNamespace(graph=types.SimpleNamespace(
+        input=[graph_input], initializer=[initializer], value_info=[], node=[node], output=[graph_output],
+    ))
     fake_onnx = types.ModuleType("onnx")
     fake_onnx.load_model_from_string = lambda raw: model
     fake_onnx.checker = types.SimpleNamespace(check_model=lambda checked: calls.append(checked))
@@ -114,11 +131,70 @@ def test_onnx_reader_path_runs_structural_checker_before_exposing_nodes(tmp_path
 
     assert calls == [model]
     assert artifact.status == "graph-inspected"
-    assert artifact.validation["lowering"] == "node-metadata-only"
-    assert artifact.graph_nodes == ({
-        "id": "add", "kind": "Add", "op_type": "Add", "name": "add",
-        "inputs": ["x", "y"], "outputs": ["z"],
-    },)
+    assert artifact.validation["lowering"] == "structural-graph-v1"
+    assert artifact.validation["node_count"] == 1
+    assert artifact.validation["lowered_node_count"] == 4
+    assert [node["id"] for node in artifact.graph_nodes] == [
+        "input.input_ids", "initializer.weight", "matmul", "output.logits",
+    ]
+    operator = artifact.graph_nodes[2]
+    assert operator["metadata"]["input_tensors"][0]["metadata"]["shape"] == [1, "sequence"]
+    assert operator["metadata"]["input_tensors"][1]["metadata"]["shape"] == [2, 2]
+    assert operator["metadata"]["attributes"] == [{"name": "axis", "type": 2, "value": 1}]
+    assert artifact.graph_nodes[3]["metadata"]["tensor"]["shape"] == [1, "sequence"]
+    assert all("flops" not in node and "bytes" not in node for node in artifact.graph_nodes)
+    assert artifact.provenance["graph_lowering"] == "onnx-structural-graph-v1"
+
+
+def test_onnx_base64_envelope_uses_the_same_structural_lowering_boundary(monkeypatch):
+    calls = []
+    node = types.SimpleNamespace(op_type="Relu", name="relu", input=["x"], output=["y"], attribute=[])
+    graph_input = types.SimpleNamespace(name="x", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    graph_output = types.SimpleNamespace(name="y", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    model = types.SimpleNamespace(graph=types.SimpleNamespace(
+        input=[graph_input], initializer=[], value_info=[], node=[node], output=[graph_output],
+    ))
+    fake_onnx = types.ModuleType("onnx")
+    fake_onnx.load_model_from_string = lambda raw: model
+    fake_onnx.checker = types.SimpleNamespace(check_model=lambda checked: calls.append(checked))
+    monkeypatch.setitem(sys.modules, "onnx", fake_onnx)
+
+    artifact = load_model_artifact({
+        "filename": "model.onnx",
+        "encoding": "base64",
+        "base64": base64.b64encode(b"safe test fixture").decode("ascii"),
+    })
+
+    assert calls == [model]
+    assert artifact.source == "inline-binary:model.onnx"
+    assert artifact.status == "graph-inspected"
+    assert [node["kind"] for node in artifact.graph_nodes] == ["input", "Relu", "output"]
+
+
+def test_onnx_structural_lowering_does_not_hide_unresolved_tensor_references(tmp_path, monkeypatch):
+    path = tmp_path / "broken.onnx"
+    path.write_bytes(b"safe test fixture")
+    node = types.SimpleNamespace(op_type="Add", name="add", input=["missing", "x"], output=["y"], attribute=[])
+    graph_input = types.SimpleNamespace(name="x", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    graph_output = types.SimpleNamespace(name="y", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    model = types.SimpleNamespace(graph=types.SimpleNamespace(
+        input=[graph_input], initializer=[], value_info=[], node=[node], output=[graph_output],
+    ))
+    fake_onnx = types.ModuleType("onnx")
+    fake_onnx.load_model_from_string = lambda raw: model
+    fake_onnx.checker = types.SimpleNamespace(check_model=lambda checked: None)
+    monkeypatch.setitem(sys.modules, "onnx", fake_onnx)
+
+    artifact = load_model_artifact(path)
+
+    assert artifact.status == "preview"
+    assert artifact.validation["valid"] is False
+    assert artifact.validation["unresolved_inputs"] == ["missing"]
+    assert any("unresolved tensor references" in warning for warning in artifact.warnings)
 
 
 def test_safetensors_header_is_inspected_without_loading_weights(tmp_path):

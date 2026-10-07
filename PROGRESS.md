@@ -27,11 +27,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Added the cited Sarathi-Serve Table 4 fixture, reproducible derived replay, 12/12 matching-row report, and Evidence
   dashboard row with a direct source link and explicit 72.98% MAPE Preview boundary.
 - Added safe Hugging Face/Nomo JSON structural validation and bounded transformer-skeleton lowering, safetensors metadata,
-  Prometheus text, and optional ONNX/state-dict inspection; binary weights are never implicitly unpickled. Exposed model
-  inspection through the platform service and CLI.
-- Preserved unknown Megatron/vLLM CLI tokens, opaque option values, and nested DeepSpeed JSON fields in same-format audit
-  exports while flagging them as semantically unvalidated.
-- Verification after this pass: 116 Python tests, production TypeScript build, 14,332 existing parity checks, and 123
+  Prometheus text, and checker-backed generic ONNX structural lowering for graph boundaries, operators, attributes, and
+  explicit tensor metadata; binary weights are never implicitly unpickled. Exposed model inspection through the platform
+  service, HTTP/SDK/MCP base64 binary envelope, and CLI.
+- Added explicit versioned bounded semantic-validation fixtures for Megatron Core 0.19.2, DeepSpeed 0.19.8, TorchTitan
+  0.2.2 TOML, and vLLM 0.6.2. Unknown CLI tokens, opaque values, and nested JSON/TOML fields remain preserved and
+  visibly outside the fixture boundary; see `docs/FRAMEWORK_AUDITOR.md`.
+- Verification after this pass: 134 Python tests, production TypeScript build, 14,337 parity checks, and 123
   simulation golden checks.
 
 ## 2026-10-06 production refresh and live verification
@@ -54,10 +56,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Python-first layer graph with fair global comparison, separate precision/per-layer gain, pipeline/communication/offload accounting, published model presets, and fixed-seed browser parity.
 - Shared-graph Train and bounded Serve recommendations with explicit assumptions and locks.
 - Restored multi-mode shell with the historical Neuromorphic dashboard link.
-- Run auditor for Megatron, DeepSpeed JSON, vLLM, and log metrics, with loss-aware same-format export.
+- Run auditor for Megatron, DeepSpeed JSON, TorchTitan TOML, vLLM, and log metrics, with loss-aware same-format export and
+  bounded versioned semantic validation.
 - Browser-local customer CSV scale fit with leave-one-out error, recommendation-sensitive experiment ranking, unknown-option warnings, and a known-preset recommendation bridge.
 - Reference product estimators and editable browser Product Studio for chip design, RL scheduling, reliability/goodput, fleet sizing, fine-tuning, and TCO, with JSON/CSV exports.
 - Cited cost tracker with model-card compute rows, provider token-price rows, a local physical-cost calculator, and provider-versus-physical comparison.
+- Cost coverage now explicitly reports two open-model training rows and zero open-model serving/token-price rows;
+  checked-in source dates are validated without fetching URLs, and undated model-card rows remain undated.
 - Nomo graph-contract re-import and a conservative interval-regret “Safest plan” option for calibrated training.
 - Downloadable recommendation-experiment CSVs can be loaded back into the browser-local calibration fit; completed rows are matched to the current candidate names and unknown names are rejected.
 - Neuromorphic dashboard typecheck/build is green; the launcher no longer advertises an unimplemented phase-coding control.
@@ -67,10 +72,10 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 116 tests passed in nomo-planner.
+- Python: 134 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
-- Python/TypeScript parity: npm run verify passed, 14,332 checks, worst relative difference 4.37e-16; the simulation
+- Python/TypeScript parity: npm run verify passed, 14,337 checks, worst relative difference 4.37e-16; the simulation
   golden passed 123 checks including zero-bubble, parallel-collective, and embedding-dependency coverage.
 - Existing 22-row calibration artifact and fixed-seed layer goldens remain green.
 - Product estimators pass Python physics-sanity tests and browser product golden parity.
@@ -81,20 +86,22 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Neuromorphic remains the existing validated dashboard, not a new shared-graph compiler adapter.
 - Serving and co-design intervals are not calibrated; only A100 training has a published calibration artifact.
 - Customer CSV fitting is local preview evidence; leave-one-out error is reported but it is not the published six-parameter hardware refit.
+- Customer calibration intervals are labelled empirical in-sample central 90% intervals, not predictive guarantees;
+  customer run/cluster identity is required before fitting.
 - Product Studio values are user inputs, not measured silicon, queueing, quality, or procurement guarantees.
 - Cost tracker rows are hand-entered and must be rechecked before procurement.
 
 ## Remaining roadmap work
 
-- Safe ONNX/state-dict inspection and bounded HF/Nomo structural lowering are implemented in the Python boundary; full
-  binary graph lowering and the Neuromorphic shared-graph placement/compiler adapter still require the hosted compiler
-  contract.
+- Safe ONNX/state-dict inspection, checker-backed generic structural ONNX lowering, and bounded HF/Nomo structural
+  lowering are implemented in the Python boundary; framework-specific graph-to-cost lowering and the Neuromorphic
+  shared-graph placement/compiler adapter still require the hosted compiler contract.
 - Model inspection now has matching PlatformService, HTTP, Python SDK, CLI, and MCP entry points.
-- Framework-option semantic validation and arbitrary-model/hardware auditor recommendation remain open; opaque
-  Megatron/DeepSpeed/vLLM options are now preserved in same-format exports.
+- Full framework-option semantic validation, browser parity for the Python fixture reports, and arbitrary-model/hardware
+  auditor recommendation remain open; bounded fixture fields are validated and all other options remain preserved.
 - Customer-held-out uncertainty for serving/co-design and server-side/published experiment-result ingestion.
 - Product pack joint chip/software optimization, customer calibration, and richer procurement uncertainty.
-- Broader cost history/coverage and source-freshness checks.
+- Broader open-model serving/token-price coverage, historical cost ranges, and network-backed source verification.
 - Dedicated 1440px/390px live viewport checks pass with no horizontal overflow; a complete every-control accessibility matrix remains open.
 
 ## Deployment evidence

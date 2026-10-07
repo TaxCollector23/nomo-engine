@@ -228,7 +228,7 @@ _TOOLS = [
     ("artifacts.create", "Create a project artifact", {"type": "object", "required": ["project_id", "name", "content"], "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "content": {}, "media_type": {"type": "string"}, "run_id": {"type": "string"}}}),
     ("artifacts.get", "Get an artifact", {"type": "object", "required": ["artifact_id"], "properties": {"artifact_id": {"type": "string"}}}),
     ("artifacts.list", "List project artifacts", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}, "run_id": {"type": "string"}}}),
-    ("artifacts.inspect_model", "Inspect a model config or stored model artifact without unsafe deserialization", {"type": "object", "properties": {"artifact_id": {"type": "string"}, "content": {}}}),
+    ("artifacts.inspect_model", "Inspect a JSON model config, base64 binary model envelope, or stored artifact without unsafe deserialization", {"type": "object", "properties": {"artifact_id": {"type": "string"}, "content": {}}}),
     ("runs.create", "Create a run", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}, "name": {"type": "string"}, "config": {"type": "object"}, "result": {"type": "object"}, "status": {"type": "string"}}}),
     ("runs.get", "Get a run", {"type": "object", "required": ["run_id"], "properties": {"run_id": {"type": "string"}}}),
     ("runs.list", "List project runs", {"type": "object", "required": ["project_id"], "properties": {"project_id": {"type": "string"}}}),

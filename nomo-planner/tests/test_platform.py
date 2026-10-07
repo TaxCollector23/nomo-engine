@@ -1,5 +1,8 @@
+import base64
 import json
+import sys
 import threading
+import types
 from urllib.request import Request, urlopen
 
 import pytest
@@ -196,6 +199,47 @@ def test_sdk_inspects_inline_hf_and_nomo_json_over_http(store):
         assert nomo["format"] == "nomo-graph-json"
         assert nomo["status"] == "ready"
         assert [node["id"] for node in nomo["graph_nodes"]] == ["input", "output"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_sdk_inspects_base64_onnx_envelope_locally_and_over_http(store, monkeypatch):
+    node = types.SimpleNamespace(op_type="Relu", name="relu", input=["x"], output=["y"], attribute=[])
+    graph_input = types.SimpleNamespace(name="x", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    graph_output = types.SimpleNamespace(name="y", type=types.SimpleNamespace(
+        tensor_type=types.SimpleNamespace(elem_type=1, shape=types.SimpleNamespace(dim=[]))))
+    model = types.SimpleNamespace(graph=types.SimpleNamespace(
+        input=[graph_input], initializer=[], value_info=[], node=[node], output=[graph_output],
+    ))
+    fake_onnx = types.ModuleType("onnx")
+    fake_onnx.load_model_from_string = lambda raw: model
+    fake_onnx.checker = types.SimpleNamespace(check_model=lambda checked: None)
+    monkeypatch.setitem(sys.modules, "onnx", fake_onnx)
+    envelope = {
+        "filename": "model.onnx",
+        "encoding": "base64",
+        "base64": base64.b64encode(b"safe test fixture").decode("ascii"),
+    }
+
+    local = PlatformClient(store=store)
+    direct = local.inspect_model(content=envelope)
+    assert direct["validation"]["lowering"] == "structural-graph-v1"
+    project = local.create_project("stored onnx")
+    stored = local.create_artifact(project["id"], "model.onnx", envelope)
+    inspected = local.inspect_model(artifact_id=stored["id"])
+    assert inspected["artifact"]["status"] == "graph-inspected"
+
+    server = PlatformHTTPServer(("127.0.0.1", 0), store)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        remote = PlatformClient(base_url=f"http://127.0.0.1:{server.server_port}")
+        result = remote.inspect_model(content=envelope)
+        assert result["format"] == "onnx"
+        assert [node["kind"] for node in result["graph_nodes"]] == ["input", "Relu", "output"]
     finally:
         server.shutdown()
         server.server_close()

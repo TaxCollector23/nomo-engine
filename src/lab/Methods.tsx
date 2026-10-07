@@ -145,7 +145,7 @@ export default function Methods() {
       <p>
         The engine in this page is a TypeScript port of the Python reference implementation. A test suite compares both on
         1,050 plans across seven problems, every best-trade-off set, every counterfactual and all 22 calibration predictions:
-        14,332 numbers agree to within 4.37×10<sup>−16</sup> (the limit of double-precision arithmetic), including
+        14,337 numbers agree to within 4.37×10<sup>−16</sup> (the limit of double-precision arithmetic), including
         product pack golden cases. The product estimators are still labelled example/user-input models until customer
         measurements are available.
       </p>

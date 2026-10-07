@@ -64,12 +64,13 @@ class PlatformClient:
         return self._request("GET", f"/projects/{project_id}/artifacts{suffix}")
 
     def inspect_model(self, *, content: Any | None = None, artifact_id: str | None = None):
-        """Inspect inline model JSON or a stored model artifact safely.
+        """Inspect inline model JSON, a base64 binary envelope, or a stored artifact safely.
 
         The embedded client dispatches through the same service method as the
         HTTP API; the remote client uses ``POST /artifacts/inspect-model``.
         Binary pickle-backed weights are never deserialized implicitly by the
-        inspection service.
+        inspection service. Binary ONNX/safetensors content uses a JSON
+        envelope with ``filename``, ``encoding: "base64"``, and ``base64``.
         """
         params: dict[str, Any] = {}
         if content is not None:

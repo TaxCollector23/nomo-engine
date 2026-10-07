@@ -37,6 +37,8 @@ class CalibrationFit:
     held_out_observations: int
     method: str = "median multiplicative refit in log-step-time space"
     validation: str = "leave-one-out error on customer-supplied rows"
+    interval_level: float = 0.90
+    interval_scope: str = "empirical in-sample central interval; not a predictive guarantee"
 
     def predict(self, predicted_step_s: float) -> float:
         return predicted_step_s * self.scale
@@ -48,6 +50,7 @@ class CalibrationFit:
             "interval_high_scale": self.interval_high_scale, "coverage": self.coverage,
             "held_out_mape_pct": self.held_out_mape_pct, "held_out_observations": self.held_out_observations,
             "method": self.method, "validation": self.validation,
+            "interval_level": self.interval_level, "interval_scope": self.interval_scope,
         }
 
 
@@ -64,6 +67,8 @@ def parse_customer_csv(text: str) -> list[CustomerObservation]:
             observed = float(row["observed_step_s"] or "")
         except (TypeError, ValueError) as exc:
             raise ValueError(f"row {index} has non-numeric step time") from exc
+        if not (row["run_id"] or "").strip() or not (row["cluster"] or "").strip():
+            raise ValueError(f"row {index} needs non-empty run_id and cluster")
         if predicted <= 0 or observed <= 0:
             raise ValueError(f"row {index} step times must be positive")
         rows.append(CustomerObservation(row["run_id"], row["cluster"], predicted, observed))

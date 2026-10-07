@@ -6,7 +6,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 26–29 | Python reference first, TypeScript port, goldens, fixed seeds | Built | `nomo-planner/`, `src/planner/`, `npm run verify`; 14,332 checks after the auditor and contract fixtures. |
+| 26–29 | Python reference first, TypeScript port, goldens, fixed seeds | Built | `nomo-planner/`, `src/planner/`, `npm run verify`; 14,337 checks after the auditor, evidence, and contract fixtures. |
 | 30–31 | No invented data; cite rows; omit unknowns | Built | `nomo-planner/data/`, model-card URLs, cost rows, parser warnings, and explicit user-input labels. |
 | 32–33 | Honest provenance labels | Built | Guided/Explore/Rigor labels; customer input, assumption, calibrated, spec, and placeholder boundaries are visible. |
 | 34–35 | Held-out validation for predictions/calibration | Preview | A100 study: 18/22 (81.8%) held out; customer CSV reports leave-one-out error; the cited Sarathi-Serve fixture has 12 measured rows and a 12/12 derived replay with 72.98% MAPE. Serving raw-trace fidelity and co-design still lack held-out data. |
@@ -32,7 +32,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON now receive structural validation and bounded transformer-skeleton lowering; the Python boundary safely inspects safetensors metadata and exposes optional ONNX/state-dict preview diagnostics. Browser binary lowering remains open; node accounting, map, locks, and what-if surfaces are shared for JSON inputs. |
+| 85–87 | One upload and graph component for all tabs | Preview | Hugging Face config JSON and Nomo graph-contract JSON receive structural validation and bounded lowering; when the optional reader is installed, ONNX receives checker-backed generic structural lowering for graph boundaries, operators, attributes, and explicit tensor metadata. Browser binary lowering, framework-specific semantics, and cost-bearing conversion remain open; node accounting, map, locks, and what-if surfaces are shared for JSON inputs. |
 | 88–90 | Train per-layer decisions, repair, locks, verified browser port | Preview | Per-layer precision/recompute/offload/stages and absolute locks are implemented and tested. Up to four nodes use exact exhaustive enumeration when uncapped; larger searches use deterministic repair-aware constrained NSGA-II bounded by `max_candidates`, so the returned Pareto set is not globally exhaustive. |
 | 91–92 | Serve per-layer weight/KV precision with cost recommendation | Built | `serving.py` / `serving.ts`, bounded serving search, quality effects labelled assumptions. |
 | 93 | Neuromorphic shared graph through existing engine with unchanged exports | Preview | Contract JSON export and historical dashboard link are live. The cross-repository compiler/server adapter and placement recommendation are not claimed. |
@@ -42,10 +42,10 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 100–101 | Parse Megatron, DeepSpeed JSON, vLLM, logs; reject/flag unknowns | Preview | Core topology/precision fields and selected step/throughput/memory metrics parse in both engines. Unknown CLI flags, opaque values, and nested DeepSpeed fields are surfaced and preserved; exhaustive version-specific semantic coverage is open. |
+| 100–101 | Parse Megatron, DeepSpeed JSON, vLLM, logs; reject/flag unknowns | Preview | Python now parses Megatron, DeepSpeed JSON, TorchTitan v0.2.2 TOML, vLLM, and selected step/throughput/memory metrics. Versioned bounded fixtures validate documented common fields and cross-field conflicts; unknown CLI flags, opaque values, and nested fields are surfaced and preserved. Exhaustive/version-selected coverage, browser parity, and customer-log calibration remain open. See `docs/FRAMEWORK_AUDITOR.md`. |
 | 102–103 | Current vs recommended, exact changes, same-format correction, readable/exportable audit | Preview | Same-format loss-aware export and CSV experiment template are shipped. Known published models connect to the shared bounded recommendation; arbitrary model/hardware current-vs-dollar diff still needs a complete framework mapping. |
-| 104–105 | Browser-local customer refit and calibration badge | Preview | Local multiplicative refit, 90% range, in-sample coverage, and leave-one-out error are displayed; no data leaves the browser. It is not the six-parameter published hardware refit. |
-| 106–107 | Round-trip fixtures and synthetic calibration recovery | Built for the supported core fields | `scripts/auditor-golden.json`, Python tests, and `npm run verify` cover Megatron, DeepSpeed, and vLLM core fields; opaque options and nested fields now round-trip. Semantic validation of every framework option remains open by design. |
+| 104–105 | Browser-local customer refit and calibration badge | Preview | Local multiplicative refit, labelled empirical 90% in-sample range, coverage, and leave-one-out error are displayed; CSV identity is validated and no data leaves the browser. It is not the six-parameter published hardware refit. |
+| 106–107 | Round-trip fixtures and synthetic calibration recovery | Built for bounded fixture fields | `scripts/auditor-golden.json` and Python tests cover the existing browser-parity core fields; Python auditor tests add versioned Megatron, DeepSpeed, TorchTitan TOML, and vLLM validation/round trips. Opaque options and nested fields round-trip. Full framework coverage and browser consumption of the Python reports remain open by design. |
 
 ## Phase 3 — uncertainty
 
@@ -73,8 +73,8 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
-| 150–152 | Public cited training rows, provider prices, physical serving comparison | Preview | Five hand-entered cited rows, a local physical-cost calculator, and row-by-row provider/physical ratios are live. Rows are not scraped; broader model history, uncertainty ranges for every row, and automated freshness checks remain open. |
-| 153 | Gate 5 | Partial | Source links/as-of notes and browser page pass; broader coverage/freshness are not claimed. |
+| 150–152 | Public cited training rows, provider prices, physical serving comparison | Preview | Five hand-entered cited rows, a local physical-cost calculator, row-by-row provider/physical ratios, metadata-only freshness labels, and explicit open-model coverage counts are live. Rows are not scraped; broader open-model serving/token-price coverage, model history, and network verification remain open. |
+| 153 | Gate 5 | Partial | Source links/as-of notes and browser page pass; date metadata is validated without fetching URLs, but the two model-card rows remain undated and open-model serving/token-price coverage is absent. |
 
 ## Final delivery
 
@@ -88,4 +88,4 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 
 ## Verdict
 
-The release is materially more complete than the previous audit, but it is not honest to call the roadmap 100% complete. The remaining blockers are not hidden implementation oversights: full ONNX graph lowering beyond the safe inspection boundary, a true neuromorphic server/compiler adapter, full framework-option round trips, customer/raw-trace serving and co-design calibration, measured chip/quality/queueing data, broader sourced cost history/freshness, and a complete every-control browser/accessibility matrix. Closing those requires the corresponding formats, server contract, hardware measurements, customer logs/evaluations, and source disclosures.
+The release is materially more complete than the previous audit, but it is not honest to call the roadmap 100% complete. The remaining blockers are not hidden implementation oversights: framework-specific ONNX lowering and binary graph-to-cost conversion beyond the generic structural boundary, a true neuromorphic server/compiler adapter, full framework-option round trips, customer/raw-trace serving and co-design calibration, measured chip/quality/queueing data, broader open-model serving/token-price coverage and network source verification, and a complete every-control browser/accessibility matrix. Closing those requires the corresponding formats, server contract, hardware measurements, customer logs/evaluations, and source disclosures.

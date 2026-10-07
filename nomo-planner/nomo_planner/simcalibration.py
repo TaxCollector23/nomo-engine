@@ -27,9 +27,12 @@ import json
 import math
 import random
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable, Mapping, Sequence, TextIO
+
+from .source_freshness import SourceFreshness, assess_source_freshness, parse_iso_date
 
 
 Scalar = float | int | str | bool
@@ -298,6 +301,8 @@ class SourceProvenance:
         if not _text(self.citation):
             raise ValueError("source citation is required")
         _normalise_url(self.url, self.doi)
+        if self.accessed_at:
+            parse_iso_date(self.accessed_at, field="accessed_at")
 
     def as_dict(self) -> dict[str, object]:
         result: dict[str, object] = {
@@ -375,6 +380,14 @@ class EvidenceBundle:
         ids = [record.row_id for record in self.records]
         if len(ids) != len(set(ids)):
             raise ValueError("evidence row_id values must be unique")
+        source_ids = [source.source_id for source in self.sources]
+        if len(source_ids) != len(set(source_ids)):
+            raise ValueError("evidence source_id values must be unique")
+        declared = set(source_ids)
+        referenced = {record.provenance.source_id for record in self.records}
+        missing = sorted(referenced - declared)
+        if missing:
+            raise ValueError(f"evidence records reference undeclared sources: {', '.join(missing)}")
 
     def by_kind(self, kind: str) -> tuple[EvidenceRecord, ...]:
         normalized = _normalise_kind(kind, {})
@@ -389,6 +402,31 @@ class EvidenceBundle:
             "sources": [source.as_dict() for source in self.sources],
             "records": [record.as_dict() for record in self.records],
         }
+
+    def source_report(self, *, as_of: date | str, max_age_days: int = 365) -> dict[str, dict[str, object]]:
+        """Return row counts and metadata-only freshness for every source.
+
+        This does not fetch or validate the contents of a URL.  A source with
+        no checked-on date remains ``undated`` so reports cannot silently turn
+        an old or unreviewed citation into current calibration evidence.
+        """
+
+        counts: dict[str, int] = {}
+        for record in self.records:
+            counts[record.provenance.source_id] = counts.get(record.provenance.source_id, 0) + 1
+        report: dict[str, dict[str, object]] = {}
+        for source in self.sources:
+            freshness: SourceFreshness = assess_source_freshness(
+                as_of=as_of,
+                checked_on=source.accessed_at,
+                max_age_days=max_age_days,
+            )
+            report[source.source_id] = {
+                "source": source.as_dict(),
+                "row_count": counts.get(source.source_id, 0),
+                "freshness": freshness.as_dict(),
+            }
+        return report
 
 
 def _source_registry(raw: Any) -> dict[str, Mapping[str, Any]]:

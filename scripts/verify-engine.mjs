@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}auditor";`));
+  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
@@ -132,6 +132,16 @@ for (const fixture of auditorGolden) {
 const pts = E.calibrationPoints();
 golden.calibration.forEach((g, i) => { close(pts[i].measured, g.measured_step_s, "calibration measured"); close(pts[i].predicted, g.predicted_step_s, "calibration predicted"); close(pts[i].uncalibrated, g.predicted_uncalibrated, "calibration uncalibrated"); });
 console.log(`ok  calibration: 22 published runs reproduced`);
+
+const customerRows = E.parseCustomerCsv('run_id,cluster,predicted_step_s,observed_step_s\n"run,1",h100,1,1.2\nrun-2,h100,2,2.4');
+const customerFit = E.fitCustomerScale(customerRows, "h100");
+if (customerFit.intervalLevel !== 0.9 || !customerFit.intervalScope.includes("not a predictive guarantee")) fail("customer calibration interval label");
+checks += 2;
+try { E.parseCustomerCsv("run_id,cluster,predicted_step_s,observed_step_s\n,h100,1,1"); fail("customer calibration accepted missing run id"); } catch (error) { if (!String(error).includes("run_id")) fail("customer calibration missing-id error"); checks++; }
+if (E.PUBLIC_COST_COVERAGE.openModelTrainingRows !== 2 || E.PUBLIC_COST_COVERAGE.openModelServingRows !== 0) fail("cost coverage boundary");
+if (E.costSourceFreshness(E.PUBLIC_COST_ROWS.find((row) => row.item === "gpt-5.3-codex"), new Date("2026-10-06T00:00:00Z")).status !== "fresh") fail("cost freshness check");
+checks += 2;
+console.log("ok  evidence boundaries: customer intervals, quoted CSV, and cost freshness/coverage");
 
 const sameLayerPlan = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 for (const c of layerGolden.cases) {

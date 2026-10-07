@@ -116,6 +116,36 @@ def test_json_ingestion_keeps_evidence_kinds_and_source_provenance():
     assert any(record.metric == "bandwidth_gbps" for record in bundle.records)
 
 
+def test_source_report_validates_dates_and_keeps_undated_sources_explicit():
+    payload = _source_payload()
+    payload["sources"][0]["accessed_at"] = "2026-10-05"
+    payload["observations"] = [{
+        "row_id": "train-1", "kind": "training", "strategy": "PTD-P",
+        "metric": "step_time", "value": 1.0, "unit": "s", "source_id": "lab-2026-01",
+    }]
+    bundle = parse_evidence_json(json.dumps(payload))
+    report = bundle.source_report(as_of="2026-10-06")
+    assert report["lab-2026-01"]["row_count"] == 1
+    assert report["lab-2026-01"]["freshness"]["status"] == "fresh"
+    with pytest.raises(ValueError, match="ISO date"):
+        parse_evidence_json(json.dumps({
+            "sources": [{"id": "bad", "citation": "bad", "url": "https://example.test/bad", "accessed_at": "yesterday"}],
+            "observations": [{"row_id": "bad-1", "kind": "training", "strategy": "x", "metric": "time", "value": 1, "unit": "s", "source_id": "bad"}],
+        }))
+
+
+def test_evidence_bundle_rejects_orphaned_or_duplicate_source_registry_entries():
+    from nomo_planner.simcalibration import EvidenceBundle, EvidenceRecord, SourceProvenance
+
+    source = SourceProvenance("declared", "A source", "https://example.test/source")
+    orphan = SourceProvenance("orphan", "Another source", "https://example.test/orphan")
+    record = EvidenceRecord("row-1", "training", "baseline", "step_time", 1.0, "s", {}, orphan)
+    with pytest.raises(ValueError, match="undeclared sources"):
+        EvidenceBundle((record,), (source,))
+    with pytest.raises(ValueError, match="source_id values must be unique"):
+        EvidenceBundle((), (source, source))
+
+
 def test_csv_ingestion_supports_existing_training_observation_shape():
     csv_text = (
         "row_id,source,url,model,seq_len,global_batch_tokens,cluster,devices,tp,pp,zero,recompute,micro_batch,"

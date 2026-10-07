@@ -243,15 +243,15 @@ export default function SimulationWorkbench() {
 /** Evidence registry shared by the workbench and the full Evidence module. */
 export function SimulationEvidencePanel() {
   const rows = [
-    { source: "Narayanan et al. 2021 · Tables 1–2", url: "https://arxiv.org/abs/2104.04473", kind: "Training", observations: "22", error: "5.9% PTD-P", rank: "0.94 Spearman", coverage: "18/22 · 81.8%", status: "Measured / cited" },
-    { source: "Sarathi-Serve 2024 · Table 4", url: "https://arxiv.org/abs/2403.02310", kind: "Serving", observations: "12", error: "72.98% MAPE", rank: "—", coverage: "12/12 matched", status: "Measured / replayed" },
-    { source: "Customer telemetry", kind: "Training + serving", observations: "Not supplied", error: "—", rank: "—", coverage: "Preview", status: "Upload CSV / trace through API" },
+    { source: "Narayanan et al. 2021 · Tables 1–2", url: "https://arxiv.org/abs/2104.04473", kind: "Training", observations: "22", error: "5.9% PTD-P", rank: "0.94 Spearman", coverage: "18/22 · 81.8%", freshness: "Access date not recorded", status: "Measured / cited" },
+    { source: "Sarathi-Serve 2024 · Table 4", url: "https://arxiv.org/abs/2403.02310", kind: "Serving", observations: "12", error: "72.98% MAPE", rank: "—", coverage: "12/12 matched", freshness: "Checked 2026-10-05", status: "Measured / replayed" },
+    { source: "Customer telemetry", kind: "Training + serving", observations: "Not supplied", error: "—", rank: "—", coverage: "Preview", freshness: "Not supplied", status: "Upload CSV / trace through API" },
   ];
   return (
     <div className="sim-evidence-panel" aria-labelledby="sim-evidence-title">
       <div className="sim-panel-heading"><div><p className="section-kicker">Evidence registry</p><h3 id="sim-evidence-title">What is measured, and what is still a Preview.</h3></div><span className="sim-inline-status">No values hidden</span></div>
       <div className="sim-evidence-table-wrap">
-        <table className="sim-evidence-table"><thead><tr><th>Source</th><th>Kind</th><th>Rows</th><th>Held-out error</th><th>Rank</th><th>Coverage</th><th>Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.source}><td>{row.url ? <a href={row.url} target="_blank" rel="noreferrer">{row.source}</a> : row.source}</td><td>{row.kind}</td><td>{row.observations}</td><td>{row.error}</td><td>{row.rank}</td><td>{row.coverage}</td><td><span className={row.status.startsWith("Measured") ? "sim-table-badge is-measured" : "sim-table-badge"}>{row.status}</span></td></tr>)}</tbody></table>
+        <table className="sim-evidence-table"><thead><tr><th>Source</th><th>Kind</th><th>Rows</th><th>Held-out error</th><th>Rank</th><th>Coverage</th><th>Source status</th><th>Evidence status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.source}><td>{row.url ? <a href={row.url} target="_blank" rel="noreferrer">{row.source}</a> : row.source}</td><td>{row.kind}</td><td>{row.observations}</td><td>{row.error}</td><td>{row.rank}</td><td>{row.coverage}</td><td>{row.freshness}</td><td><span className={row.status.startsWith("Measured") ? "sim-table-badge is-measured" : "sim-table-badge"}>{row.status}</span></td></tr>)}</tbody></table>
       </div>
       <p className="sim-note">Training rows are the checked-in Study 1 calibration evidence. The Sarathi-Serve rows are measured public observations compared with a reproducible replay derived from published length summaries; the 72.98% error and missing raw trace keep serving fidelity in Preview. Customer telemetry is still not supplied.</p>
     </div>

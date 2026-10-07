@@ -93,7 +93,7 @@ nomo-plan_<question>_<date>/
 ### Engine and verification
 `src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
 on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22
-calibration predictions, layer goldens, product goldens, and auditor fixtures (14,332 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
+calibration predictions, layer goldens, product goldens, auditor fixtures, and evidence/cost boundaries (14,337 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
 Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
 attention-type quality effects, prices and training utilisation are labelled assumptions.
 
@@ -140,5 +140,6 @@ deployment guide, and observability guide are [`docs/SPEC.md`](docs/SPEC.md), [`
 [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). The strict line-by-line audit is in
 [`docs/ROADMAP_AUDIT.md`](docs/ROADMAP_AUDIT.md). Core DeepSpeed/vLLM round-trip fixtures, editable product inputs and
 JSON/CSV exports, graph-contract re-import, local completed-experiment CSV ingestion, and the conservative training “Safest plan” option are shipped. Binary
-ONNX/state-dict ingestion, the neuromorphic server adapter, customer/published serving calibration, and broader source
-coverage remain explicitly open.
+Generic checker-backed ONNX structural lowering and safe state-dict inspection are implemented when the optional ONNX
+reader is available. Framework-specific ONNX graph-to-cost lowering, the neuromorphic server adapter,
+customer/published serving calibration, and broader source coverage remain explicitly open.

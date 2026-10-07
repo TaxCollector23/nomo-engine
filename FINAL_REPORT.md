@@ -26,9 +26,10 @@ and preserves locks and bounded-search labels. The historical Neuromorphic dashb
 but is not misrepresented as a new shared-graph compiler integration. The dashboard launcher now removes an
 unimplemented phase-coding control and states the estimate/provenance boundary before a search begins.
 
-The run auditor parses Megatron commands, DeepSpeed JSON, vLLM commands, and selected log metrics into one canonical
-record, flags unrecognized options, round-trips supported core fields, and connects known published model names to a
-bounded shared-graph recommendation. Customer CSV calibration now reports leave-one-out error; the fit and
+The run auditor parses Megatron commands, DeepSpeed JSON, TorchTitan v0.2.2 TOML, vLLM commands, and selected log metrics
+into one canonical record. Versioned bounded fixtures validate documented common fields and cross-field conflicts while
+unknown options/fields remain losslessly preserved; the full framework schemas are not claimed. It connects known
+published model names to a bounded shared-graph recommendation. Customer CSV calibration now reports leave-one-out error; the fit and
 recommendation-sensitive experiment ranking run in the browser and remain visibly labelled as local preview evidence.
 
 The Product Studio adds editable reference estimators and JSON/CSV exports for chip bottlenecks, RL scheduling,
@@ -42,11 +43,11 @@ The landing page now links to real engine specification, deployment, observabili
 
 ## Verification
 
-- Python reference: 116 tests passed.
+- Python reference: 134 tests passed.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard typecheck and production build: passed.
 - Landing page production build: passed.
-- Python/TypeScript planner, product, layer, and auditor parity: 14,332 checks passed; worst relative difference 4.37e-16.
+- Python/TypeScript planner, product, layer, auditor, cost, and local-calibration parity: 14,337 checks passed; worst relative difference 4.37e-16.
 - Serious simulation golden: 123 checks passed, including zero-bubble, parallel-collective, embedding-dependency, and
   repaired NSGA-II coverage.
 - Public serving validation: Sarathi-Serve Table 4 fixture contains 12 measured rows; the reproducible replay matched
@@ -54,13 +55,17 @@ The landing page now links to real engine specification, deployment, observabili
 - Artifact boundaries: Hugging Face/Nomo JSON structural validation and bounded transformer-skeleton lowering, safetensors
   metadata, Prometheus text, and safe ONNX/state-dict preview inspection are tested; full framework-specific ONNX
   lowering and unsafe pickle loading remain explicit boundaries.
-- Auditor boundaries: opaque Megatron/vLLM tokens and nested DeepSpeed fields round-trip in same-format exports; their
-  semantics remain explicitly unvalidated without versioned framework fixtures.
+- Auditor boundaries: versioned bounded fixtures validate common Megatron Core 0.19.2, DeepSpeed 0.19.8, TorchTitan
+  0.2.2 TOML, and vLLM 0.6.2 fields; opaque options and nested fields round-trip. Full framework schemas, browser
+  consumption of the Python reports, target-framework dry runs, and customer-log calibration remain open.
 - Platform parity: safe model inspection is available through the shared service, `POST /artifacts/inspect-model`, the
   Python SDK, CLI, and MCP tool.
 - Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
+- Evidence/cost boundary checks passed: date metadata is validated without network access, customer intervals are labelled
+  empirical in-sample 90% ranges, and the tracker reports two open-model training rows versus zero open-model
+  serving/token-price rows.
 - Complete Lab route matrix: all 11 modules rendered at 1440×900 and 390×844 with no document-level horizontal
   overflow and no browser error or warning logs.
 
@@ -70,10 +75,10 @@ The landing page now links to real engine specification, deployment, observabili
 |---|---|---|
 | Gate 0 layer-aware training | Partial | Fair baseline and parity shipped; current assumptions show 0% extra per-layer gain; 1440px/390px live viewport checks pass |
 | Gate 1 shared graph | Partial | Train and Serve are real; Neuromorphic graph-contract export is shipped, but placement/compiler integration remains |
-| Gate 2 auditor/calibration | Partial | Parsers, unknown-option warnings, core round-trip fixtures, same-format exports, known-preset recommendation bridge, local CSV fit, experiment ranking, downloadable templates, and local completed-result ingestion shipped; full framework-option and six-parameter refit remain |
+| Gate 2 auditor/calibration | Partial | Parsers, bounded versioned framework-validation fixtures, unknown-option warnings, core round-trip fixtures, same-format exports, known-preset recommendation bridge, local CSV fit, experiment ranking, downloadable templates, and local completed-result ingestion shipped; full framework-option coverage, browser report parity, and six-parameter refit remain |
 | Gate 3 uncertainty | Partial foundation | Calibrated A100 bootstrap, probability-best, held-out coverage, and interval-regret Safest plan shipped; serving/co-design validation remains |
 | Gate 4 product packs | Partial Preview | Six reference estimators, editable forms, Python/browser goldens, JSON/CSV preview exports, and Methods equations shipped; joint chip optimization and customer calibration remain |
-| Gate 5 cost tracker | Partial Preview | Five cited rows, physical-cost calculation, provider/physical comparison, and source/as-of labels shipped; broader coverage and freshness checks remain |
+| Gate 5 cost tracker | Partial Preview | Five cited rows, physical-cost calculation, provider/physical comparison, metadata-only freshness labels, and explicit open-model coverage shipped; broader open-model serving/token-price coverage and network verification remain |
 
 Detailed evidence is in docs/GATE_0_REPORT.md through docs/GATE_5_REPORT.md.
 

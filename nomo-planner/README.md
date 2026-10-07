@@ -35,15 +35,25 @@ match the current candidates. It turns observed step times into explicit local
 calibration observations and rejects unknown experiments instead of guessing.
 
 `nomo_planner.artifact_ingestion` safely inspects Hugging Face/Nomo JSON,
-safetensors metadata, Prometheus text, and optional ONNX graph nodes. Complete
-Hugging Face configs are lowered to a bounded transformer skeleton containing
-only config-derived structure; incomplete configs remain `preview` and do not
-receive inferred fields or performance numbers. Nomo graph JSON is checked for
-non-empty unique node IDs and well-typed inputs/outputs. When the optional
-`onnx` package is installed, `onnx.checker` validates an ONNX graph before its
-node metadata is exposed; without it, the result is explicitly `preview`.
-None of these paths load pickle-backed `.pt`/`.pth` files or claim hardware
-measurements. Full framework-specific binary lowering remains an explicit
-adapter boundary. The platform service exposes the same model inspection
-through `artifacts.inspect_model`, and the CLI provides
-`nomo-platform artifacts inspect-model PATH`.
+safetensors metadata, Prometheus text, and optional ONNX graph artifacts.
+Complete Hugging Face configs are lowered to a bounded transformer skeleton
+containing only config-derived structure; incomplete configs remain `preview`
+and do not receive inferred fields or performance numbers. Nomo graph JSON is
+checked for non-empty unique node IDs and well-typed inputs/outputs. When the
+optional `onnx` package is installed, `onnx.checker` validates the graph and a
+generic structural lowerer emits graph inputs, initializers, operators,
+outputs, explicit tensor type/shape metadata, and scalar/list attributes.
+Unknown dimensions remain `null` and no FLOPs, bytes, timings, or measurements
+are derived. The HTTP/SDK/MCP inspection paths can carry a binary artifact as
+`{"filename":"model.onnx","encoding":"base64","base64":"..."}`;
+the CLI provides `nomo-platform artifacts inspect-model PATH`. Without the
+optional reader, binary ONNX remains an explicit `preview`, and full
+framework-specific lowering remains an adapter boundary. None of these paths
+load pickle-backed `.pt`/`.pth` files or claim hardware measurements.
+
+The Python run auditor has bounded, versioned semantic fixtures for Megatron
+Core 0.19.2, DeepSpeed 0.19.8, TorchTitan 0.2.2 TOML, and vLLM 0.6.2. It
+validates only the documented common fields listed in
+`../docs/FRAMEWORK_AUDITOR.md`; unknown CLI/JSON/TOML fields remain visible and
+are retained in same-format exports. This is not exhaustive framework parsing,
+browser parity, target-framework execution, or log calibration.

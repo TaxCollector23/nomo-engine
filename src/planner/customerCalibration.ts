@@ -17,20 +17,48 @@ export interface CalibrationFit {
   heldOutObservations: number;
   method: string;
   validation: string;
+  intervalLevel: number;
+  intervalScope: string;
+}
+
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index]!;
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { field += '"'; index++; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"' && field.length === 0) quoted = true;
+    else if (char === ",") { row.push(field.trim()); field = ""; }
+    else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[index + 1] === "\n") index++;
+      row.push(field.trim()); field = "";
+      if (row.some((value) => value !== "")) rows.push(row);
+      row = [];
+    } else field += char;
+  }
+  if (quoted) throw new Error("customer calibration CSV has an unterminated quoted field");
+  if (field.length || row.length) { row.push(field.trim()); if (row.some((value) => value !== "")) rows.push(row); }
+  return rows;
 }
 
 export function parseCustomerCsv(text: string): CustomerObservation[] {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  if (!lines.length) return [];
-  const headers = lines[0]!.split(",").map((value) => value.trim());
+  const rows = parseCsvRows(text);
+  if (!rows.length) return [];
+  const headers = rows[0]!.map((value) => value.trim());
   const required = ["run_id", "cluster", "predicted_step_s", "observed_step_s"];
   const missing = required.filter((value) => !headers.includes(value));
   if (missing.length) throw new Error(`customer calibration CSV is missing columns: ${missing.join(", ")}`);
-  return lines.slice(1).map((line, row) => {
-    const values = line.split(",").map((value) => value.trim());
+  if (new Set(headers).size !== headers.length) throw new Error("customer calibration CSV has duplicate columns");
+  return rows.slice(1).map((values, row) => {
     const value = (name: string) => values[headers.indexOf(name)] ?? "";
     const predicted = Number(value("predicted_step_s"));
     const observed = Number(value("observed_step_s"));
+    if (!value("run_id") || !value("cluster")) throw new Error(`customer calibration row ${row + 2} needs non-empty run_id and cluster`);
     if (!(predicted > 0) || !(observed > 0)) throw new Error(`customer calibration row ${row + 2} step times must be positive`);
     return { runId: value("run_id"), cluster: value("cluster"), predictedStepS: predicted, observedStepS: observed };
   });
@@ -64,6 +92,8 @@ export function fitCustomerScale(rows: CustomerObservation[], cluster?: string):
     heldOutObservations: heldOutErrors.length,
     method: "median multiplicative refit in log-step-time space",
     validation: "leave-one-out error on customer-supplied rows",
+    intervalLevel: 0.90,
+    intervalScope: "empirical in-sample central interval; not a predictive guarantee",
   };
 }
 

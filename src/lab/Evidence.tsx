@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { CALIBRATED, CALIBRATION_RESULTS, calibrationPoints } from "../planner/calibration";
+import { UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 import { Segmented } from "./controls";
 
 /** Predicted vs measured step time for 22 published runs. Toggling calibration moves every point. */
@@ -34,6 +35,7 @@ export default function Evidence() {
           <div className="lab-stat"><b>{CALIBRATION_RESULTS.heldOutPtdMape}%</b><span>average error on runs the model never saw</span></div>
           <div className="lab-stat"><b>{CALIBRATION_RESULTS.heldOutSpearman}</b><span>rank agreement (Spearman) on unseen runs</span></div>
           <div className="lab-stat"><b>{cal.looMapePct}%</b><span>leave-one-out error, all 22 runs</span></div>
+          <div className="lab-stat"><b>{UNCERTAINTY_VALIDATION.covered}/{UNCERTAINTY_VALIDATION.n}</b><span>held-out rows inside the nominal 90% interval</span></div>
         </div>
       </div>
       <div className="lab-evidence-body">
@@ -88,6 +90,7 @@ export default function Evidence() {
             <li>Only A100 training is calibrated so far; other hardware is labelled uncalibrated everywhere in the Lab.</li>
             <li>With six ZeRO-3 runs, two of its parameters cannot be told apart; we report the simpler model, not the more flattering fit.</li>
             <li>Measured step times are derived from the paper&apos;s own FLOP formula; throughput values are copied exactly.</li>
+            <li>The nominal 90% interval covered {UNCERTAINTY_VALIDATION.covered}/{UNCERTAINTY_VALIDATION.n} rows ({(UNCERTAINTY_VALIDATION.actual * 100).toFixed(1)}%); this is checked-in validation evidence, not a future guarantee.</li>
           </ul>
           <p className="lab-muted">Source: Narayanan et al., <i>Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM</i>, SC21 (<a href="https://arxiv.org/abs/2104.04473" target="_blank" rel="noreferrer">arXiv:2104.04473</a>), Tables 1–2.</p>
         </div>
