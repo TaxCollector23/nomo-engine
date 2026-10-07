@@ -116,10 +116,10 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine commits `27b8824`, `3610bb9`, and `edd3a49` were pushed to `main` after the previous runtime release and
+Engine commits `27b8824`, `3610bb9`, `edd3a49`, and `e34c8c1` were pushed to `main` after the previous runtime release and
 include the evidence/cost/calibration boundary pass plus the measured benchmark surface. Vercel production
-deployment `dpl_64zXrB6nm3rc2uLX6ab9isCxGxRP` is live at
-https://nomo-engine-n83ultg7g-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+deployment `dpl_7ezLreq3DhKwv4jj9JfEK4G3YUcH` is live at
+https://nomo-engine-p6ysgomgo-rangan-alt.vercel.app/ and the canonical mode-shell alias is
 https://frontend-gray-ten-c3tj1luab.vercel.app/. Both return HTTP 200; the deployed JavaScript contains the
 14,337 verification count, the four measured benchmark rows, cost coverage boundary, undated-source label, and
 non-predictive interval disclaimer.

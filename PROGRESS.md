@@ -51,7 +51,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - The landing source tree remains unchanged at `98a91d7`; its pre-existing `research/pilot/` directory remains
   untracked and preserved.
 - Evidence/cost/calibration boundary refresh is pushed as engine commit `27b8824`; the final benchmark-surface
-  deployment is recorded below after the follow-up alignment commit.
+  deployment is recorded below at `dpl_7ezLreq3DhKwv4jj9JfEK4G3YUcH`.
 
 ## 2026-10-06 measured verification and benchmark surface
 
@@ -119,10 +119,10 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current runtime release commits: `27b8824`, `3610bb9`, and `edd3a49` on main, with the audit/deployment records also pushed to
+- Engine current runtime release commits: `27b8824`, `3610bb9`, `edd3a49`, and `e34c8c1` on main, with the audit/deployment records also pushed to
   github.com/TaxCollector23/nomo-engine.
-- Mode-shell Vercel production deployment: dpl_64zXrB6nm3rc2uLX6ab9isCxGxRP.
-- Mode-shell unique URL: https://nomo-engine-n83ultg7g-rangan-alt.vercel.app/
+- Mode-shell Vercel production deployment: dpl_7ezLreq3DhKwv4jj9JfEK4G3YUcH.
+- Mode-shell unique URL: https://nomo-engine-p6ysgomgo-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both mode-shell URLs returned HTTP 200; the canonical stable alias serves the current
   `index-xLodnwaL.js`, `index-Bcup2DCr.css`, `worker-C-FLG9f1.js`, and `jszip.min-D9eUZgo9.js` build.
