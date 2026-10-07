@@ -106,9 +106,9 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` were pushed to `main` after the `a314204` runtime release. Vercel
-production deployment `dpl_8xahQuMz34mutsCbQPUGXkCH8hNg` is live at
-https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+Engine runtime commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` were pushed to `main` after the `a314204` runtime release; the audit/deployment records were pushed alongside them. Vercel
+production deployment `dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K` is live at
+https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/ and the canonical mode-shell alias is
 https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and
 serves `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
 

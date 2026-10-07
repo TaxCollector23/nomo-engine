@@ -38,8 +38,8 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 - Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` to `main` after the public-serving and safe-artifact
   boundary pass.
-- Vercel deployment `dpl_8xahQuMz34mutsCbQPUGXkCH8hNg` is READY at
-  `https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
+- Vercel deployment `dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K` is READY at
+  `https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
   deployment and serves the same `index-BmNxTOYX.js` bundle.
 - Live browser verification exercised the restored mode shell, Simulation core, Training/Serving controls, Evidence
   panel, cited Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
@@ -98,10 +98,10 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current release commits: c777a1f, cab46e7, b08e5fb, 631e040, and 126326c on main, pushed to
-  github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
-- Mode-shell Vercel production deployment: dpl_8xahQuMz34mutsCbQPUGXkCH8hNg.
-- Mode-shell unique URL: https://nomo-engine-9lmprvkn7-rangan-alt.vercel.app/
+- Engine current runtime release commits: c777a1f, cab46e7, b08e5fb, 631e040, and 126326c on main, with the
+  audit/deployment records also pushed to github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
+- Mode-shell Vercel production deployment: dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K.
+- Mode-shell unique URL: https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
   `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
