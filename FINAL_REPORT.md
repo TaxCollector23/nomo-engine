@@ -61,6 +61,8 @@ The landing page now links to real engine specification, deployment, observabili
 - Production Lab build emitted and exercised a dedicated Simulation Worker bundle with synchronous fallback.
 - Existing 22-row calibration artifact and layer golden cases remain green.
 - Product estimator physics-sanity tests passed.
+- Complete Lab route matrix: all 11 modules rendered at 1440×900 and 390×844 with no document-level horizontal
+  overflow and no browser error or warning logs.
 
 ## Gate status
 
@@ -106,14 +108,14 @@ generated from the baseline audited tree after its pushed source commit.
 
 ## Latest release and live verification
 
-Engine runtime commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` were pushed to `main` after the `a314204` runtime release; the audit/deployment records were pushed alongside them. Vercel
-production deployment `dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K` is live at
-https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/ and the canonical mode-shell alias is
+Engine runtime commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, `126326c`, `e300b1c`, and `19dd854` were pushed to `main` after the `a314204` runtime release; the audit/deployment records were pushed alongside them. Vercel
+production deployment `dpl_88jwbgJb6otFxUwcNe5zUpbT2fDe` is live at
+https://nomo-engine-klb7z3drv-rangan-alt.vercel.app/ and the canonical mode-shell alias is
 https://frontend-gray-ten-c3tj1luab.vercel.app/. The canonical alias was explicitly reassigned after deployment and
-serves `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
+serves `index-c-I02bbG.js`, `index-DR3mSem2.css`, `worker-C-FLG9f1.js`, and `jszip.min-DuFMEDAl.js`.
 
-Browser smoke verified the Simulation core module, Training and Serving modes, the cited Sarathi Evidence row and
-explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live
+Browser smoke verified all 11 Lab routes at 1440×900 and 390×844, the Simulation core module, Training and Serving
+modes, the cited Sarathi Evidence row and explicit Preview evidence labels, and the Neuromorphic link to https://nomo-engine-dashboard.vercel.app/. A live
 Event-camera/AKD1500 dashboard search completed at `/runs/620b864c08bd`, reporting 550 designs tried and seven
 trade-offs with layer inspection available. The checked tabs had no console errors or warnings.
 The landing repository stayed at pushed commit `98a91d7` with its existing deployment; no landing source change was

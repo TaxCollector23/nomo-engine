@@ -36,13 +36,14 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## 2026-10-06 production refresh and live verification
 
-- Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, and `126326c` to `main` after the public-serving and safe-artifact
+- Pushed engine commits `c777a1f`, `cab46e7`, `b08e5fb`, `631e040`, `126326c`, `e300b1c`, and `19dd854` to `main` after the public-serving and safe-artifact
   boundary pass.
-- Vercel deployment `dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K` is READY at
-  `https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
-  deployment and serves the same `index-BmNxTOYX.js` bundle.
-- Live browser verification exercised the restored mode shell, Simulation core, Training/Serving controls, Evidence
-  panel, cited Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
+- Vercel deployment `dpl_88jwbgJb6otFxUwcNe5zUpbT2fDe` is READY at
+  `https://nomo-engine-klb7z3drv-rangan-alt.vercel.app/`; the canonical mode-shell alias is assigned to this
+  deployment and serves the same `index-c-I02bbG.js` bundle.
+- Live browser verification exercised all 11 mode routes at 1440×900 and 390×844, with no document overflow or
+  console errors/warnings; it also checked the Simulation core, Training/Serving controls, Evidence panel, cited
+  Sarathi row, and the Neuromorphic link. The live neuromorphic dashboard then completed an
   Event-camera/AKD1500 search (`/runs/620b864c08bd`) with 550 designs tried, seven trade-offs, layer inspection, and no
   console errors or warnings.
 - The landing source tree remains unchanged at `98a91d7`; its pre-existing `research/pilot/` directory remains
@@ -98,20 +99,21 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Deployment evidence
 
-- Engine current runtime release commits: c777a1f, cab46e7, b08e5fb, 631e040, and 126326c on main, with the
+- Engine current runtime release commits: c777a1f, cab46e7, b08e5fb, 631e040, 126326c, e300b1c, and 19dd854 on main, with the
   audit/deployment records also pushed to github.com/TaxCollector23/nomo-engine after the a314204 runtime release.
-- Mode-shell Vercel production deployment: dpl_4g9TKG6hDhoqyFbp2xprxHppAR5K.
-- Mode-shell unique URL: https://nomo-engine-qeydgq1ho-rangan-alt.vercel.app/
+- Mode-shell Vercel production deployment: dpl_88jwbgJb6otFxUwcNe5zUpbT2fDe.
+- Mode-shell unique URL: https://nomo-engine-klb7z3drv-rangan-alt.vercel.app/
 - Stable mode-shell alias: https://frontend-gray-ten-c3tj1luab.vercel.app/
 - Both mode-shell URLs returned HTTP 200; the canonical stable alias was explicitly reassigned and serves
-  `index-BmNxTOYX.js`, `index-DefewnCY.css`, `worker-C-FLG9f1.js`, and `jszip.min-B_nU0kT-.js`.
+  `index-c-I02bbG.js`, `index-DR3mSem2.css`, `worker-C-FLG9f1.js`, and `jszip.min-DuFMEDAl.js`.
 - Live browser smoke showed the Simulation core module, Training/Serving controls, the cited Evidence rows and Preview
   labels, and the historical Neuromorphic dashboard link. The checked stable tab had no console errors or warnings.
 - Neuromorphic dashboard deployment: dpl_MN1dV6Cuyd2KhadvmxdNrdwU9TYq; stable alias https://nomo-engine-dashboard.vercel.app/.
 - Landing deployment: dpl_BBo1GiaehNAm71M2A7aStC9e1VfJ; stable alias https://nomoailanding.vercel.app/.
 - The landing repository had no source change in this simulation release; master remains at 98a91d7 and its existing
   production deployment remains intact. The untracked research/pilot directory was preserved and not deployed.
-- Responsive layout code and Worker packaging are present; prior 1440×900 and 390×844 smoke evidence remains recorded.
+- Responsive layout code and Worker packaging are present; all 11 mode routes were directly checked at 1440×900 and
+  390×844 with no document overflow or console errors/warnings.
 
 ## Delivery bundles
 

@@ -81,7 +81,7 @@ Audit source: `C:/Users/Rangan Balaji/.codex/attachments/d5a12488-92cd-429d-97f9
 | Lines | Requirement | Status | Evidence / boundary |
 |---|---|---|---|
 | 158–160 | Newcomer navigation grouped by model life, infrastructure, chip, trust | Built | Lab rail exposes graph/train/serve/design, neuromorphic, auditor/products/costs, evidence, and Methods. |
-| 161 | Every module at 1440px and 390px with no console errors | Preview | Desktop/mobile smoke covered the mode shell, Lab, Product Studio, Auditor, Cost Tracker, and graph surfaces; a full scripted every-control accessibility matrix is still open. |
+| 161 | Every module at 1440px and 390px with no console errors | Built | Direct route checks covered all 11 Lab modules at 1440×900 and 390×844; each named module rendered with no document-level horizontal overflow or browser error/warning logs. A deeper every-control interaction matrix remains an optional follow-up. |
 | 162 | README, Methods, Evidence, docs, PROGRESS | Built | Updated repository documentation and gate reports. |
 | 163–164 | Feature-by-feature final report, verification, assumptions, limitations | Built | `FINAL_REPORT.md` plus this line audit. |
 | 165 | Three updated codebase zips | Built | Current tracked-file archives are recorded under `release-bundles-a314204/` for engine, planner, and landing; landing contains no source changes beyond its preserved pre-existing files. |
