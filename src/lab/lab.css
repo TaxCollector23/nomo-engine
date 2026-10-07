@@ -48,7 +48,7 @@
 .lab-note { color: var(--muted); font-size: 0.82rem; margin: 8px 0 0; line-height: 1.45; }
 .lab-link { background: none; border: 0; padding: 0; font: inherit; font-size: 0.88rem; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
 .lab-link:hover { color: var(--signal); }
-.lab-card { background: var(--card); border: 1px solid var(--soft-line); border-radius: 10px; padding: 18px 20px; }
+.lab-card { background: var(--card); border: 1px solid var(--soft-line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
 .lab-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
 .lab-card h3 { font-size: 1rem; margin: 0; }
 .lab-card h4 { font-size: 0.85rem; margin: 16px 0 6px; font-weight: 600; }
@@ -196,7 +196,10 @@
 .lab-sens li { display: grid; grid-template-columns: 1fr 70px 64px; gap: 8px; align-items: center; }
 .lab-sens-bar { height: 6px; background: #efebe3; border-radius: 3px; }
 .lab-sens-bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; transition: width 400ms ease; }
-.lab-prov { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.lab-prov { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 0; }
+.lab-prov.lab-table-scroll { max-width: 100%; }
+div.lab-prov { max-width: 100%; overflow-x: auto; }
+div.lab-prov > table { min-width: 100%; }
 .lab-prov td { padding: 4px 0; border-bottom: 1px solid #eeeae2; }
 .lab-prov td:last-child { text-align: right; }
 .lab-prov .ok { color: var(--good); } .lab-prov .warn { color: #8a5a12; }
@@ -307,6 +310,7 @@
 .layer-stage b, .layer-stage small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layer-stage b { font-size: 0.78rem; }
 .layer-stage small { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+.lab-config-output { max-width: 100%; box-sizing: border-box; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 
 /* ---- responsive & motion ---- */
 @media (max-width: 1180px) {
