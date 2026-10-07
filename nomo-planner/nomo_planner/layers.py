@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from itertools import product
+import json
 from math import inf
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -25,6 +26,9 @@ from typing import Any, Iterable, Mapping, Sequence
 BYTES = {"bf16": 2.0, "fp8": 1.0}
 PRECISION_SPEEDUP = {"bf16": 1.0, "fp8": 1.35}
 RECOMPUTE_FLOP_MULTIPLIER = {"none": 1.0, "selective": 1.12, "full": 1.28}
+EXHAUSTIVE_NODE_LIMIT = 4
+NSGA_MAX_POPULATION = 64
+NSGA_CROSSOVER_RATE = 0.90
 
 
 def _first(config: Mapping[str, Any], *keys: str, default: Any = None) -> Any:
@@ -448,12 +452,312 @@ def _dominates(left: LayerMetrics, right: LayerMetrics) -> bool:
     return all(x <= y for x, y in zip(a, b)) and any(x < y for x, y in zip(a, b))
 
 
+def _constraint_violation(metrics: LayerMetrics) -> float:
+    return sum(max(0.0, value) for value in metrics.constraints.values())
+
+
+def _constrained_dominates(left: LayerMetrics, right: LayerMetrics) -> bool:
+    """NSGA-II comparison: feasible plans dominate infeasible plans first."""
+
+    left_violation = _constraint_violation(left)
+    right_violation = _constraint_violation(right)
+    if left_violation <= 0.0 and right_violation > 0.0:
+        return True
+    if left_violation > 0.0 and right_violation <= 0.0:
+        return False
+    if left_violation > 0.0 or right_violation > 0.0:
+        return left_violation < right_violation
+    return _dominates(left, right)
+
+
+def _plan_key(plan: LayerTrainingPlan) -> str:
+    """JSON key shared with the TypeScript port for deterministic tie breaks."""
+
+    return json.dumps(
+        [list(plan.stages), list(plan.precision), list(plan.recompute), list(plan.offload)],
+        separators=(",", ":"),
+    )
+
+
+class _DeterministicRng:
+    """Small unsigned LCG whose arithmetic is mirrored in TypeScript."""
+
+    def __init__(self, seed: int):
+        self.state = int(seed) & 0xFFFFFFFF
+
+    def random(self) -> float:
+        self.state = (1664525 * self.state + 1013904223) & 0xFFFFFFFF
+        return self.state / 4294967296.0
+
+    def index(self, length: int) -> int:
+        return min(length - 1, int(self.random() * length)) if length > 1 else 0
+
+
+def _nondominated_sort(
+    evaluated: Sequence[tuple[LayerTrainingPlan, LayerMetrics]],
+) -> tuple[list[int], list[list[int]]]:
+    """Return NSGA-II ranks/fronts with stable input-order tie handling."""
+
+    count = len(evaluated)
+    dominates_indices: list[list[int]] = [[] for _ in range(count)]
+    dominated_by = [0] * count
+    for left in range(count):
+        for right in range(left + 1, count):
+            if _constrained_dominates(evaluated[left][1], evaluated[right][1]):
+                dominates_indices[left].append(right)
+                dominated_by[right] += 1
+            elif _constrained_dominates(evaluated[right][1], evaluated[left][1]):
+                dominates_indices[right].append(left)
+                dominated_by[left] += 1
+    first = [index for index, count_below in enumerate(dominated_by) if count_below == 0]
+    fronts: list[list[int]] = [first]
+    rank = [-1] * count
+    for index in first:
+        rank[index] = 0
+    front_index = 0
+    while front_index < len(fronts) and fronts[front_index]:
+        next_front: list[int] = []
+        for left in fronts[front_index]:
+            for right in dominates_indices[left]:
+                dominated_by[right] -= 1
+                if dominated_by[right] == 0:
+                    rank[right] = front_index + 1
+                    next_front.append(right)
+        if next_front:
+            fronts.append(next_front)
+        front_index += 1
+    return rank, fronts
+
+
+def _crowding_distances(
+    evaluated: Sequence[tuple[LayerTrainingPlan, LayerMetrics]],
+    fronts: Sequence[Sequence[int]],
+) -> list[float]:
+    distances = [0.0] * len(evaluated)
+    for front in fronts:
+        if len(front) <= 2:
+            for index in front:
+                distances[index] = inf
+            continue
+        for objective in range(3):
+            ordered = sorted(front, key=lambda index: (_vector(evaluated[index][1])[objective], index))
+            distances[ordered[0]] = inf
+            distances[ordered[-1]] = inf
+            low = _vector(evaluated[ordered[0]][1])[objective]
+            high = _vector(evaluated[ordered[-1]][1])[objective]
+            if high <= low:
+                continue
+            for position in range(1, len(ordered) - 1):
+                index = ordered[position]
+                if distances[index] == inf:
+                    continue
+                previous_value = _vector(evaluated[ordered[position - 1]][1])[objective]
+                next_value = _vector(evaluated[ordered[position + 1]][1])[objective]
+                distances[index] += (next_value - previous_value) / (high - low)
+    return distances
+
+
+def _select_nsga(
+    evaluated: Sequence[tuple[LayerTrainingPlan, LayerMetrics]],
+    limit: int,
+) -> list[tuple[LayerTrainingPlan, LayerMetrics]]:
+    rank, fronts = _nondominated_sort(evaluated)
+    del rank  # The fronts carry the same information for environmental selection.
+    distances = _crowding_distances(evaluated, fronts)
+    selected: list[tuple[LayerTrainingPlan, LayerMetrics]] = []
+    for front in fronts:
+        if len(selected) + len(front) <= limit:
+            selected.extend(evaluated[index] for index in front)
+            continue
+        ordered = sorted(
+            front,
+            key=lambda index: (-distances[index], _plan_key(evaluated[index][0])),
+        )
+        selected.extend(evaluated[index] for index in ordered[: max(0, limit - len(selected))])
+        break
+    return selected
+
+
+def _tournament(
+    population: Sequence[tuple[LayerTrainingPlan, LayerMetrics]],
+    rng: _DeterministicRng,
+    ranks: Sequence[int],
+    distances: Sequence[float],
+) -> tuple[LayerTrainingPlan, LayerMetrics]:
+    left = rng.index(len(population))
+    right = rng.index(len(population))
+    if ranks[left] < ranks[right]:
+        winner = left
+    elif ranks[right] < ranks[left]:
+        winner = right
+    elif distances[left] > distances[right]:
+        winner = left
+    elif distances[right] > distances[left]:
+        winner = right
+    else:
+        winner = left if _plan_key(population[left][0]) <= _plan_key(population[right][0]) else right
+    return population[winner]
+
+
+def _structured_seed_plans(
+    problem: TrainingProblem,
+    locks: Mapping[str, Mapping[str, Any]] | None,
+) -> list[LayerTrainingPlan]:
+    """Return deterministic, physically meaningful anchors for the large search."""
+
+    n = len(problem.graph.nodes)
+    precisions = ["bf16", "fp8"] if problem.fp8_enabled else ["bf16"]
+    plans: list[LayerTrainingPlan] = []
+    stage_counts = sorted(set((1, *problem.pipeline_stages)))
+    for stage_count in stage_counts:
+        if stage_count > n:
+            continue
+        stages = balanced_stages(n, stage_count)
+        for precision in precisions:
+            for recompute in ("none", "selective", "full"):
+                for offload in (False, True):
+                    plans.append(repair_plan(problem.graph, LayerTrainingPlan(
+                        stages, tuple(precision for _ in range(n)),
+                        tuple(recompute for _ in range(n)), tuple(offload for _ in range(n)),
+                    ), locks=locks))
+        middle = tuple(index not in (0, n - 1) for index in range(n))
+        plans.append(repair_plan(problem.graph, LayerTrainingPlan(
+            stages, tuple("fp8" if middle[index] else "bf16" for index in range(n)),
+            tuple("selective" if middle[index] else "none" for index in range(n)), middle,
+        ), locks=locks))
+    return _dedup(plans)
+
+
+def _random_plan(
+    problem: TrainingProblem,
+    rng: _DeterministicRng,
+    locks: Mapping[str, Mapping[str, Any]] | None,
+) -> LayerTrainingPlan:
+    n = len(problem.graph.nodes)
+    precisions = ["bf16", "fp8"] if problem.fp8_enabled else ["bf16"]
+    stage_counts = sorted(set((1, *problem.pipeline_stages))) or [1]
+    stage_count = stage_counts[rng.index(len(stage_counts))]
+    return repair_plan(problem.graph, LayerTrainingPlan(
+        balanced_stages(n, stage_count),
+        tuple(precisions[rng.index(len(precisions))] for _ in range(n)),
+        tuple(("none", "selective", "full")[rng.index(3)] for _ in range(n)),
+        tuple(rng.random() < 0.5 for _ in range(n)),
+    ), locks=locks)
+
+
+def _crossover_mutate(
+    left: LayerTrainingPlan,
+    right: LayerTrainingPlan,
+    problem: TrainingProblem,
+    rng: _DeterministicRng,
+    locks: Mapping[str, Mapping[str, Any]] | None,
+) -> LayerTrainingPlan:
+    n = len(problem.graph.nodes)
+    if n > 1 and rng.random() < NSGA_CROSSOVER_RATE:
+        cut = 1 + rng.index(n - 1)
+        stages = left.stages[:cut] + right.stages[cut:]
+        precision = left.precision[:cut] + right.precision[cut:]
+        recompute = left.recompute[:cut] + right.recompute[cut:]
+        offload = left.offload[:cut] + right.offload[cut:]
+    else:
+        stages, precision, recompute, offload = left.stages, left.precision, left.recompute, left.offload
+    precisions = ["bf16", "fp8"] if problem.fp8_enabled else ["bf16"]
+    stage_limit = max(sorted(set((1, *problem.pipeline_stages))) or [1])
+    stages = list(stages)
+    precision = list(precision)
+    recompute = list(recompute)
+    offload = list(offload)
+    changed = False
+    mutation_rate = max(1.0 / max(1, n), 0.02)
+    for index in range(n):
+        if rng.random() < mutation_rate:
+            stages[index] = rng.index(stage_limit)
+            changed = True
+        if rng.random() < mutation_rate:
+            precision[index] = precisions[rng.index(len(precisions))]
+            changed = True
+        if rng.random() < mutation_rate:
+            recompute[index] = ("none", "selective", "full")[rng.index(3)]
+            changed = True
+        if rng.random() < mutation_rate:
+            offload[index] = rng.random() < 0.5
+            changed = True
+    if not changed:
+        gene = rng.index(max(1, 4 * n))
+        index, field = divmod(gene, 4)
+        if field == 0:
+            stages[index] = rng.index(stage_limit)
+        elif field == 1:
+            precision[index] = precisions[rng.index(len(precisions))]
+        elif field == 2:
+            recompute[index] = ("none", "selective", "full")[rng.index(3)]
+        else:
+            offload[index] = not offload[index]
+    return repair_plan(problem.graph, LayerTrainingPlan(
+        tuple(stages), tuple(precision), tuple(recompute), tuple(offload),
+    ), locks=locks)
+
+
+def _nsga_candidate_plans(
+    problem: TrainingProblem,
+    locks: Mapping[str, Mapping[str, Any]] | None,
+) -> list[LayerTrainingPlan]:
+    """Deterministic constrained NSGA-II candidate generation for larger graphs."""
+
+    budget = max(1, int(problem.max_candidates))
+    n = len(problem.graph.nodes)
+    population_size = min(budget, max(8, min(NSGA_MAX_POPULATION, 2 * n)))
+    rng = _DeterministicRng(problem.seed)
+    evaluated: list[tuple[LayerTrainingPlan, LayerMetrics]] = []
+    seen: set[str] = set()
+
+    def add(plan: LayerTrainingPlan) -> bool:
+        repaired = repair_plan(problem.graph, plan, locks=locks)
+        key = _plan_key(repaired)
+        if key in seen or len(evaluated) >= budget:
+            return False
+        seen.add(key)
+        evaluated.append((repaired, evaluate_plan(problem, repaired, locks=locks)))
+        return True
+
+    for plan in _structured_seed_plans(problem, locks):
+        if len(evaluated) >= population_size:
+            break
+        add(plan)
+    attempts = 0
+    while len(evaluated) < population_size and attempts < population_size * 20:
+        add(_random_plan(problem, rng, locks))
+        attempts += 1
+    population = evaluated[:population_size]
+    while population and len(evaluated) < budget:
+        ranks, fronts = _nondominated_sort(population)
+        distances = _crowding_distances(population, fronts)
+        target = min(population_size, budget - len(evaluated))
+        offspring: list[tuple[LayerTrainingPlan, LayerMetrics]] = []
+        attempts = 0
+        while len(offspring) < target and attempts < target * 30:
+            left = _tournament(population, rng, ranks, distances)
+            right = _tournament(population, rng, ranks, distances)
+            child = _crossover_mutate(left[0], right[0], problem, rng, locks)
+            key = _plan_key(child)
+            if key not in seen:
+                seen.add(key)
+                record = (child, evaluate_plan(problem, child, locks=locks))
+                evaluated.append(record)
+                offspring.append(record)
+            attempts += 1
+        if not offspring:
+            break
+        population = _select_nsga([*population, *offspring], population_size)
+    return [plan for plan, _metrics in evaluated]
+
+
 def _candidate_plans(problem: TrainingProblem, locks: Mapping[str, Mapping[str, Any]] | None) -> tuple[list[LayerTrainingPlan], bool]:
     n = len(problem.graph.nodes)
     precisions = ["bf16", "fp8"] if problem.fp8_enabled else ["bf16"]
     plans: list[LayerTrainingPlan] = []
     # Small graphs are exhaustive over the user-facing per-node switches.
-    exhaustive = n <= 4
+    exhaustive = n <= EXHAUSTIVE_NODE_LIMIT
     if exhaustive:
         for stage_count in range(1, min(n, max(problem.pipeline_stages or (1,))) + 1):
             for precision in product(precisions, repeat=n):
@@ -464,32 +768,7 @@ def _candidate_plans(problem: TrainingProblem, locks: Mapping[str, Mapping[str, 
                         if len(plans) >= problem.max_candidates:
                             return _dedup(plans), False
     else:
-        for stage_count in sorted(set((1, *problem.pipeline_stages))):
-            if stage_count <= n:
-                stages = balanced_stages(n, stage_count)
-                for precision in ("bf16", "fp8"):
-                    for recompute in ("none", "selective", "full"):
-                        for offload in (False, True):
-                            plans.append(repair_plan(problem.graph, LayerTrainingPlan(
-                                stages, tuple(precision for _ in range(n)), tuple(recompute for _ in range(n)), tuple(offload for _ in range(n))), locks=locks))
-                # selective middle-node variants cover the common activation-heavy case
-                middle = tuple(index not in (0, n - 1) for index in range(n))
-                plans.append(repair_plan(problem.graph, LayerTrainingPlan(
-                    stages, tuple("fp8" if middle[i] else "bf16" for i in range(n)),
-                    tuple("selective" if middle[i] else "none" for i in range(n)), middle), locks=locks))
-        # Coordinate mutations make the bounded search responsive for larger graphs.
-        seed = list(plans)
-        for base in seed:
-            for index in range(n):
-                for precision in precisions:
-                    values = list(base.precision); values[index] = precision
-                    plans.append(repair_plan(problem.graph, LayerTrainingPlan(base.stages, tuple(values), base.recompute, base.offload), locks=locks))
-                values = list(base.recompute); values[index] = "none" if values[index] != "none" else "selective"
-                plans.append(repair_plan(problem.graph, LayerTrainingPlan(base.stages, base.precision, tuple(values), base.offload), locks=locks))
-                values_offload = list(base.offload); values_offload[index] = not values_offload[index]
-                plans.append(repair_plan(problem.graph, LayerTrainingPlan(base.stages, base.precision, base.recompute, tuple(values_offload)), locks=locks))
-                if len(plans) >= problem.max_candidates:
-                    return _dedup(plans), False
+        return _nsga_candidate_plans(problem, locks), False
     return _dedup(plans), exhaustive
 
 
@@ -583,6 +862,9 @@ def search(problem: TrainingProblem, *, locks: Mapping[str, Mapping[str, Any]] |
     baseline = global_best
     precision_gain = (global_bf16[1].objectives["step_time_s"] - global_best[1].objectives["step_time_s"]) / global_bf16[1].objectives["step_time_s"] * 100.0
     per_layer_gain = (global_best[1].objectives["step_time_s"] - best[1].objectives["step_time_s"]) / global_best[1].objectives["step_time_s"] * 100.0 if best else 0.0
+    search_note = ("Small graph search is exact exhaustive enumeration when the candidate cap is not reached"
+                   if exhaustive else
+                   "Large graph search uses deterministic repair-aware NSGA-II; the bounded Pareto set is not globally exhaustive")
     return LayerSearchResult(
         graph=problem.graph, best=best[0] if best else None, best_metrics=best[1] if best else None,
         front=front, baseline=baseline, global_bf16=global_bf16, global_best=global_best,
@@ -592,6 +874,7 @@ def search(problem: TrainingProblem, *, locks: Mapping[str, Mapping[str, Any]] |
             "FP8 quality is an assumption until customer evaluation",
             "CPU activation offload uses the supplied/default PCIe/host bandwidth",
             "Pipeline bubble and inter-stage communication are charged per stage",
+            search_note,
             stage_note,
         )))),
     )

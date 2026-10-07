@@ -131,6 +131,10 @@ export const BUILTIN_MODEL_CONFIGS = {
 
 const PRECISION_SPEEDUP: Record<LayerPrecision, number> = { bf16: 1, fp8: 1.35 };
 const RECOMPUTE_MULTIPLIER: Record<RecomputeMode, number> = { none: 1, selective: 1.12, full: 1.28 };
+const EXHAUSTIVE_NODE_LIMIT = 4;
+const NSGA_MAX_POPULATION = 64;
+const NSGA_CROSSOVER_RATE = 0.90;
+const DEFAULT_PIPELINE_STAGES = [1, 2, 4, 8, 16, 32];
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
@@ -412,32 +416,234 @@ function dominates(left: LayerMetrics, right: LayerMetrics): boolean {
   return a.every((value, index) => value <= b[index]!) && a.some((value, index) => value < b[index]!);
 }
 
+function constraintViolation(metrics: LayerMetrics): number {
+  return Object.values(metrics.constraints).reduce((sum, value) => sum + Math.max(0, value), 0);
+}
+
+function constrainedDominates(left: LayerMetrics, right: LayerMetrics): boolean {
+  const leftViolation = constraintViolation(left); const rightViolation = constraintViolation(right);
+  if (leftViolation <= 0 && rightViolation > 0) return true;
+  if (leftViolation > 0 && rightViolation <= 0) return false;
+  if (leftViolation > 0 || rightViolation > 0) return leftViolation < rightViolation;
+  return dominates(left, right);
+}
+
+type EvaluatedLayerPlan = { plan: LayerTrainingPlan; metrics: LayerMetrics };
+
+class DeterministicRng {
+  private state: number;
+
+  constructor(seed: number) { this.state = Math.trunc(seed) >>> 0; }
+
+  random(): number {
+    this.state = (Math.imul(1664525, this.state) + 1013904223) >>> 0;
+    return this.state / 4294967296;
+  }
+
+  index(length: number): number { return length > 1 ? Math.min(length - 1, Math.floor(this.random() * length)) : 0; }
+}
+
+function nondominatedSort(evaluated: EvaluatedLayerPlan[]): { ranks: number[]; fronts: number[][] } {
+  const dominatedBy = Array(evaluated.length).fill(0) as number[];
+  const dominatesIndices = evaluated.map(() => [] as number[]);
+  for (let left = 0; left < evaluated.length; left += 1) {
+    for (let right = left + 1; right < evaluated.length; right += 1) {
+      if (constrainedDominates(evaluated[left]!.metrics, evaluated[right]!.metrics)) {
+        dominatesIndices[left]!.push(right); dominatedBy[right]! += 1;
+      } else if (constrainedDominates(evaluated[right]!.metrics, evaluated[left]!.metrics)) {
+        dominatesIndices[right]!.push(left); dominatedBy[left]! += 1;
+      }
+    }
+  }
+  const first = dominatedBy.flatMap((count, index) => count === 0 ? [index] : []);
+  const fronts: number[][] = [first]; const ranks = Array(evaluated.length).fill(-1) as number[];
+  first.forEach((index) => { ranks[index] = 0; });
+  for (let frontIndex = 0; frontIndex < fronts.length && fronts[frontIndex]!.length; frontIndex += 1) {
+    const next: number[] = [];
+    fronts[frontIndex]!.forEach((left) => {
+      dominatesIndices[left]!.forEach((right) => {
+        dominatedBy[right]! -= 1;
+        if (dominatedBy[right] === 0) { ranks[right] = frontIndex + 1; next.push(right); }
+      });
+    });
+    if (next.length) fronts.push(next);
+  }
+  return { ranks, fronts };
+}
+
+function crowdingDistances(evaluated: EvaluatedLayerPlan[], fronts: number[][]): number[] {
+  const distances = Array(evaluated.length).fill(0) as number[];
+  fronts.forEach((front) => {
+    if (front.length <= 2) { front.forEach((index) => { distances[index] = Number.POSITIVE_INFINITY; }); return; }
+    for (let objective = 0; objective < 3; objective += 1) {
+      const ordered = [...front].sort((left, right) => objectiveVector(evaluated[left]!.metrics)[objective]! - objectiveVector(evaluated[right]!.metrics)[objective]! || left - right);
+      distances[ordered[0]!] = Number.POSITIVE_INFINITY; distances[ordered[ordered.length - 1]!] = Number.POSITIVE_INFINITY;
+      const low = objectiveVector(evaluated[ordered[0]!]!.metrics)[objective]!;
+      const high = objectiveVector(evaluated[ordered[ordered.length - 1]!]!.metrics)[objective]!;
+      if (high <= low) continue;
+      for (let position = 1; position < ordered.length - 1; position += 1) {
+        const index = ordered[position]!;
+        if (distances[index] === Number.POSITIVE_INFINITY) continue;
+        const previous = objectiveVector(evaluated[ordered[position - 1]!]!.metrics)[objective]!;
+        const next = objectiveVector(evaluated[ordered[position + 1]!]!.metrics)[objective]!;
+        distances[index]! += (next - previous) / (high - low);
+      }
+    }
+  });
+  return distances;
+}
+
+function selectNsga(evaluated: EvaluatedLayerPlan[], limit: number): EvaluatedLayerPlan[] {
+  const { fronts } = nondominatedSort(evaluated); const distances = crowdingDistances(evaluated, fronts);
+  const selected: EvaluatedLayerPlan[] = [];
+  for (const front of fronts) {
+    if (selected.length + front.length <= limit) { selected.push(...front.map((index) => evaluated[index]!)); continue; }
+    const ordered = [...front].sort((left, right) => distances[right]! - distances[left]!
+      || comparePlanKeys(planKey(evaluated[left]!.plan), planKey(evaluated[right]!.plan)));
+    selected.push(...ordered.slice(0, Math.max(0, limit - selected.length)).map((index) => evaluated[index]!));
+    break;
+  }
+  return selected;
+}
+
+function tournament(population: EvaluatedLayerPlan[], rng: DeterministicRng, ranks: number[], distances: number[]): EvaluatedLayerPlan {
+  const left = rng.index(population.length); const right = rng.index(population.length);
+  let winner = left;
+  if (ranks[right]! < ranks[left]!) winner = right;
+  else if (ranks[right] === ranks[left] && distances[right]! > distances[left]!) winner = right;
+  else if (ranks[right] === ranks[left] && distances[right] === distances[left]
+    && comparePlanKeys(planKey(population[right]!.plan), planKey(population[left]!.plan)) < 0) winner = right;
+  return population[winner]!;
+}
+
+function comparePlanKeys(left: string, right: string): number { return left < right ? -1 : left > right ? 1 : 0; }
+
 function addUnique(plans: LayerTrainingPlan[], seen: Set<string>, plan: LayerTrainingPlan, graph: LayerGraph, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): void {
   const repaired = repairLayerPlan(graph, plan, locks); const key = planKey(repaired);
   if (!seen.has(key)) { seen.add(key); plans.push(repaired); }
 }
 
+function productVectors<T>(values: T[], length: number): T[][] {
+  const result: T[][] = [];
+  const visit = (prefix: T[]): void => {
+    if (prefix.length === length) { result.push(prefix); return; }
+    values.forEach((value) => visit([...prefix, value]));
+  };
+  visit([]);
+  return result;
+}
+
+function dedupPlans(plans: LayerTrainingPlan[]): LayerTrainingPlan[] {
+  const result: LayerTrainingPlan[] = []; const seen = new Set<string>();
+  plans.forEach((plan) => { const key = planKey(plan); if (!seen.has(key)) { seen.add(key); result.push(plan); } });
+  return result;
+}
+
+function structuredSeedPlans(problem: LayerTrainingProblem, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): LayerTrainingPlan[] {
+  const n = problem.graph.nodes.length; const plans: LayerTrainingPlan[] = []; const seen = new Set<string>();
+  const stageChoices = [...new Set([1, ...(problem.pipelineStages ?? DEFAULT_PIPELINE_STAGES)])].sort((left, right) => left - right);
+  const precisionChoices: LayerPrecision[] = problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"];
+  stageChoices.forEach((stageCount) => {
+    if (stageCount > n) return;
+    const stages = balancedLayerStages(n, stageCount);
+    precisionChoices.forEach((precision) => (["none", "selective", "full"] as RecomputeMode[]).forEach((recompute) => [false, true].forEach((offload) => {
+      addUnique(plans, seen, { stages, precision: Array(n).fill(precision), recompute: Array(n).fill(recompute), offload: Array(n).fill(offload) }, problem.graph, locks);
+    })));
+    const middle = Array.from({ length: n }, (_, index) => index !== 0 && index !== n - 1);
+    addUnique(plans, seen, { stages, precision: middle.map((value) => value ? "fp8" : "bf16"), recompute: middle.map((value) => value ? "selective" : "none"), offload: middle }, problem.graph, locks);
+  });
+  return plans;
+}
+
+function randomPlan(problem: LayerTrainingProblem, rng: DeterministicRng, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): LayerTrainingPlan {
+  const n = problem.graph.nodes.length;
+  const stageChoices = [...new Set([1, ...(problem.pipelineStages ?? DEFAULT_PIPELINE_STAGES)])].sort((left, right) => left - right);
+  const precisionChoices: LayerPrecision[] = problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"];
+  const stageCount = stageChoices[rng.index(stageChoices.length)] ?? 1;
+  return repairLayerPlan(problem.graph, {
+    stages: balancedLayerStages(n, stageCount),
+    precision: Array.from({ length: n }, () => precisionChoices[rng.index(precisionChoices.length)]!),
+    recompute: Array.from({ length: n }, () => (["none", "selective", "full"] as RecomputeMode[])[rng.index(3)]!),
+    offload: Array.from({ length: n }, () => rng.random() < 0.5),
+  }, locks);
+}
+
+function crossoverMutate(left: LayerTrainingPlan, right: LayerTrainingPlan, problem: LayerTrainingProblem, rng: DeterministicRng, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): LayerTrainingPlan {
+  const n = problem.graph.nodes.length;
+  let stages = [...left.stages]; let precision = [...left.precision]; let recompute = [...left.recompute]; let offload = [...left.offload];
+  if (n > 1 && rng.random() < NSGA_CROSSOVER_RATE) {
+    const cut = 1 + rng.index(n - 1);
+    stages = [...left.stages.slice(0, cut), ...right.stages.slice(cut)];
+    precision = [...left.precision.slice(0, cut), ...right.precision.slice(cut)];
+    recompute = [...left.recompute.slice(0, cut), ...right.recompute.slice(cut)];
+    offload = [...left.offload.slice(0, cut), ...right.offload.slice(cut)];
+  }
+  const precisionChoices: LayerPrecision[] = problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"];
+  const stageLimit = Math.max(...([...new Set([1, ...(problem.pipelineStages ?? DEFAULT_PIPELINE_STAGES)])]), 1);
+  let changed = false; const mutationRate = Math.max(1 / Math.max(1, n), 0.02);
+  for (let index = 0; index < n; index += 1) {
+    if (rng.random() < mutationRate) { stages[index] = rng.index(stageLimit); changed = true; }
+    if (rng.random() < mutationRate) { precision[index] = precisionChoices[rng.index(precisionChoices.length)]!; changed = true; }
+    if (rng.random() < mutationRate) { recompute[index] = (["none", "selective", "full"] as RecomputeMode[])[rng.index(3)]!; changed = true; }
+    if (rng.random() < mutationRate) { offload[index] = rng.random() < 0.5; changed = true; }
+  }
+  if (!changed) {
+    const gene = rng.index(Math.max(1, 4 * n)); const index = Math.floor(gene / 4); const field = gene % 4;
+    if (field === 0) stages[index] = rng.index(stageLimit);
+    else if (field === 1) precision[index] = precisionChoices[rng.index(precisionChoices.length)]!;
+    else if (field === 2) recompute[index] = (["none", "selective", "full"] as RecomputeMode[])[rng.index(3)]!;
+    else offload[index] = !offload[index];
+  }
+  return repairLayerPlan(problem.graph, { stages, precision, recompute, offload }, locks);
+}
+
+function nsgaCandidates(problem: LayerTrainingProblem, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): LayerTrainingPlan[] {
+  const budget = Math.max(1, Math.trunc(problem.maxCandidates ?? 20000)); const n = problem.graph.nodes.length;
+  const populationSize = Math.min(budget, Math.max(8, Math.min(NSGA_MAX_POPULATION, 2 * n)));
+  const rng = new DeterministicRng(problem.seed ?? 20261003); const evaluated: EvaluatedLayerPlan[] = []; const seen = new Set<string>();
+  const add = (raw: LayerTrainingPlan): boolean => {
+    const plan = repairLayerPlan(problem.graph, raw, locks); const key = planKey(plan);
+    if (seen.has(key) || evaluated.length >= budget) return false;
+    seen.add(key); evaluated.push({ plan, metrics: evaluateLayerPlan(problem, plan, locks) }); return true;
+  };
+  for (const plan of structuredSeedPlans(problem, locks)) {
+    if (evaluated.length >= populationSize) break;
+    add(plan);
+  }
+  let attempts = 0;
+  while (evaluated.length < populationSize && attempts < populationSize * 20) { add(randomPlan(problem, rng, locks)); attempts += 1; }
+  let population = evaluated.slice(0, populationSize);
+  while (population.length && evaluated.length < budget) {
+    const { ranks, fronts } = nondominatedSort(population); const distances = crowdingDistances(population, fronts);
+    const target = Math.min(populationSize, budget - evaluated.length); const offspring: EvaluatedLayerPlan[] = []; let generationAttempts = 0;
+    while (offspring.length < target && generationAttempts < target * 30) {
+      const left = tournament(population, rng, ranks, distances); const right = tournament(population, rng, ranks, distances);
+      const child = crossoverMutate(left.plan, right.plan, problem, rng, locks); const key = planKey(child);
+      if (!seen.has(key)) { seen.add(key); const record = { plan: child, metrics: evaluateLayerPlan(problem, child, locks) }; evaluated.push(record); offspring.push(record); }
+      generationAttempts += 1;
+    }
+    if (!offspring.length) break;
+    population = selectNsga([...population, ...offspring], populationSize);
+  }
+  return evaluated.map((item) => item.plan);
+}
+
 function candidates(problem: LayerTrainingProblem, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>): { plans: LayerTrainingPlan[]; exhaustive: boolean } {
   const n = problem.graph.nodes.length; const maxCandidates = problem.maxCandidates ?? 20000;
-  const plans: LayerTrainingPlan[] = []; const seen = new Set<string>();
-  const stageChoices = [...new Set([1, ...(problem.pipelineStages ?? [1, 2, 4, 8])])].filter((count) => count <= n);
-  const precisionChoices: LayerPrecision[] = problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"];
-  for (const stages of stageChoices) {
-    for (const precision of precisionChoices) for (const recompute of ["none", "selective", "full"] as RecomputeMode[]) for (const offload of [false, true]) {
-      addUnique(plans, seen, { stages: balancedLayerStages(n, stages), precision: Array(n).fill(precision), recompute: Array(n).fill(recompute), offload: Array(n).fill(offload) }, problem.graph, locks);
+  const plans: LayerTrainingPlan[] = [];
+  if (n <= EXHAUSTIVE_NODE_LIMIT) {
+    const precisionChoices: LayerPrecision[] = problem.fp8Enabled === false ? ["bf16"] : ["bf16", "fp8"];
+    const maxStageCount = Math.min(n, Math.max(1, ...(problem.pipelineStages ?? DEFAULT_PIPELINE_STAGES)));
+    for (let stageCount = 1; stageCount <= maxStageCount; stageCount += 1) {
+      const stages = balancedLayerStages(n, stageCount);
+      for (const precision of productVectors(precisionChoices, n)) for (const recompute of productVectors(["none", "selective"] as RecomputeMode[], n)) for (const offload of productVectors([false, true], n)) {
+        plans.push(repairLayerPlan(problem.graph, { stages, precision, recompute, offload }, locks));
+        if (plans.length >= maxCandidates) return { plans: dedupPlans(plans), exhaustive: false };
+      }
     }
-    const middle = Array.from({ length: n }, (_, index) => index !== 0 && index !== n - 1);
-    addUnique(plans, seen, { stages: balancedLayerStages(n, stages), precision: middle.map((value) => value ? "fp8" : "bf16"), recompute: middle.map((value) => value ? "selective" : "none"), offload: middle }, problem.graph, locks);
+    return { plans: dedupPlans(plans), exhaustive: true };
   }
-  const seeds = [...plans];
-  for (const base of seeds) {
-    for (let index = 0; index < n && plans.length < maxCandidates; index += 1) {
-      for (const precision of precisionChoices) { const values = [...base.precision]; values[index] = precision; addUnique(plans, seen, { ...base, precision: values }, problem.graph, locks); }
-      const recompute = [...base.recompute]; recompute[index] = recompute[index] === "none" ? "selective" : "none"; addUnique(plans, seen, { ...base, recompute }, problem.graph, locks);
-      const offload = [...base.offload]; offload[index] = !offload[index]; addUnique(plans, seen, { ...base, offload }, problem.graph, locks);
-    }
-  }
-  return { plans: plans.slice(0, maxCandidates), exhaustive: n <= 4 && plans.length < maxCandidates };
+  return { plans: nsgaCandidates(problem, locks), exhaustive: false };
 }
 
 function chooseGlobal(problem: LayerTrainingProblem, precision?: LayerPrecision, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>> = {}): { plan: LayerTrainingPlan; metrics: LayerMetrics } {
@@ -499,6 +705,9 @@ export function searchLayerTraining(problem: LayerTrainingProblem, locks: Record
   const globalBest = chooseGlobal(problem, undefined, locks);
   const precisionGainPct = (globalBf16.metrics.objectives.stepTimeS - globalBest.metrics.objectives.stepTimeS) / globalBf16.metrics.objectives.stepTimeS * 100;
   const perLayerGainPct = best ? (globalBest.metrics.objectives.stepTimeS - best.metrics.objectives.stepTimeS) / globalBest.metrics.objectives.stepTimeS * 100 : 0;
+  const searchNote = generated.exhaustive
+    ? "Small graph search is exact exhaustive enumeration when the candidate cap is not reached"
+    : "Large graph search uses deterministic repair-aware NSGA-II; the bounded Pareto set is not globally exhaustive";
   return {
     graph: problem.graph, best: best?.plan ?? null, bestMetrics: best?.metrics ?? null,
     front, baseline: globalBest, globalBf16, globalBest, precisionGainPct, perLayerGainPct,
@@ -507,6 +716,7 @@ export function searchLayerTraining(problem: LayerTrainingProblem, locks: Record
       "FP8 quality is an assumption until customer evaluation",
       "CPU activation offload uses the supplied/default PCIe/host bandwidth",
       "Pipeline bubble and inter-stage communication are charged per stage",
+      searchNote,
       stageNote,
     ])],
   };

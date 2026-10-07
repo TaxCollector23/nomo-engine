@@ -37,8 +37,9 @@ assumption, or placeholder where applicable.
 
 The shared-graph Train search compares per-layer choices with a best global-only plan using the same precision,
 recompute, offload, and stage options. It charges pipeline bubble, inter-stage transfer, and CPU activation offload
-with customer-overridable bandwidth assumptions. The current browser search is bounded and deterministic; it is not
-represented as a full NSGA-II implementation.
+with customer-overridable bandwidth assumptions. Up to four graph nodes use exact exhaustive enumeration when the
+candidate cap is not reached. Larger browser searches use deterministic repair-aware constrained NSGA-II with a
+`maxCandidates` evaluation budget and a bounded Pareto set; they are not represented as globally exhaustive.
 
 ## 4. NIR export
 

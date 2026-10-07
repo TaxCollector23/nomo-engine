@@ -21,9 +21,13 @@ parameters in log-error space, and stores 256 reproducible samples in
 each leave-one-out split and writes its detailed report under `docs/`.
 
 `nomo_planner.layers` is the dependency-free reference for the shared model
-graph and bounded layer-aware training search. It parses a Hugging Face
+graph and layer-aware training search. It parses a Hugging Face
 `config.json`-shaped object, expands transformer nodes, applies contiguous
 stage and lock repair, and keeps FP8/offload values labelled as assumptions.
+Graphs with at most four nodes use exact exhaustive enumeration when the
+candidate cap is not reached. Larger graphs use a deterministic,
+repair-aware constrained NSGA-II search bounded by `max_candidates`; their
+Pareto set is useful bounded search output, not a proof of global optimality.
 
 `nomo_planner.experiments.parse_experiment_results_csv` accepts completed rows
 from the recommendation-sensitive benchmark template only when their names

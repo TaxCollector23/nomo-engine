@@ -21,11 +21,13 @@ layer-aware decisions.
 2. Expand the config into an ordered graph: embedding, attention and MLP
    nodes for every transformer block, then the output head. Each node carries
    parameter count, forward FLOPs, activation bytes, and KV-cache bytes.
-3. Search the per-layer training decisions with a deterministic constrained
-   enumerator for small spaces: contiguous non-empty pipeline stages,
+3. Search the per-layer training decisions with exact deterministic
+   enumeration for small spaces: contiguous non-empty pipeline stages,
    FP8/BF16 precision, recompute, and CPU activation offload. Larger spaces
-   use the same objective/repair interface but are capped and reported as
-   incomplete rather than pretending to be exhaustive.
+   use deterministic constrained NSGA-II: repaired seeds, crossover,
+   mutation, feasibility-first dominance, and crowding-distance selection are
+   all bounded by `max_candidates`. The resulting Pareto set is explicitly
+   non-exhaustive.
 4. Repair invalid candidates before evaluation. Stage IDs are contiguous and
    non-empty; locks are absolute; per-device memory must fit; and the first
    and last graph nodes default to BF16 unless the user explicitly overrides
@@ -90,5 +92,7 @@ published observations remain unchanged.
   explicit FP8 quality and GPU bandwidth assumptions. Config auditing is still
   intentionally not claimed as complete; the graph contract is shared so it
   can consume the same uploaded model next.
-- Exhaustive search is guaranteed only for the bounded small-space mode. Any
-  capped search is explicitly marked non-exhaustive in results and exports.
+- Exhaustive search is guaranteed only for the small-space mode when the
+  candidate cap is not reached. Large-graph NSGA-II is deterministic and
+  repair-aware, but its bounded Pareto set is not a global optimum proof;
+  results remain explicitly marked non-exhaustive in the UI and exports.

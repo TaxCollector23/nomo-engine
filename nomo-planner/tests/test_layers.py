@@ -117,6 +117,32 @@ def test_published_model_search_is_reproducible_with_fixed_seed():
         assert first.best_metrics == second.best_metrics
 
 
+def test_small_graph_keeps_exact_exhaustive_search_when_uncapped():
+    graph = build_graph(config(num_hidden_layers=1), seq_len=8, batch_size=1)
+    result = search(TrainingProblem(graph, pipeline_stages=(1, 2), max_candidates=10_000, seed=5))
+    assert result.exhaustive is True
+    # Endpoint BF16 repair leaves 2^(4 - 2) precision choices, with all
+    # recompute/offload choices, for each of the two stage counts.
+    assert result.evaluated == 2 * (2 ** 2) * (2 ** 4) * (2 ** 4)
+    assert "exact exhaustive" in " ".join(result.assumptions)
+
+
+def test_large_graph_uses_repair_aware_nsga2_with_a_deterministic_budget():
+    graph = build_graph(config(num_hidden_layers=5), seq_len=16, batch_size=1)
+    problem = TrainingProblem(graph, pipeline_stages=(1, 2, 4, 8), max_candidates=80, seed=123)
+    first = search(problem)
+    second = search(problem)
+    assert first.exhaustive is False
+    assert first.evaluated == 80
+    assert first == second
+    assert "NSGA-II" in " ".join(first.assumptions)
+    assert first.best is not None
+    assert first.best.precision[0] == first.best.precision[-1] == "bf16"
+    for plan, _metrics in first.front:
+        assert list(plan.stages) == sorted(plan.stages)
+        assert plan.precision[0] == plan.precision[-1] == "bf16"
+
+
 def test_builtin_model_config_values_are_published_values():
     assert (LLAMA_3_8B["num_hidden_layers"], LLAMA_3_8B["hidden_size"], LLAMA_3_8B["vocab_size"]) == (32, 4096, 128256)
     assert (LLAMA_3_70B["num_hidden_layers"], LLAMA_3_70B["hidden_size"], LLAMA_3_70B["vocab_size"]) == (80, 8192, 128256)
