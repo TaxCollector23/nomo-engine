@@ -142,3 +142,6 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-ai-a314204.zip
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-27b8824.zip
 - C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-27b8824.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-b1d3bdb.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-b1d3bdb.zip
+- C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-ai-b1d3bdb.zip

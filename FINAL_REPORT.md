@@ -131,6 +131,7 @@ trade-offs with layer inspection available. The checked tabs had no console erro
 The landing repository stayed at pushed commit `98a91d7` with its existing deployment; no landing source change was
 needed for this engine-only simulation release.
 
-The current engine/planner release archives are
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-27b8824.zip and
-C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-27b8824.zip.
+The final tracked-file release archives are
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-engine-b1d3bdb.zip,
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-planner-b1d3bdb.zip, and
+C:/Users/Rangan Balaji/Desktop/Nomo AI/release-bundles-a314204/nomo-ai-b1d3bdb.zip.
