@@ -16,7 +16,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
 | `nomo-engine/frontend/` | 39 | Next.js neuromorphic launcher/dashboard, telemetry client, export UI, and admin surface typecheck/build successfully. The disabled unimplemented phase-coding control was removed. |
 | `nomo-engine/nomo-planner/` | 47 | Python reference planner, serious simulation core, platform/API/SDK/CLI, public serving fixture/replay, safe artifact validation/lowering and Prometheus ingestion, studies, data, bounded versioned framework-auditor validation/round-trips, and tests; experiment-result CSV parsing and tests added. |
 | `nomo-engine/scripts/` | 7 | Golden fixtures, parity verifier, benchmark runner, and simulation golden runner; `npm run verify` remains green. |
-| `nomo-engine/src/` | 50 | Browser planner, Lab modules, product/cost/auditor surfaces, exports, styling, GraphIR, topology/timeline/distribution contracts, Python-core parity, and the Worker-backed Simulation Workbench; calibration file/result ingestion is local-only. |
+| `nomo-engine/src/` | 51 | Browser planner, Lab modules, product/cost/auditor surfaces, exports, styling, GraphIR, topology/timeline/distribution contracts, Python-core parity, Worker-backed Simulation Workbench, and the measured Verification & benchmarks Evidence panel; calibration file/result ingestion is local-only. |
 | `nomo-engine/public/` | 2 | Favicon/logo assets used by the root app. |
 | `nomo-ai` tracked tree | 25 | Landing routes, research pages, styling, package/deployment files, and assets reviewed; the only landing source change is the documentation/audit link repair. |
 
@@ -32,7 +32,7 @@ for stale links and unlabelled placeholders, and ran the repository's verificati
   boundary assertions).
 - Browser simulation: `npm run simulation:golden` passes 123 checks, and the production build emits the Worker bundle
   consumed by `SimulationWorkbench` with a deterministic synchronous fallback. The evidence panel now displays the
-  cited 12-row Sarathi comparison and its 72.98% replay MAPE.
+  cited 12-row Sarathi comparison and its 72.98% replay MAPE, plus the measured verification and benchmark snapshot.
 - Neuromorphic dashboard: `npm run typecheck` and `npm run build` pass; a live built-in Event-camera/AKD1500 search
   completed and exposed 550 designs, seven trade-offs, layer inspection, and export controls.
 - Browser route matrix: all 11 Lab modules were directly loaded at 1440×900 and 390×844; each named module rendered

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { CALIBRATED, CALIBRATION_RESULTS, calibrationPoints } from "../planner/calibration";
 import { UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
 import { Segmented } from "./controls";
+import VerificationBenchmarks from "./VerificationBenchmarks";
 
 /** Predicted vs measured step time for 22 published runs. Toggling calibration moves every point. */
 export default function Evidence() {
@@ -112,6 +113,7 @@ export default function Evidence() {
           </table>
         </div>
       </details>
+      <VerificationBenchmarks />
     </div>
   );
 }

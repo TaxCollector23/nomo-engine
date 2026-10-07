@@ -219,6 +219,9 @@ div.lab-prov > table { min-width: 100%; }
 .lab-table tbody tr { cursor: pointer; }
 .lab-table tbody tr:hover { background: #fff; }
 .lab-table tbody tr.is-on { background: #fff; box-shadow: inset 3px 0 0 var(--signal); }
+.lab-benchmarks { margin-top: 18px; }
+.lab-benchmark-table caption { text-align: left; color: var(--muted); font-size: 0.8rem; padding: 0 0 8px; }
+.lab-benchmark-table td:not(:first-child), .lab-benchmark-table th:not(:first-child) { white-space: nowrap; }
 
 /* ---- evidence & methods ---- */
 .lab-evidence-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 20px; }

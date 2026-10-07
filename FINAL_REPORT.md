@@ -50,6 +50,9 @@ The landing page now links to real engine specification, deployment, observabili
 - Python/TypeScript planner, product, layer, auditor, cost, and local-calibration parity: 14,337 checks passed; worst relative difference 4.37e-16.
 - Serious simulation golden: 123 checks passed, including zero-bubble, parallel-collective, embedding-dependency, and
   repaired NSGA-II coverage.
+- Deterministic planner benchmark snapshot (`npm run bench`): 7,680-plan training search in 63 ms, 13,440-plan
+  training sweep in 150 ms, 216-plan inference search in 2 ms, and 1,215-plan architecture search in 13 ms;
+  explanation took 1 ms, 1 ms, 0 ms, and 0 ms. The same measured counts and rows are visible in the Evidence module.
 - Public serving validation: Sarathi-Serve Table 4 fixture contains 12 measured rows; the reproducible replay matched
   12/12 and reported 72.98% MAPE without filling missing data.
 - Artifact boundaries: Hugging Face/Nomo JSON structural validation and bounded transformer-skeleton lowering, safetensors

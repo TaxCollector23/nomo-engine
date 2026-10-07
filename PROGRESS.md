@@ -54,6 +54,17 @@ explicitly Preview/open where the required artifacts or server contract are abse
   `dpl_5sxB78cDXJhiV1JaEi22aJ2wrKq4` is READY at `https://nomo-engine-8kchdj44b-rangan-alt.vercel.app/` and
   the stable mode-shell alias `https://frontend-gray-ten-c3tj1luab7.vercel.app/` serves the same build.
 
+## 2026-10-06 measured verification and benchmark surface
+
+- Re-ran the complete release suite after the Evidence update: 134 Python tests, 14,337 TypeScript parity checks
+  (worst relative difference `4.37e-16`), and 123 simulation golden checks all passed.
+- The deterministic `npm run bench` snapshot measured `llm_training` at 7,680 plans / 63 ms search, the widened
+  13,440-plan training sweep at 150 ms, `llm_inference` at 216 plans / 2 ms, and `arch_codesign` at 1,215 plans /
+  13 ms. Explanation took 1 ms, 1 ms, 0 ms, and 0 ms respectively.
+- Added the visible **Verification & benchmarks** card to the Evidence module. It shows the test counts, benchmark
+  rows, run date, command source, and a clear local-snapshot limitation; it does not present those timings as
+  production or hardware guarantees.
+
 ## Completed
 
 - Python-first layer graph with fair global comparison, separate precision/per-layer gain, pipeline/communication/offload accounting, published model presets, and fixed-seed browser parity.
