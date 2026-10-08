@@ -1,0 +1,233 @@
+{
+  "method": "leave-one-out held-out coverage; stratified bootstrap refit; central predictive 90% interval",
+  "source": "Narayanan et al. 2021 (arXiv:2104.04473), Tables 1-2",
+  "nominal_coverage": 0.9,
+  "n": 22,
+  "covered": 18,
+  "coverage": 0.8181818181818182,
+  "wilson_95": [
+    0.6148297802336213,
+    0.9269323397589488
+  ],
+  "by_strategy": {
+    "tensor_pipeline": {
+      "n": 16,
+      "covered": 14,
+      "coverage": 0.875,
+      "wilson_95": [
+        0.6397666856325173,
+        0.9650232506629428
+      ]
+    },
+    "zero3": {
+      "n": 6,
+      "covered": 4,
+      "coverage": 0.6666666666666666,
+      "wilson_95": [
+        0.29998832134152864,
+        0.9032306674407831
+      ]
+    }
+  },
+  "rows": [
+    {
+      "row_id": "table1-01",
+      "strategy": "tensor_pipeline",
+      "measured": 3.528017807464643,
+      "median": 2.7463137256811336,
+      "low": 2.5272322708498107,
+      "high": 2.997618726429247,
+      "covered": false
+    },
+    {
+      "row_id": "table1-02",
+      "strategy": "tensor_pipeline",
+      "measured": 3.6974066287304352,
+      "median": 3.2018379795281406,
+      "low": 2.934351926593025,
+      "high": 3.6995605822831106,
+      "covered": true
+    },
+    {
+      "row_id": "table1-03",
+      "strategy": "tensor_pipeline",
+      "measured": 3.696333544433577,
+      "median": 3.928957416275396,
+      "low": 3.435500047620912,
+      "high": 4.343017900083055,
+      "covered": true
+    },
+    {
+      "row_id": "table1-04",
+      "strategy": "tensor_pipeline",
+      "measured": 9.399297318001778,
+      "median": 10.802928801036744,
+      "low": 9.714576631899206,
+      "high": 12.422842068298207,
+      "covered": false
+    },
+    {
+      "row_id": "table1-05",
+      "strategy": "tensor_pipeline",
+      "measured": 14.453498639582609,
+      "median": 15.235986226280684,
+      "low": 13.417218488650445,
+      "high": 17.210846513080178,
+      "covered": true
+    },
+    {
+      "row_id": "table1-06",
+      "strategy": "tensor_pipeline",
+      "measured": 16.05780897792,
+      "median": 15.772863618525278,
+      "low": 14.425768946439327,
+      "high": 17.980829327138242,
+      "covered": true
+    },
+    {
+      "row_id": "table1-07",
+      "strategy": "tensor_pipeline",
+      "measured": 24.8173657580627,
+      "median": 24.659571457069458,
+      "low": 22.109149795236203,
+      "high": 27.409009768572183,
+      "covered": true
+    },
+    {
+      "row_id": "table1-08",
+      "strategy": "tensor_pipeline",
+      "measured": 37.614270618643815,
+      "median": 38.024575122812635,
+      "low": 33.18074170564436,
+      "high": 40.733014712547195,
+      "covered": true
+    },
+    {
+      "row_id": "table1-09",
+      "strategy": "tensor_pipeline",
+      "measured": 54.084968538463805,
+      "median": 55.75646341565926,
+      "low": 49.73542852471919,
+      "high": 61.15240220421981,
+      "covered": true
+    },
+    {
+      "row_id": "table1-10",
+      "strategy": "tensor_pipeline",
+      "measured": 102.6299562549399,
+      "median": 102.74738426032552,
+      "low": 90.9877095409327,
+      "high": 113.46222838998186,
+      "covered": true
+    },
+    {
+      "row_id": "table2-01",
+      "strategy": "tensor_pipeline",
+      "measured": 76.7798671249167,
+      "median": 78.12955236300535,
+      "low": 70.03619142183143,
+      "high": 89.00752436342091,
+      "covered": true
+    },
+    {
+      "row_id": "table2-02",
+      "strategy": "tensor_pipeline",
+      "measured": 39.42053580574583,
+      "median": 39.60508890495031,
+      "low": 36.2391137486272,
+      "high": 44.62965491059436,
+      "covered": true
+    },
+    {
+      "row_id": "table2-03",
+      "strategy": "tensor_pipeline",
+      "measured": 20.82858097537634,
+      "median": 19.994268239750653,
+      "low": 17.835765471041228,
+      "high": 22.242657972403443,
+      "covered": true
+    },
+    {
+      "row_id": "table2-04",
+      "strategy": "tensor_pipeline",
+      "measured": 206.21871045075088,
+      "median": 213.23916687026477,
+      "low": 193.7063221886911,
+      "high": 236.2446234934176,
+      "covered": true
+    },
+    {
+      "row_id": "table2-05",
+      "strategy": "tensor_pipeline",
+      "measured": 105.57904038047425,
+      "median": 107.25565345171675,
+      "low": 96.88210743510105,
+      "high": 119.92212222164615,
+      "covered": true
+    },
+    {
+      "row_id": "table2-06",
+      "strategy": "tensor_pipeline",
+      "measured": 55.445596677796225,
+      "median": 54.978492195121646,
+      "low": 49.80279084509097,
+      "high": 61.41244850089234,
+      "covered": true
+    },
+    {
+      "row_id": "table2-07",
+      "strategy": "zero3",
+      "measured": 81.578608820224,
+      "median": 93.31720628236734,
+      "low": 84.64008539153475,
+      "high": 105.187079520898,
+      "covered": false
+    },
+    {
+      "row_id": "table2-08",
+      "strategy": "zero3",
+      "measured": 66.74613448927418,
+      "median": 68.7309176066855,
+      "low": 59.03875747688229,
+      "high": 74.9648585776391,
+      "covered": true
+    },
+    {
+      "row_id": "table2-09",
+      "strategy": "zero3",
+      "measured": 66.74613448927418,
+      "median": 69.22026817479431,
+      "low": 45.03811253203728,
+      "high": 84.6921172766971,
+      "covered": true
+    },
+    {
+      "row_id": "table2-10",
+      "strategy": "zero3",
+      "measured": 255.53188034114783,
+      "median": 269.27988331025006,
+      "low": 243.57984114066878,
+      "high": 309.1695014832119,
+      "covered": true
+    },
+    {
+      "row_id": "table2-11",
+      "strategy": "zero3",
+      "measured": 179.91530350550204,
+      "median": 190.34704071970475,
+      "low": 166.27809443728503,
+      "high": 218.4181063722657,
+      "covered": true
+    },
+    {
+      "row_id": "table2-12",
+      "strategy": "zero3",
+      "measured": 183.6635389952,
+      "median": 154.94966109335132,
+      "low": 127.40582171742537,
+      "high": 169.88380246603967,
+      "covered": false
+    }
+  ],
+  "caveat": "22 published rows make the interval around empirical coverage wide; this is validation evidence, not a guarantee of future coverage."
+}

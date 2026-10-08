@@ -1,0 +1,47 @@
+{
+  "sources": [
+    {
+      "id": "sarathi-serve-osdi24-table4",
+      "citation": "Agrawal et al., Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve, OSDI 2024, Table 4",
+      "url": "https://arxiv.org/abs/2403.02310",
+      "accessed_at": "2026-10-05",
+      "notes": "Published measured serving latencies for Yi-34B on two A100 GPUs with TP-2, 128 requests, and token budget 1024. These are external observations, not Nomo measurements."
+    }
+  ],
+  "metadata": {
+    "model": "Yi-34B",
+    "hardware": "2x NVIDIA A100",
+    "tensor_parallel": 2,
+    "request_count": 128,
+    "token_budget": 1024,
+    "workload_stats_source": "Sarathi-Serve Table 2",
+    "workload_stats": {
+      "openchat_sharegpt4": {
+        "prompt_median_tokens": 1730,
+        "prompt_p90_tokens": 5696,
+        "answer_median_tokens": 415,
+        "answer_p90_tokens": 834
+      },
+      "arxiv_summarization": {
+        "prompt_median_tokens": 7059,
+        "prompt_p90_tokens": 12985,
+        "answer_median_tokens": 208,
+        "answer_p90_tokens": 371
+      }
+    }
+  },
+  "serving_observations": [
+    {"row_id": "sarathi-openchat-hybrid-ttft-p50", "strategy": "hybrid-batching-only", "metric": "ttft_p50", "value": 0.53, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-openchat-hybrid-tbt-p99", "strategy": "hybrid-batching-only", "metric": "tbt_p99", "value": 0.68, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-openchat-chunked-ttft-p50", "strategy": "chunked-prefills-only", "metric": "ttft_p50", "value": 1.04, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-openchat-chunked-tbt-p99", "strategy": "chunked-prefills-only", "metric": "tbt_p99", "value": 0.17, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-openchat-combined-ttft-p50", "strategy": "Sarathi-Serve (combined)", "metric": "ttft_p50", "value": 0.76, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-openchat-combined-tbt-p99", "strategy": "Sarathi-Serve (combined)", "metric": "tbt_p99", "value": 0.14, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "openchat_sharegpt4", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-hybrid-ttft-p50", "strategy": "hybrid-batching-only", "metric": "ttft_p50", "value": 3.78, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-hybrid-tbt-p99", "strategy": "hybrid-batching-only", "metric": "tbt_p99", "value": 1.38, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-chunked-ttft-p50", "strategy": "chunked-prefills-only", "metric": "ttft_p50", "value": 5.38, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-chunked-tbt-p99", "strategy": "chunked-prefills-only", "metric": "tbt_p99", "value": 0.20, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-combined-ttft-p50", "strategy": "Sarathi-Serve (combined)", "metric": "ttft_p50", "value": 3.90, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 50, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"},
+    {"row_id": "sarathi-arxiv-combined-tbt-p99", "strategy": "Sarathi-Serve (combined)", "metric": "tbt_p99", "value": 0.17, "unit": "s", "features": {"model": "Yi-34B", "hardware": "2xA100", "workload": "arxiv_summarization", "metric_percentile": 99, "request_count": 128, "token_budget": 1024}, "source_id": "sarathi-serve-osdi24-table4"}
+  ]
+}

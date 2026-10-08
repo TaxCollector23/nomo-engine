@@ -28,7 +28,7 @@ export interface RunState {
   filter: { eMax: number | null; lMax: number | null; accMin: number | null };
   /** layer index opened in the inspector (clicked in the design graph) */
   inspect: number | null;
-  drawer: "copilot" | "export" | "workbench" | null;
+  drawer: "copilot" | "export" | null;
 
   reset: (runId: string) => void;
   ingest: (batch: Envelope[]) => void;

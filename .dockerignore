@@ -1,9 +1,0 @@
-frontend
-build
-logs
-deploy
-**/__pycache__
-**/*.so
-.pytest_cache
-tests
-docs

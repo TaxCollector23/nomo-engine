@@ -6,7 +6,7 @@
     npm run dev                       # or: npm run build && npm start
     # backend, in another shell:  nomo serve --port 8765
 
-Layout (architecture rationale: docs/SPEC.md §10)
+Layout (architecture rationale: ../docs/SPEC.md, especially sections 1 and 5)
 
     src/lib/telemetry/protocol.ts       wire types (mirror of nomo/telemetry/schema.py) + runtime guard
     src/lib/telemetry/client.ts         WebSocket: backoff w/ full jitter, heartbeat + dead-man timer,
@@ -17,15 +17,15 @@ Layout (architecture rationale: docs/SPEC.md §10)
     src/components/ParetoFront3D.tsx    single InstancedMesh (O(1) draw calls), click-to-inspect, ASF marker
     src/components/PartitionGraph.tsx   SVG layered layout of the execution stream, labelled crossings
     src/components/RunHUD.tsx           status, HV sparkline, adaptive-pursuit operator probabilities
-    src/components/CandidatePanel.tsx   metrics + gene codes of the selected design
-    src/app/page.tsx                    catalog-driven run launcher, mode picker, calibration upload, and run list
+    src/components/LayerInspector.tsx   selected-layer metrics, locks, and Copilot actions
+    src/components/DesignPanel.tsx      selected-design metrics and assumptions
+    src/components/CopilotDrawer.tsx    grounded questions and settings actions
+    src/components/ExportDrawer.tsx     capability-aware artifact selection and download
+    src/app/page.tsx                    catalog-driven run launcher and run list
     src/app/runs/[runId]/page.tsx       live dashboard
     src/app/admin/page.tsx              logs (6 streams, filters, live tail, NDJSON), users, runs, stats
     src/lib/api.ts                      client id, fetch wrapper, cold-start wait
 
-    src/components/WorkbenchDrawer.tsx  six-level topology/partition/hardware/RTL/floorplan inspector
-    src/components/launcher/CalibrationDrop.tsx  100–500 tensor calibration upload and PTQ provenance
-
-Verified: `tsc --noEmit` (strict, noUncheckedIndexedAccess) clean; `next build` clean; the Workbench and
-calibration surfaces are catalog-driven and call the v5 API contracts. Headless-Chromium
-end-to-end against a live `nomo serve` (launch -> stream -> completion -> reload/resume) with zero console errors.
+Verified: `npm run typecheck` (strict, noUncheckedIndexedAccess) clean and `next build` clean. A live built-in
+Event-camera/AKD1500 search completed through the hosted dashboard; a complete automated every-control accessibility
+matrix remains an explicit roadmap limitation.

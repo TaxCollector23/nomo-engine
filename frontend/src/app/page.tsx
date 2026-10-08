@@ -7,15 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 import HardwarePanel from "@/components/launcher/HardwarePanel";
 import LayerLockTable from "@/components/launcher/LayerLockTable";
 import UploadDrop from "@/components/launcher/UploadDrop";
-import CalibrationDrop from "@/components/launcher/CalibrationDrop";
 import { Button, Disclosure, NumberField, Slider, Term, Toggle } from "@/components/ui";
 import { api, waitForBackend } from "@/lib/api";
 import { MODEL_BLURB } from "@/lib/models";
-import { PRESET_ORDER, applyPreset, defaultConfig, readError, startRun } from "@/lib/runConfig";
-import { apiBase, type CalibrationSummary, type Catalog, type LayerRow, type Preset, type RunIn, type SearchIn, type UploadedModel } from "@/lib/telemetry/protocol";
+import { PRESET_ORDER, applyPreset, defaultConfig, startRun } from "@/lib/runConfig";
+import { apiBase, type Catalog, type LayerRow, type Preset, type RunIn, type SearchIn, type UploadedModel } from "@/lib/telemetry/protocol";
 
 interface RunSummary { run_id: string; status: string; config: RunIn; created_at: number }
-interface ProjectSummary { project_id: string; name: string; metadata: Record<string, unknown>; updated_at: number }
 
 function chipBlurb(d: Record<string, number>): string {
   const n = d.n_cores ?? 0;
@@ -57,11 +55,7 @@ export default function Home() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [presets, setPresets] = useState<Record<string, Preset> | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [projectName, setProjectName] = useState("");
-  const [projectBusy, setProjectBusy] = useState(false);
   const [uploads, setUploads] = useState<UploadedModel[]>([]);
-  const [calibrations, setCalibrations] = useState<Record<string, CalibrationSummary>>({});
   const [cfg, setCfg] = useState<RunIn>(defaultConfig());
   const [waking, setWaking] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -79,13 +73,12 @@ export default function Home() {
         return;
       }
       try {
-        const [c, p, r, projectResponse] = await Promise.all([api("/catalog"), api("/presets"), api("/runs"), api("/projects")]);
+        const [c, p, r] = await Promise.all([api("/catalog"), api("/presets"), api("/runs")]);
         const cat = (await c.json()) as Catalog;
         const pre = (await p.json()) as Record<string, Preset>;
         setCatalog(cat);
         setPresets(pre);
         setRuns(((await r.json()) as RunSummary[]).sort((a, b) => b.created_at - a.created_at));
-        if (projectResponse.ok) setProjects(((await projectResponse.json()) as { projects: ProjectSummary[] }).projects);
         if (pre.balanced_edge) setCfg((c0) => applyPreset(c0, "balanced_edge", pre.balanced_edge!));
       } catch {
         setErr(`Cannot reach the Nomo server at ${apiBase()}.`);
@@ -121,29 +114,6 @@ export default function Home() {
     }
   };
 
-  const createProject = async () => {
-    const name = projectName.trim();
-    if (!name) return;
-    setProjectBusy(true);
-    setErr(null);
-    try {
-      const response = await api("/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, metadata: { hardware: cfg.hardware, model: cfg.model } }),
-      });
-      if (!response.ok) throw new Error(await readError(response));
-      const project = (await response.json() as { project: ProjectSummary }).project;
-      setProjects((current) => [project, ...current]);
-      setCfg((current) => ({ ...current, project_id: project.project_id }));
-      setProjectName("");
-    } catch (reason) {
-      setErr(reason instanceof Error ? reason.message : String(reason));
-    } finally {
-      setProjectBusy(false);
-    }
-  };
-
   const weights = search.asf_weights ?? [1, 1, 1];
   const setWeight = (i: number, v: number) => {
     const w = [...weights] as [number, number, number];
@@ -163,6 +133,10 @@ export default function Home() {
             Nomo tries thousands of combinations of standard, spiking and physics-based layers, then shows you the best
             trade-offs between energy, speed and accuracy, ready to export.
           </p>
+          <p className="mt-3 max-w-2xl text-xs text-ink-faint">
+            Energy and response time are model estimates; accuracy is a proxy until an oracle evaluation is supplied.
+            Built-in chip values are specifications or placeholders, and custom measurements remain your inputs.
+          </p>
         </div>
         <Link href="/admin" className="text-sm text-ink-muted hover:text-ink">Admin</Link>
       </header>
@@ -175,21 +149,6 @@ export default function Home() {
 
       <div className="mt-8">
         <Step n={1} title="Choose a model" aside="Start with an example, or upload your own network.">
-          <Disclosure title="Project workspace" summary={cfg.project_id ? projects.find((project) => project.project_id === cfg.project_id)?.name ?? "selected project" : "optional"}>
-            <div className="space-y-3">
-              <p className="text-sm text-ink-muted">Attach this search to a named workspace so your team can keep related runs together. On the free hosted service, workspaces are scoped to this browser and may be lost when the service sleeps unless a durable database is configured.</p>
-              <div className="flex flex-wrap gap-2">
-                <select value={cfg.project_id ?? ""} onChange={(event) => setCfg((current) => ({ ...current, project_id: event.target.value || null }))}
-                  className="min-w-[220px] flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm">
-                  <option value="">No project</option>
-                  {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
-                </select>
-                <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="New project name"
-                  onKeyDown={(event) => { if (event.key === "Enter") void createProject(); }} className="min-w-[180px] flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm outline-none focus:border-ann" />
-                <Button kind="secondary" onClick={createProject} disabled={projectBusy || !projectName.trim()}>{projectBusy ? "Creating…" : "Create project"}</Button>
-              </div>
-            </div>
-          </Disclosure>
           <div className="grid gap-3 sm:grid-cols-2">
             {Object.keys(catalog?.models ?? {}).map((m) => (
               <Choice key={m} selected={cfg.model === m} onClick={() => setCfg((c) => ({ ...c, model: m, pins: {} }))}
@@ -225,10 +184,6 @@ export default function Home() {
               </ul>
             </div>
           )}
-          <CalibrationDrop modelId={cfg.model} current={upload?.calibration ?? calibrations[cfg.model]} onAttached={(calibration) => {
-            setCalibrations((all) => ({ ...all, [cfg.model]: calibration }));
-            if (upload) setUploads((us) => us.map((u) => u.model_id === upload.model_id ? { ...u, calibration } : u));
-          }} />
         </Step>
 
         <Step n={2} title="Choose a chip" aside="Energy and speed are estimated for this hardware.">
@@ -260,15 +215,6 @@ export default function Home() {
             <p className="mt-3 text-sm text-ink-muted">{presets[cfg.preset]!.notes}</p>
           )}
           {!cfg.preset && <p className="mt-3 text-sm text-ink-muted">Custom settings.</p>}
-          {catalog?.modes && <label className="mt-4 block max-w-xl">
-            <span className="mb-1 block text-sm font-bold">Operational mode</span>
-            <select value={cfg.mode ?? ""} onChange={(e) => setCfg((c) => ({ ...c, preset: null, mode: e.target.value || null }))}
-              className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm">
-              <option value="">General co-design</option>
-              {Object.entries(catalog.modes).map(([id, mode]) => <option key={id} value={id}>{mode.title}</option>)}
-            </select>
-            {cfg.mode && catalog.modes[cfg.mode] && <span className="mt-1 block text-sm text-ink-muted">{catalog.modes[cfg.mode]!.summary}</span>}
-          </label>}
         </Step>
 
         <Step n={4} title="Fine-tune" aside="Optional. The defaults work well.">
@@ -302,7 +248,7 @@ export default function Home() {
                 </div>
                 <div className="space-y-4">
                   <fieldset disabled={!search.allow_spiking} className="space-y-2 disabled:opacity-50">
-                    <legend className="mb-1 text-sm text-ink-soft">Spike codes the search may use</legend>
+                    <legend className="mb-1 text-sm text-ink-soft">Supported spike codes</legend>
                     {(["rate", "ttfs"] as const).map((c) => (
                       <label key={c} className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={search.codings.includes(c)} onChange={(e) => toggleCoding(c, e.target.checked)}
@@ -310,10 +256,6 @@ export default function Home() {
                         <Term k={c}>{c === "rate" ? "Rate coding" : "Time-to-first-spike"}</Term>
                       </label>
                     ))}
-                    <label className="flex items-center gap-2 text-sm text-ink-faint">
-                      <input type="checkbox" disabled className="h-4 w-4" />
-                      <Term k="phase">Phase coding</Term><span className="text-2xs">(not modelled yet)</span>
-                    </label>
                   </fieldset>
                   <Slider label={<Term k="crossing_penalty">Discourage style changes</Term>} min={0} max={1} step={0.05}
                     value={search.crossing_penalty} onChange={(v) => setSearch({ crossing_penalty: v })}

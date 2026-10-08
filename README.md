@@ -1,118 +1,145 @@
-# Nomo Engine — v6 (v0.6)
+# Nomo Engine
 
-Supersedes **v5**. v6 adds enterprise profiles and project workspaces, bounded cycle evidence, hardware/deployment
-co-search, and an enterprise Workbench on top of the calibration-aware post-training quantisation path and native integer
-deployment driver, a six-level hardware/software workbench, architecture-family adapters, operational
-modes, RTL/Chisel/EDA release artifacts, and hardware-in-the-loop measurement boundaries.
+The public landing page for [Nomo AI](https://github.com/TaxCollector23/nomo-ai), an open research and compiler project for hardware-aware neural architecture search, physical AI, and neuromorphic hardware.
 
-Tri-domain (continuous / spiking / symbolic) hardware-aware architecture search and compiler with
-enterprise design contracts, project workspaces, bounded cycle simulation, and hardware/deployment co-search.
-Upload a model, pick a chip and a goal, and Nomo finds the best trade-offs between energy, latency and
-accuracy, explains them, and exports the chosen design to a structured package containing model metadata,
-runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an executive PDF brief.
+The current engine is [Nomo Engine v5](https://github.com/TaxCollector23/nomo-engine). It searches energy, latency, accuracy, memory, and hardware constraints with constrained NSGA-II, streams run telemetry to the dashboard, and turns a selected design into a calibration-aware software/RTL release package.
 
-- Plain-English guide for users: `GUIDE.md`
-- Full math and design: `docs/SPEC.md`
-- Deployment: `DEPLOY.md`
-- Logs and admin: `OBSERVABILITY.md`
+## Current platform surface
 
-## Setup
-    pip install -e ".[server,dev]"                    # add [coreml] on a supported Apple environment
-    python setup.py build_ext --inplace     # optional C++ kernel; skipped automatically if no compiler
-    pytest -q --ignore=tests/test_v4.py               # platform-independent suite
+- Tri-domain search across continuous, spiking, and symbolic execution with hard policy and hardware invariants.
+- Model upload for ONNX, safe PyTorch state dictionaries, and `nomo.graph/1` JSON graphs, with architecture-family contracts for MLP, CNN, FNO, ViT/attention, GNN/message-passing, and hybrid workloads.
+- Calibration upload for 100–500 finite tensors, MSE/KL post-training quantisation, and per-edge activation ranges carried into export manifests.
+- Six-level Workbench: system topology, ANN/SNN/SYM partitioning, hardware graph, cycle-emulation boundary, RTL, and silicon-floorplan proxy state.
+- Native integer deployment driver with embedded golden vectors, C11 microkernel/CMake, SystemVerilog/Chisel boundaries, and generic Yosys/OpenROAD scripts.
+- Operational modes for low-power neuromorphic, hard real-time, radiation-hardened, and on-chip-learning deployments, plus a narrow authenticated HITL benchmark protocol.
+- Zip or `tar.gz` packages with model, runtime, SDK, EDA, and validation evidence separated into a canonical tree.
 
-## Use
-    nomo serve --port 8765                                  # API + live telemetry
-    cd frontend && npm install && npm run dev               # dashboard at http://localhost:3000
-    nomo search  --model attitude_policy --hardware akd1500 --out run.json
-    nomo compile --model attitude_policy --hardware akd1500 --genome run.json --out build/
-    nomo-cli pipeline --config nomo.yaml.example --out release.tar.gz
-    nomo emulate --artifact artifact.json --config emulator.json --out emulation.json
+The product keeps evidence boundaries explicit: calibration measures runtime fidelity and quantisation ranges, while task accuracy remains a proxy until labeled/oracle evaluation. PPA, thermal, cycle, and power values remain proxies until synthesis, simulation, or trusted hardware-in-the-loop measurement. Built-in demo weights are marked as synthetic.
 
-## Live deployment
+## Development
 
-| | |
+The deployable mode-selection shell and Nomo Lab are the Vite application in
+the repository root. The historical Next.js neuromorphic dashboard remains in
+`frontend/` and is deployed separately. The mode shell links to that dashboard
+when the Neuromorphic chips mode is selected.
+
+```bash
+npm install
+npm run dev
+```
+
+Build the production site with:
+
+```bash
+npm run build
+```
+
+## Public links
+
+- Landing page repository: <https://github.com/TaxCollector23/nomo-ai>
+- Landing page: <https://nomoailanding.vercel.app/>
+- Nomo Engine mode selector and Lab: <https://frontend-gray-ten-c3tj1luab7.vercel.app/>
+- Neuromorphic engine dashboard: <https://nomo-engine-dashboard.vercel.app/>
+- Live Python backend: <https://nomo-engine.onrender.com/>
+- Engine repository: <https://github.com/TaxCollector23/nomo-engine>
+- Engine release line: `v0.5.0` (the repository `main` branch is the deployment source; verify the live `/` response after Render redeploys)
+- Engine admin panel: <https://frontend-gray-ten-c3tj1luab7.vercel.app/admin>
+- Engine plain-English guide: <https://github.com/TaxCollector23/nomo-engine/blob/main/GUIDE.md>
+- Historical v3 release: <https://github.com/TaxCollector23/nomo-engine/releases/tag/v3-fixed>
+- V1 prototype: <https://nomoaiprototype.vercel.app/>
+
+The engine’s silicon coefficients are placeholders until calibrated with the measurement LUT or HITL protocol, and accuracy values remain a proxy until promoted by measured data. The mode shell intentionally keeps those boundaries visible.
+
+## Landing page routes
+
+- `/research` — research direction, preprint placeholders, and source material
+- `/architecture` — current NIR exports, compiler boundaries, and future work
+- `/benchmarks` — measurement status and benchmark limitations
+- `/docs` — engine documentation, deployment links, quick start commands, and the v5 release boundary
+
+These pages are linked with normal anchor elements and open in a new tab from the primary navigation.
+
+
+## Nomo Lab (`/lab`)
+
+An interactive planner that runs entirely in the browser (no server):
+
+| Module | Question it answers |
 |---|---|
-| Engine — live dashboard | https://frontend-gray-ten-c3tj1luab7.vercel.app/ |
-| Engine — admin panel | https://frontend-gray-ten-c3tj1luab7.vercel.app/admin |
-| Engine — live backend | https://nomo-engine.onrender.com/ |
-| Main website | https://nomoaiprototype.vercel.app/ |
-| Engine — repo | https://github.com/TaxCollector23/nomo-engine |
-| Prototype — repo | https://github.com/TaxCollector23/nomo-ai |
+| Train a model | How should this model be trained on these GPUs? (parallel layout, ZeRO, recomputation, precision) |
+| Serve a model | Cheapest tokens within a speed limit and quality budget (precision, KV cache, GPUs, batch) |
+| Design a model | Which model to build for a budget and lifetime usage (size, shape, attention type, training length) |
+| Audit a run | What topology and precision did an existing Megatron, DeepSpeed, vLLM, or log describe? |
+| Infrastructure products | What do chip, RL, reliability, fleet, fine-tuning, and TCO assumptions imply? |
+| Cost tracker | Which public compute and provider-price rows have cited evidence, and what must be measured locally? |
+| Evidence | Predictions vs 22 published measured runs (Narayanan et al. 2021), calibrated and not |
+| Methods | Equations, verification, references |
 
-## What's new in v0.6
+Three views: **Guided** (plain answers), **Explore** (every control, what-ifs, full tables), **Rigor** (equations,
+provenance of every number, editable assumptions). Panels can be switched on and off; preferences are remembered.
 
-- **Calibration + PTQ:** attach 100–500 `.npz`, `.npy`, or JSON tensors from the launcher/API. MSE and
-  KL threshold selection is recorded per activation edge and used by integer export; labels are retained
-  as provenance but never turned into an accuracy claim automatically.
-- **Native integer deployment:** the canonical `runtime/deploy_model.py` uses integer accumulators,
-  Q16.16 guard math, deterministic saturation, and embedded golden vectors. It is emitted only when the
-  selected graph has a supported integer lowering; otherwise the package makes the float reference driver
-  explicit.
-- **Six-level Workbench:** system topology, domain partitioning, hardware graph, cycle-emulation boundary,
-  RTL, and silicon floorplan views are available at `GET /runs/{id}/workbench`. Candidate target weights
-  can be changed without silently changing the recorded run.
-- **Architecture families:** FNO, ViT/attention, and GNN/message-passing JSON graph blocks preserve their
-  spatial, token, or graph contracts. Backends that do not yet lower a family report the limitation instead
-  of flattening it invisibly.
-- **Hardware release artifacts:** structured exports include SystemVerilog PE/core modules, Chisel boundary,
-  generic Yosys/OpenROAD scripts, CMake, a SystemC integration boundary, and proxy PPA marked as proxy.
-- **Operational modes and HITL:** low-power neuromorphic, hard real-time, radiation-hardened, and on-chip
-  learning contracts are catalogued and carried into manifests. `nomo hitl` accepts a trusted benchmark-agent
-  result; no arbitrary remote shell execution is part of the protocol.
-- **Enterprise design profiles:** versioned YAML/JSON profiles capture organization, project, safety policy,
-  allowed precision, hardware assumptions, objectives, constraints, and required evidence. Start with
-  `nomo/enterprise/examples/hard_realtime_robotics.yaml` and validate one with `POST /enterprise/profile/validate`.
-- **Project workspaces:** `POST /projects` creates an owner-scoped project and `RunIn.project_id` associates
-  searches with it. Set `NOMO_STATE_DB` to a durable SQLite path for local/on-prem persistence; unset means
-  intentionally ephemeral storage.
-- **Hardware/deployment co-search:** `POST /runs/{id}/co-design` explores bounded PE-array, SRAM, bandwidth,
-  and precision choices around existing deployment candidates. Results are analytic priors, not silicon claims.
-- **Bounded cycle evidence:** `POST /runs/{id}/emulation` or `nomo emulate` produces deterministic simulated
-  cycles, memory references, cache hits/misses, and spike/event counts. Results are explicitly labelled simulated.
+Exports: every file downloadable individually or as one zip:
 
-## What's retained from v0.4
-- **Your own models:** upload `.onnx`, PyTorch `state_dict` (`.pt/.pth`, read without executing code) or a
-  `nomo.graph/1` JSON graph. Layer shapes, sizes, compute and possible domains are extracted automatically.
-- **Control:** per-layer locks on domain and weight precision (hard invariants), domain toggles
-  (continuous / spiking / symbolic), spike-coding restrictions, a domain-crossing penalty and a minimum
-  saving for mixed designs, custom chip parameters, and search hyperparameters.
-- **Presets:** Battery Saver, Ultra-Low Latency, Balanced Edge, Strict Safety.
-- **Exports:** PDF audit brief, `deploy_model.py` (PyTorch nn.Module + self-check, numpy fallback), ONNX per
-  continuous section (safety guards included), Core ML `.mlpackage`, float NIR for any design (strict +
-  extended), integer NIR and header-only C11 for supported designs. Each format says why when unavailable.
-- **Nomo Copilot:** answers computed from the run (counterfactual re-evaluation, archive search) with
-  one-click actions; optional Claude phrasing when `NOMO_ANTHROPIC_API_KEY` is set.
-- **New dashboard:** four-step launcher, plain-English tooltips, trade-off filters, clickable design graph
-  with crossing badges and lock-and-rerun, export and Copilot drawers.
+```
+nomo-plan_<question>_<date>/
+  README.txt
+  1-summary/          plan-summary.md, recommendation.json
+  2-data/             best-tradeoffs.csv, all-evaluated-plans.csv, settings.json
+  3-figures/          tradeoff-chart.svg
+  4-launch-configs/   megatron-lm-args.sh + deepspeed-config.json | vllm-serve.sh | model-config.json
+  5-paper-materials/  best-tradeoffs-table.tex, methods.md, references.bib
+```
 
-## Verification
-- The platform-independent suite passes with `pytest -q --ignore=tests/test_v4.py`; the v4 full-bundle test
-  additionally needs the native Core ML ML-storage extension. On Linux it is reported as unavailable when
-  that extension is missing; run the Core ML export test on supported macOS tooling.
-- Frontend: strict `tsc --noEmit` and `next build` pass after the enterprise Workbench and calibration UI changes.
-- Existing v4 coverage still exercises policy/pins, repair idempotence, crossing penalties, hardware
-  overrides, presets, ONNX ingestion, safe checkpoint loading, export self-checks, Copilot, and API routes.
-- Memory: worst case measured (camera model search + all formats in one export) peaks at 382 MB, under
-  Render's 512 MB; exports are serialised one at a time.
+### Engine and verification
+`src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
+on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22
+calibration predictions, layer goldens, product goldens, auditor fixtures, and evidence/cost boundaries (14,337 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
+Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
+attention-type quality effects, prices and training utilisation are labelled assumptions.
 
-## Evidence boundaries and limits (read before quoting numbers)
-- Energy/latency coefficients are **placeholders** unless you enter your chip's numbers.
-- Accuracy is an **estimate** from per-layer sensitivities, not a measurement; uploaded models use default
-  sensitivities.
-- PTQ calibration measures runtime ranges and quantisation/reconstruction fidelity. It does **not** promote
-  task accuracy without labeled evaluation and an oracle result.
-- PPA, thermal density, and physical power remain proxy values until the generated design is synthesized or
-  measured through HITL. The bounded Nomo emulator can provide deterministic **simulated** cycle/cache evidence,
-  but simulated cycles are not a board measurement.
-- Built-in model weights are synthetic demo weights. Upload trained weights before making model-quality claims.
-- FNO/ViT/GNN blocks preserve their graph contracts but only backends listed in their architecture profile
-  are enabled; unsupported lowerings are included as explicit `.unavailable.txt` notes in the package.
-- The PyTorch path of `deploy_model.py` was not executed in the build environment (PyTorch unavailable);
-  the script verifies itself on first run (`--check`). Its numpy path is tested.
-- Core ML packages are built and structurally validated on Linux; running them needs macOS/iOS.
-- `.pt/.pth` uploads: weights-only `state_dict`; structure is inferred (ReLU between layers, stride 1).
-  The `.pt` tests use files synthesised in PyTorch's format; a real-PyTorch test runs where torch exists.
-- Not modelled: phase coding, FP16. Not implemented: SystemC/Verilator/Gem5 execution, branching/residual graphs, grouped convolutions,
-  surrogate-gradient fine-tuning, multi-chip partitioning, TTFS/conv C11 lowering, full operator-family
-  ONNX/Core ML lowering, MLIR/microTVM output, and closed-loop silicon PPA without a target measurement.
+### A1–A3 uncertainty status
+The A1–A3 uncertainty layer is implemented for calibrated A100 training. The dependency-free Python reference and
+source rows live in `nomo-planner/`; `studies/export_uncertainty.py` produces the checked-in bootstrap artifact at
+`src/planner/uncertainty.json`. The Lab shows medians, central 90% predictive intervals, uncertainty whiskers, and
+posterior probability of being best for front plans. The leave-one-out study reports 18/22 covered runs (81.8%) against
+a nominal 90% target, with a 95% Wilson interval of 61.5%–92.7%; this is evidence on 22 published rows, not a future
+guarantee. Serving and co-design remain point-estimate packs until published calibration data exists; no calibrated interval is claimed for them.
+
+### Phase 1 layer-aware planner
+The Lab now has a shared model-graph surface at `/lab#layers`. Paste or upload a Hugging Face `config.json` to expand
+embedding, attention, MLP, and output nodes with parameter, FLOP, activation, and KV-cache accounting. The Train tab
+searches bounded per-node precision, recomputation, CPU-offload, and contiguous pipeline-stage candidates, applies locks,
+and compares the selected result with the global-only baseline. Search is exhaustive only for small spaces; larger results
+are labelled bounded. FP8 quality, offload bandwidth, framework overhead, and cluster utilization remain assumptions until
+customer measurements are supplied. Serve now has a bounded per-layer decision pack using the same graph. Neuromorphic
+can export the same graph as a contract JSON and still opens the validated historical dashboard; no placement recommendation
+or new compiler integration is claimed.
+
+The design note and cited formulas are in [`docs/PHASE_1_LAYER_PLANNER_DESIGN.md`](docs/PHASE_1_LAYER_PLANNER_DESIGN.md).
+
+### Gate 0 fair per-layer training comparison
+The layer planner now ships published Llama 3 8B, Llama 3 70B, and Mixtral 8x7B presets, with Llama 3 8B as the default and the tiny model only as an example. It compares a per-layer plan with the best global-only plan allowed the same options, reports precision gain separately from per-layer gain, and charges pipeline bubble, inter-stage communication, and CPU activation offload using customer-overridable bandwidth assumptions. Step and whole-run totals use adaptive units. Fixed-seed parity cases live in `scripts/layer-golden.json` and are checked by `npm run verify`.
+
+### Phase 2–5 product slices
+
+The `Audit a run` module parses Megatron commands, DeepSpeed JSON, vLLM commands, and a small set of log metrics into
+one canonical record. It can re-serialize the fields it actually observed in the same source format and flags options it
+did not understand. A local CSV fit applies a multiplicative customer scale, central 90% range, and leave-one-out error;
+it remains a customer preview, not a published six-parameter refit. Recommendation-sensitive benchmark candidates are
+ranked by uncertainty divided by benchmark hours, and known published model names connect to the shared graph planner.
+DeepSpeed/vLLM export is intentionally loss-aware: unsupported framework fields are not fabricated.
+
+`Infrastructure products` contains reference estimators for chip bottlenecks, RL rollout/training/reward scheduling,
+checkpoint/restart goodput, hourly fleet sizing, fine-tuning modes, and buy/rent TCO. Values are user inputs or examples,
+with cited formulas and physics-sanity tests; they are not measured product specifications. `Cost tracker` contains cited
+model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator and provider/physical
+comparison. Rows are hand-entered and not scraped at runtime, and provider prices must be rechecked before procurement.
+
+The gate reports in [docs/](docs/) record what is built and what remains partial. The current surface specification,
+deployment guide, and observability guide are [`docs/SPEC.md`](docs/SPEC.md), [`docs/DEPLOY.md`](docs/DEPLOY.md), and
+[`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). The strict line-by-line audit is in
+[`docs/ROADMAP_AUDIT.md`](docs/ROADMAP_AUDIT.md). Core DeepSpeed/vLLM round-trip fixtures, editable product inputs and
+JSON/CSV exports, graph-contract re-import, local completed-experiment CSV ingestion, and the conservative training “Safest plan” option are shipped. Binary
+Generic checker-backed ONNX structural lowering and safe state-dict inspection are implemented when the optional ONNX
+reader is available. Framework-specific ONNX graph-to-cost lowering, the neuromorphic server adapter,
+customer/published serving calibration, and broader source coverage remain explicitly open.

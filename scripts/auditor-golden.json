@@ -1,0 +1,49 @@
+[
+  {
+    "name": "megatron-core-topology",
+    "format": "megatron",
+    "input": "torchrun pretrain_gpt.py --model meta-llama/Meta-Llama-3-8B --seq-length 4096 --micro-batch-size 2 --tensor-model-parallel-size 4 --pipeline-model-parallel-size 2 --data-parallel-size 8 --bf16",
+    "expected": {
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "sequenceLength": 4096,
+      "microBatchSize": 2,
+      "tensorParallel": 4,
+      "pipelineParallel": 2,
+      "dataParallel": 8,
+      "precision": "bf16"
+    }
+  },
+  {
+    "name": "deepspeed-core-topology",
+    "format": "deepspeed-json",
+    "input": {
+      "model_name_or_path": "meta-llama/Meta-Llama-3-70B",
+      "train_micro_batch_size_per_gpu": 4,
+      "tensor_parallel": { "tp_size": 2 },
+      "pipeline_parallel": { "stages": 4 },
+      "zero_optimization": { "stage": 3 },
+      "fp16": { "enabled": true }
+    },
+    "expected": {
+      "model": "meta-llama/Meta-Llama-3-70B",
+      "microBatchSize": 4,
+      "tensorParallel": 2,
+      "pipelineParallel": 4,
+      "zeroStage": 3,
+      "precision": "fp16"
+    }
+  },
+  {
+    "name": "vllm-serving-topology",
+    "format": "vllm",
+    "input": "vllm serve meta-llama/Meta-Llama-3-8B --tensor-parallel-size 8 --max-model-len 8192 --max-num-seqs 32 --dtype bfloat16",
+    "expected": {
+      "model": "meta-llama/Meta-Llama-3-8B",
+      "sequenceLength": 8192,
+      "microBatchSize": 32,
+      "tensorParallel": 8,
+      "pipelineParallel": 1,
+      "precision": "bf16"
+    }
+  }
+]

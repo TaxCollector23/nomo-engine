@@ -1,0 +1,8 @@
+{
+  "nominal_coverage": 0.9,
+  "coverage": 0.8181818181818182,
+  "n": 22,
+  "covered": 18,
+  "wilson_95": [0.6148297802336213, 0.9269323397589488],
+  "source": "nomo-planner/docs/UNCERTAINTY_COVERAGE.json"
+}
