@@ -1,9 +1,9 @@
-# Deploying Nomo v5
+# Deploying Nomo v6
 
 Backend: `https://nomo-engine.onrender.com` (Render, free plan)
 Dashboard: Vercel (Next.js, `frontend/`)
 
-## 1. Update the Render service to v5
+## 1. Update the Render service to v6
 
 Replace the repository contents with this folder, commit, push. Render redeploys automatically
 if auto-deploy is on (otherwise: service → Manual Deploy → Deploy latest commit).
@@ -30,6 +30,7 @@ Health check path (Settings → Health Checks): `/healthz`
 | `NOMO_LOG_GEN_EVERY` | `5` | log search progress every N generations |
 | `NOMO_LOG_RAW_IP` | `0` | `1` stores raw IPs instead of salted hashes (check your privacy obligations first) |
 | `NOMO_LOG_SALT` | optional random string | keeps IP hashes stable across restarts |
+| `NOMO_STATE_DB` | optional SQLite path, e.g. `/var/data/nomo/state.db` | persists enterprise projects and run associations; unset keeps the free deployment intentionally ephemeral |
 
 New in v4 (all optional):
 
@@ -42,14 +43,14 @@ New in v4 (all optional):
 | `NOMO_MAX_UPLOAD_MB` | `50` | largest accepted upload |
 | `NOMO_DISABLE_COREML` | `1` to switch off | frees memory if the server is ever short; the Core ML option then shows as unavailable |
 
-Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.5.0",...}` after Render has deployed the release commit.
+Check: `https://nomo-engine.onrender.com/` returns `{"service":"nomo-backend","version":"0.6.0",...}` after Render has deployed the release commit.
 
 **Python-runtime services** (not Docker) must also install the export packages; `requirements.txt`
 lists `onnx`, `reportlab`, `pyyaml`, and optional Core ML tooling. Core ML `.mlpackage` generation
 requires the native ML-storage extension; on Linux the API reports that format as unavailable when it is
 not present.
 
-## 2.5 v5 API and release path
+## 2.5 v6 API and release path
 
 - `POST /models/{id}/calibration?filename=calibration.npz` accepts 100–500 finite input tensors. Use
   `.npz` keys `inputs`/`X`/`x`/`data`, plus `aux`/`A`/`metadata` when a model has guard metadata.
@@ -80,6 +81,9 @@ Pages: `/` launcher · `/runs/<id>` live search, Workbench, and exports · `/adm
 - **512 MB memory:** measured worst case is 382 MB (camera search plus all export formats). Exports run one at
   a time; a second export waits up to 2 minutes, then gets a "server is busy" message.
 - **Uploaded models live in memory,** so a restart forgets them: users re-upload after the server wakes.
+- **Enterprise project metadata** uses `NOMO_STATE_DB` when configured. The free Render service has no durable
+  disk, so use a persistent disk or an external database for production project history; the default remains
+  owner-scoped but in-process.
 
 ## Local development
     pip install -e ".[server,dev]"

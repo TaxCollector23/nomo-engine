@@ -29,6 +29,10 @@ On the start page there are four steps.
 
 Press **Find the best designs**. The first visit of the day can take a minute while the free server wakes up.
 
+For team work, create a project through the API and send its `project_id` with each run. Enterprise profiles
+can also be validated before a run; they capture safety rules, allowed precision, hardware assumptions, and
+the evidence level required before a result can be released.
+
 ## 2. Read the results
 
 - **The 3D plot** shows every design tried. Dark dots are the best trade-offs; pink ones break a limit you set.
@@ -38,6 +42,10 @@ Press **Find the best designs**. The first visit of the day can take a minute wh
   running everything as standard layers, plus a one-paragraph explanation.
 - **The design graph** at the bottom shows each layer in its style. Click a layer to see its memory, energy
   and cores, to ask why it was chosen, or to **lock it and search again**.
+- **The Workbench** lets you compare candidates, change the energy/latency/accuracy priority, inspect hardware
+  assumptions, and see whether each number is a proxy, simulation, or measurement.
+- **Co-design** can explore accelerator choices such as PE arrays, SRAM, bandwidth, and precision around the
+  cached deployment candidates. These results are analytic planning evidence until a real target is measured.
 
 ## 3. Ask Copilot
 
@@ -50,6 +58,10 @@ with that layer changed. Buttons under an answer show a design or start a new se
 When the search has finished, press **Export**, tick the formats you want, and download the zip. If a format
 can't be made for this design, it's greyed out with the reason. The zip contains a README explaining every
 file. Start with `report.pdf`.
+
+For supported integer designs, the API can run the bounded cycle/cache simulator. It reports per-layer cycles,
+memory traffic, cache behavior, and spike/event counts, and labels the result **simulated**. It does not claim
+physical latency or energy.
 
 ## What to keep in mind
 

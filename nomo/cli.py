@@ -102,6 +102,15 @@ def cmd_pipeline(a: argparse.Namespace) -> int:
     from .modes import get_mode
 
     doc = load_config(a.config)
+    profile_source = doc.get("enterprise_profile") or section(doc, "enterprise").get("profile")
+    profile = None
+    if profile_source is not None:
+        from .enterprise import load_profile, merge_with_base_config
+        try:
+            profile = load_profile(profile_source)
+            doc = merge_with_base_config(doc, profile)
+        except (ValueError, TypeError, OSError) as exc:
+            raise SystemExit(f"enterprise profile is invalid: {exc}")
     model_id = str(doc.get("model", "attitude_policy"))
     hardware_id = str(doc.get("hardware", "akd1500"))
     if model_id in MODELS:
@@ -137,6 +146,8 @@ def cmd_pipeline(a: argparse.Namespace) -> int:
                                       max([model.constraints[s.constraint_id].n_aux for s in model.guard_sites] or [0]))
         calibration_data, calibration_report = (cal.inputs, cal.aux), cal.to_dict()
     settings = {"config_file": str(a.config), **doc, "mode": doc.get("mode", get_mode(doc.get("mode")).id if doc.get("mode") else None)}
+    if profile is not None:
+        settings["enterprise_profile"] = profile.to_dict()
     ctx = RunContext(model, weights, weights_source, hw, ev, settings,
                      ["pipeline executed by nomo.yaml"], opt.archive_front, opt.recommend,
                      calibration_data=calibration_data, calibration_report=calibration_report)
@@ -158,6 +169,19 @@ def cmd_hitl(a: argparse.Namespace) -> int:
         a.artifact, metadata={"device": a.device}, repeats=a.repeats)
     print(json.dumps(measurement.to_dict(), indent=2))
     return 0
+
+
+def cmd_emulate(a: argparse.Namespace) -> int:
+    """Run the bounded deterministic cycle/cache simulator."""
+    from .emulation.cli import main as emulation_main
+    argv = ["--artifact", a.artifact]
+    if a.config:
+        argv += ["--config", a.config]
+    if a.out:
+        argv += ["--out", a.out]
+    if a.compact:
+        argv.append("--compact")
+    return emulation_main(argv)
 
 
 def main(argv=None) -> int:
@@ -200,6 +224,12 @@ def main(argv=None) -> int:
     h.add_argument("--timeout", type=float, default=30.0)
     h.add_argument("--repeats", type=int, default=20)
     h.set_defaults(fn=cmd_hitl)
+    em = sub.add_parser("emulate", help="run the bounded simulated cycle/cache backend")
+    em.add_argument("--artifact", required=True, help="nomo.emulation/artifact JSON")
+    em.add_argument("--config", help="optional emulator configuration JSON")
+    em.add_argument("--out", help="write the result JSON to this path")
+    em.add_argument("--compact", action="store_true")
+    em.set_defaults(fn=cmd_emulate)
     a = p.parse_args(argv)
     return a.fn(a)
 

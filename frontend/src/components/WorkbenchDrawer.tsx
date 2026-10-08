@@ -11,6 +11,7 @@ import type { RunMeta } from "@/lib/useRunMeta";
 import { useRunStore } from "@/lib/telemetry/store";
 
 import { Button, Disclosure, DomainChip, NumberField } from "./ui";
+import EnterpriseValidation from "./EnterpriseValidation";
 
 type WorkbenchNode = {
   id: string;
@@ -425,6 +426,8 @@ export default function WorkbenchDrawer({ runId, meta, detail, onClose }: {
         {!state && !error && <p className="text-sm text-ink-muted">Reading the six-level canvas…</p>}
 
         <EvidencePanel state={state} detail={detail} />
+
+        <EnterpriseValidation runId={runId} selectedKey={selectedKey} />
 
         <Disclosure title="Candidate comparison" summary={`${candidates.length} frontier candidates`} defaultOpen>
           <div className="space-y-2">

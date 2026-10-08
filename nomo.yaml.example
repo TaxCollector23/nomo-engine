@@ -3,6 +3,10 @@ model: attitude_policy
 hardware: akd1500
 mode: low_power_neuromorphic
 
+# Optional versioned enterprise contract. It merges profile.config into this file
+# and records the validated profile/fingerprint in the release manifest.
+# enterprise_profile: ./nomo/enterprise/examples/hard_realtime_robotics.yaml
+
 budgets:
   accuracy_drop_max: 4.0
   energy_j: 0.001

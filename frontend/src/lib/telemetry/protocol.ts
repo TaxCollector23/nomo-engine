@@ -154,6 +154,8 @@ export interface HardwareIn {
 export interface RunIn {
   model: string;
   hardware: string;
+  project_id?: string | null;
+  enterprise_profile?: Record<string, unknown> | null;
   budgets: BudgetIn;
   pop_size: number;
   generations: number;

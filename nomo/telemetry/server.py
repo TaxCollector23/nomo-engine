@@ -46,6 +46,8 @@ from collections import deque
 from contextlib import asynccontextmanager
 from typing import Any, Deque, Dict, List, Optional, Set
 
+import numpy as np
+
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
@@ -61,6 +63,7 @@ from ..search.policy import intrinsic_domains, parse_policy, validate_policy
 from ..search.presets import PRESETS
 from ..search.nsga2 import NSGA2Config, TriDomainNSGA2Optimizer
 from . import observability as obs
+from .projects import ProjectStore
 from .schema import envelope
 
 try:                                            # Unix only; the admin stats degrade gracefully on Windows
@@ -139,6 +142,7 @@ class HardwareIn(BaseModel):
 class RunIn(BaseModel):
     model: str = "attitude_policy"                 # built-in name or an uploaded model id ("upload:...")
     hardware: str = "akd1500"
+    project_id: Optional[str] = None                # durable project workspace, when configured
     budgets: BudgetIn = BudgetIn(accuracy_drop_max=4.0)
     pop_size: int = Field(64, ge=8, le=1024)
     generations: int = Field(60, ge=1, le=5000)
@@ -149,6 +153,7 @@ class RunIn(BaseModel):
     hardware_overrides: Optional[HardwareIn] = None
     preset: Optional[str] = None                   # informational: which preset the UI applied
     mode: Optional[str] = None                     # low_power_neuromorphic | hard_realtime | radiation_hardened | on_chip_learning
+    enterprise_profile: Optional[Dict[str, Any]] = None
 
 
 class ExportIn(BaseModel):
@@ -166,6 +171,37 @@ class WorkbenchTargetsIn(BaseModel):
 class CopilotIn(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
     key: Optional[str] = None
+
+
+class ProjectIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CoDesignIn(BaseModel):
+    """Bounded accelerator/deployment co-search request.
+
+    The deployment search remains the source of model genomes; this request
+    adds a finite hardware dimension and labels its outputs as analytic
+    estimates until simulation or HITL telemetry is attached.
+    """
+    deployment_keys: List[str] = Field(default_factory=list, max_length=32)
+    pe_rows: List[int] = Field(default_factory=lambda: [1, 2, 4, 8, 16], max_length=16)
+    pe_cols: List[int] = Field(default_factory=lambda: [1, 2, 4, 8, 16], max_length=16)
+    sram_bytes: List[int] = Field(default_factory=lambda: [32768, 131072, 524288], max_length=16)
+    memory_bandwidth_bytes_s: List[float] = Field(default_factory=lambda: [1e9, 4e9, 16e9, 64e9], max_length=16)
+    precision_bits: List[int] = Field(default_factory=lambda: [4, 8, 16], max_length=8)
+    max_pe_count: int = Field(1048576, ge=1)
+    max_sram_bytes: int = Field(1 << 40, ge=256)
+    max_latency_s: Optional[float] = Field(None, gt=0)
+    max_energy_j: Optional[float] = Field(None, gt=0)
+
+
+class EmulationIn(BaseModel):
+    """Configuration for the bounded simulated cycle/cache backend."""
+    key: Optional[str] = None
+    config: Dict[str, Any] = Field(default_factory=dict)
+    vectors: Optional[int] = Field(None, ge=1, le=64)
 
 
 def _client_ip(req_headers, client) -> str:
@@ -194,6 +230,7 @@ class Run:
         self.ctx = None                              # export.bundle.RunContext, set by the worker
         self.warnings: List[str] = []
         self.prepared: Optional[tuple] = None        # (model, weights, weights_source, hw, assumptions, policy, calibration)
+        self.emulation_result: Optional[Dict[str, Any]] = None
 
     # called on the event loop
     def publish(self, type_: str, data: dict) -> None:
@@ -298,11 +335,47 @@ def create_app() -> FastAPI:
     runs: Dict[str, Run] = {}
     uploads: Dict[str, Dict[str, Any]] = {}
     calibrations: Dict[str, Dict[str, Any]] = {}
+    project_store = ProjectStore(os.environ.get("NOMO_STATE_DB") or ":memory:")
     export_lock = threading.Lock()                 # exports are memory-heavy: one at a time
 
     def prepare(cfg: RunIn):
         """Resolve model/weights/hardware and apply the policy. Raises HTTPException(4xx) with reasons."""
         assumptions: List[str] = []
+        profile = None
+        if cfg.enterprise_profile is not None:
+            try:
+                from ..enterprise import load_profile
+                profile = load_profile(cfg.enterprise_profile)
+            except (ValueError, TypeError, OSError) as exc:
+                raise HTTPException(422, f"enterprise_profile is invalid: {exc}")
+            target = str(profile.hardware.get("target", ""))
+            if target and target != cfg.hardware:
+                raise HTTPException(422, f"enterprise profile targets '{target}', but this run selects '{cfg.hardware}'")
+            assumptions.append(f"enterprise profile '{profile.id}' validated (fingerprint {profile.fingerprint[:16]})")
+            allowed_domains = {str(value).lower() for value in profile.precision.get("allowed_domains", [])}
+            requested_domains = {name for name, enabled in (("continuous", cfg.search.allow_continuous),
+                                                            ("spiking", cfg.search.allow_spiking),
+                                                            ("symbolic", cfg.search.allow_symbolic)) if enabled}
+            if allowed_domains and not requested_domains.issubset(allowed_domains):
+                disallowed = sorted(requested_domains - allowed_domains)
+                raise HTTPException(422, f"enterprise profile disallows search domains: {', '.join(disallowed)}")
+            allowed_w = set(profile.precision.get("allowed_weight_bits", []))
+            allowed_a = set(profile.precision.get("allowed_activation_bits", []))
+            def _profile_bits(value: Any) -> int:
+                if isinstance(value, str):
+                    token = value.upper().replace("-", "")
+                    return 1 if token == "BINARY" else int(token.replace("INT", ""))
+                return int(value)
+            for layer, pin in cfg.pins.items():
+                try:
+                    weight_bits = None if pin.w_bits is None else _profile_bits(pin.w_bits)
+                    activation_bits = None if pin.a_bits is None else _profile_bits(pin.a_bits)
+                except (TypeError, ValueError) as exc:
+                    raise HTTPException(422, f"enterprise profile precision pin on '{layer}' is invalid: {exc}")
+                if weight_bits is not None and allowed_w and weight_bits not in allowed_w:
+                    raise HTTPException(422, f"enterprise profile disallows weight precision {pin.w_bits} on layer '{layer}'")
+                if activation_bits is not None and allowed_a and activation_bits not in allowed_a:
+                    raise HTTPException(422, f"enterprise profile disallows activation precision {pin.a_bits} on layer '{layer}'")
         try:
             mode = get_mode(cfg.mode)
             mode_warnings = validate_mode(cfg.mode, period_s=cfg.budgets.period_s,
@@ -366,7 +439,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Nomo backend", version=__version__, lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"],
                        expose_headers=["X-Request-ID", "Content-Disposition", "X-Nomo-Manifest"])
-    app.state.runs, app.state.users, app.state.counters = runs, users, counters
+    app.state.runs, app.state.users, app.state.counters, app.state.projects = runs, users, counters, project_store
 
     blog.info("backend.start", extra={
         "version": __version__, "python": platform.python_version(), "pid": os.getpid(),
@@ -456,9 +529,9 @@ def create_app() -> FastAPI:
     def root() -> Dict[str, Any]:
         return {"service": "nomo-backend", "version": __version__, "status": "ok",
                 "uptime_s": round(time.time() - obs.STARTED_AT, 1),
-                "endpoints": ["/healthz", "/catalog", "/presets", "/models/upload", "/models/{id}/calibration", "/runs",
+                "endpoints": ["/healthz", "/catalog", "/presets", "/projects", "/enterprise/profile/validate", "/models/upload", "/models/{id}/calibration", "/runs",
                               "/ws/runs/{run_id}", "/runs/{id}/designs/{key}", "/runs/{id}/workbench",
-                              "/runs/{id}/export", "/runs/{id}/copilot", "/docs"],
+                              "/runs/{id}/co-design", "/runs/{id}/emulation", "/runs/{id}/export", "/runs/{id}/copilot", "/docs"],
                 "limits": {"max_active_runs": MAX_ACTIVE_RUNS, "max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
     @app.get("/healthz")
@@ -477,14 +550,70 @@ def create_app() -> FastAPI:
                 "workbench": {"format": "nomo.workbench/1", "levels": 6},
                 "limits": {"max_pop": MAX_POP, "max_generations": MAX_GENS}}
 
+    @app.post("/enterprise/profile/validate")
+    def validate_enterprise_profile(body: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate a team profile before it is attached to a run."""
+        from ..enterprise import capability_evidence_report, load_profile
+        try:
+            profile = load_profile(body)
+            report = capability_evidence_report(profile)
+        except (ValueError, TypeError, OSError) as exc:
+            raise HTTPException(422, str(exc))
+        return {"profile": profile.to_dict(), "fingerprint": profile.fingerprint, "evidence": report}
+
     def _reject(status: int, reason: str, client_id: str, **extra) -> HTTPException:
         counters["runs_rejected"] += 1
         rlog.warning("run.rejected", extra={"client_id": client_id, "reason": reason, "status": status, **extra})
         return HTTPException(status, reason)
 
+    def owned_run(run_id: str, request: Request) -> "Run":
+        """Resolve a run only for the client that created it.
+
+        Browser IDs are deliberately lightweight, not account authentication, but
+        they still prevent one anonymous client from reading another client's
+        model data and enterprise evidence by guessing a run id.
+        """
+        run = runs.get(run_id)
+        if run is None or run.client_id != request.state.client_id:
+            raise HTTPException(404, "no such run")
+        return run
+
+    # ------------------------------------------------------------------ enterprise project workspaces
+    @app.get("/projects")
+    def list_projects(request: Request) -> Dict[str, Any]:
+        return {"projects": project_store.list(request.state.client_id)}
+
+    @app.post("/projects")
+    def create_project(body: ProjectIn, request: Request) -> Dict[str, Any]:
+        try:
+            project = project_store.create(body.name, request.state.client_id, body.metadata)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        rlog.info("project.created", extra={"project_id": project["project_id"],
+                                             "client_id": request.state.client_id})
+        return {"project": project}
+
+    @app.get("/projects/{project_id}")
+    def get_project(project_id: str, request: Request) -> Dict[str, Any]:
+        project = project_store.get(project_id, request.state.client_id)
+        if project is None:
+            raise HTTPException(404, "unknown project")
+        project["runs"] = project_store.runs(project_id, request.state.client_id)
+        return {"project": project}
+
+    @app.get("/projects/{project_id}/runs")
+    def project_runs(project_id: str, request: Request) -> Dict[str, Any]:
+        if project_store.get(project_id, request.state.client_id) is None:
+            raise HTTPException(404, "unknown project")
+        ids = {row["run_id"] for row in project_store.runs(project_id, request.state.client_id)}
+        return {"project_id": project_id, "runs": [r.summary() for r in runs.values() if r.id in ids]}
+
     @app.post("/runs")
     async def start(cfg: RunIn, request: Request) -> Dict[str, Any]:
         cid = request.state.client_id
+        if cfg.project_id is not None and project_store.get(cfg.project_id, cid) is None:
+            raise _reject(404, "unknown project or project belongs to another client", cid,
+                          project_id=cfg.project_id)
         try:
             model, weights, wsrc, hw, assumptions, warnings, policy, calibration = prepare(cfg)
         except HTTPException as exc:
@@ -511,6 +640,8 @@ def create_app() -> FastAPI:
         run.prepared = (model, weights, wsrc, hw, assumptions, policy, calibration)
         run.warnings = warnings
         runs[run.id] = run
+        if cfg.project_id is not None:
+            project_store.attach_run(cfg.project_id, run.id, cid)
         hist.append(now)
         counters["runs_created"] += 1
         users.touch(cid, request.state.ip_hash, kind="run", run_id=run.id)
@@ -520,20 +651,16 @@ def create_app() -> FastAPI:
         return {"run_id": run.id, "warnings": warnings}
 
     @app.get("/runs")
-    def list_runs() -> List[Dict[str, Any]]:
-        return [r.summary() for r in runs.values()]
+    def list_runs(request: Request) -> List[Dict[str, Any]]:
+        return [r.summary() for r in runs.values() if r.client_id == request.state.client_id]
 
     @app.get("/runs/{run_id}")
-    def get_run(run_id: str) -> Dict[str, Any]:
-        if run_id not in runs:
-            raise HTTPException(404, "no such run")
-        return runs[run_id].summary()
+    def get_run(run_id: str, request: Request) -> Dict[str, Any]:
+        return owned_run(run_id, request).summary()
 
     @app.post("/runs/{run_id}/stop")
     def stop(run_id: str, request: Request) -> Dict[str, str]:
-        run = runs.get(run_id)
-        if run is None:
-            raise HTTPException(404, "no such run")
+        run = owned_run(run_id, request)
         if run.optimizer:
             run.optimizer.stop()
         rlog.info("run.stop_requested", extra={"run_id": run_id, "client_id": request.state.client_id,
@@ -634,10 +761,8 @@ def create_app() -> FastAPI:
                     "calibration": calibrations.get(model_id, {}).get("report")}
         raise HTTPException(404, "unknown model")
 
-    def _ctx_and_eval(run_id: str, key: Optional[str]):
-        run = runs.get(run_id)
-        if run is None:
-            raise HTTPException(404, "no such run")
+    def _ctx_and_eval(run_id: str, key: Optional[str], request: Request):
+        run = owned_run(run_id, request)
         if run.status in ("pending", "running"):
             raise HTTPException(409, "the search is still running; wait for it to finish or press Stop")
         if run.ctx is None:
@@ -654,10 +779,10 @@ def create_app() -> FastAPI:
         return run, ctx, ev
 
     @app.get("/runs/{run_id}/designs/{key:path}")
-    def design(run_id: str, key: str) -> Dict[str, Any]:
+    def design(run_id: str, key: str, request: Request) -> Dict[str, Any]:
         from ..copilot import summarize
         from ..export.bundle import capabilities, design_json
-        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key)
+        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key, request)
         return {"design": design_json(ctx, ev), "summary": summarize(ctx, ev).to_dict(),
                 "capabilities": capabilities(ctx, ev)}
 
@@ -667,10 +792,11 @@ def create_app() -> FastAPI:
         return schema()
 
     @app.get("/runs/{run_id}/workbench")
-    def workbench(run_id: str, key: str = "recommended", energy_weight: float = Query(1.0, gt=0),
-                  latency_weight: float = Query(1.0, gt=0), accuracy_weight: float = Query(1.0, gt=0)) -> Dict[str, Any]:
+    def workbench(run_id: str, request: Request, key: str = "recommended", energy_weight: float = Query(1.0, gt=0),
+                  latency_weight: float = Query(1.0, gt=0), accuracy_weight: float = Query(1.0, gt=0),
+                  ) -> Dict[str, Any]:
         from ..workbench import build_state
-        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key)
+        run, ctx, ev = _ctx_and_eval(run_id, None if key == "recommended" else key, request)
         ctx.ptq_report_for(ev)
         return build_state(ctx.model, ev, plan=ctx.plan(ev), ptq_report=ctx.calibration_report,
                            hitl=ctx.hitl_measurement,
@@ -678,11 +804,9 @@ def create_app() -> FastAPI:
                            mode=ctx.settings.get("mode"), hardware=ctx.hw)
 
     @app.post("/runs/{run_id}/workbench/targets")
-    def workbench_targets(run_id: str, body: WorkbenchTargetsIn) -> Dict[str, Any]:
+    def workbench_targets(run_id: str, body: WorkbenchTargetsIn, request: Request) -> Dict[str, Any]:
         from ..workbench import build_state, select_candidate
-        run = runs.get(run_id)
-        if run is None:
-            raise HTTPException(404, "no such run")
+        run = owned_run(run_id, request)
         if run.ctx is None or run.status in ("pending", "running"):
             raise HTTPException(409, "the search is still running; wait for it to finish")
         ctx = run.ctx
@@ -698,10 +822,94 @@ def create_app() -> FastAPI:
         state["selected_design_key"] = ev.key
         return state
 
+    @app.post("/runs/{run_id}/co-design")
+    def co_design(run_id: str, body: CoDesignIn, request: Request) -> Dict[str, Any]:
+        """Explore a bounded accelerator architecture space for cached deployments."""
+        from ..search.co_design import CoDesignConstraints, CoDesignSpace
+
+        run = owned_run(run_id, request)
+        if run.ctx is None or run.status in ("pending", "running"):
+            raise HTTPException(409, "the search is still running; wait for it to finish")
+        if not body.deployment_keys:
+            deployments = list(run.ctx.front_fn())[:16]
+        else:
+            deployments = []
+            for key in body.deployment_keys:
+                ev = run.ctx.evaluator.cache.get(key)
+                if ev is None:
+                    raise HTTPException(404, f"unknown deployment key '{key}'")
+                deployments.append(ev)
+        if not deployments:
+            raise HTTPException(404, "no cached deployments are available for co-search")
+        try:
+            limits = CoDesignConstraints(
+                max_pe_count=body.max_pe_count,
+                max_sram_bytes=body.max_sram_bytes,
+                max_latency_s=body.max_latency_s or math.inf,
+                max_energy_j=body.max_energy_j or math.inf,
+            )
+            space = CoDesignSpace(
+                pe_rows=tuple(body.pe_rows), pe_cols=tuple(body.pe_cols),
+                sram_bytes=tuple(body.sram_bytes),
+                memory_bandwidth_bytes_s=tuple(body.memory_bandwidth_bytes_s),
+                precision_bits=tuple(body.precision_bits), constraints=limits,
+            )
+            result = run.ctx.evaluator.co_design(deployments, space=space, constraints=limits)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+        rlog.info("run.co_design", extra={"run_id": run_id, "client_id": request.state.client_id,
+                                           "deployments": len(deployments),
+                                           "evaluations": len(result.evaluations)})
+        return result.to_wire()
+
+    @app.post("/runs/{run_id}/emulation")
+    def emulation(run_id: str, body: EmulationIn, request: Request) -> Dict[str, Any]:
+        """Run the selected integer design through Nomo's bounded simulator."""
+        from ..emulation import EmulationConfig, emulate
+        from ..runtime.quantize import CompileOptions, compile_qgraph, quantize_aux, quantize_input
+
+        run, ctx, ev = _ctx_and_eval(run_id, body.key, request)
+        try:
+            X, A = ctx.calib()
+            qgraph = compile_qgraph(ctx.model, ctx.weights, ev.genome, X, A, CompileOptions())
+            count = min(int(body.vectors or len(X)), len(X))
+            inputs = np.stack([quantize_input(qgraph, row) for row in X[:count]])
+            aux = None
+            if qgraph.n_aux:
+                if A is None:
+                    raise ValueError(f"design requires {qgraph.n_aux} auxiliary values but no calibration metadata is attached")
+                aux = np.asarray([quantize_aux(row) for row in A[:count]], dtype=np.int64)
+            config_doc = dict(body.config)
+            config_doc.setdefault("metadata", {})
+            config_doc["metadata"] = {**dict(config_doc["metadata"]), "run_id": run_id,
+                                       "design_key": ev.key, "model": ctx.model.name}
+            result = emulate(qgraph, inputs, aux, EmulationConfig.from_dict(config_doc))
+            payload = result.to_dict()
+            payload["design_key"] = ev.key
+            payload["model"] = ctx.model.name
+            payload["hardware_profile"] = ctx.hw.id
+            run.emulation_result = payload
+        except (ValueError, TypeError, KeyError, OverflowError) as exc:
+            rlog.warning("run.emulation_rejected", extra={"run_id": run_id,
+                                                            "client_id": request.state.client_id,
+                                                            "reason": str(exc)})
+            raise HTTPException(422, str(exc))
+        rlog.info("run.emulation_completed", extra={"run_id": run_id, "client_id": request.state.client_id,
+                                                     "design_key": ev.key,
+                                                     "cycles": payload.get("summary", {}).get("cycles")})
+        return payload
+
+    @app.get("/runs/{run_id}/emulation")
+    def get_emulation(run_id: str, request: Request) -> Dict[str, Any]:
+        run = owned_run(run_id, request)
+        if run.emulation_result is None:
+            raise HTTPException(404, "no emulation result for this run")
+        return run.emulation_result
+
     @app.post("/runs/{run_id}/export")
     def export(run_id: str, body: ExportIn, request: Request) -> Response:
         from ..export.bundle import build_archive
-        run, ctx, ev = _ctx_and_eval(run_id, body.key)
+        run, ctx, ev = _ctx_and_eval(run_id, body.key, request)
         t0 = time.perf_counter()
         if not export_lock.acquire(timeout=120):
             raise HTTPException(503, "the server is busy preparing another export; try again in a minute")
@@ -726,7 +934,7 @@ def create_app() -> FastAPI:
     @app.post("/runs/{run_id}/copilot")
     def copilot(run_id: str, body: CopilotIn, request: Request) -> Dict[str, Any]:
         from ..copilot import answer
-        run, ctx, ev = _ctx_and_eval(run_id, body.key)
+        run, ctx, ev = _ctx_and_eval(run_id, body.key, request)
         ans = answer(ctx, ev, ctx.front_fn(), ctx.recommend_fn(), body.question)
         rlog.info("copilot.answer", extra={"run_id": run_id, "client_id": request.state.client_id,
                                            "question": body.question[:200], "source": ans.source,
@@ -739,7 +947,7 @@ def create_app() -> FastAPI:
         ip_hash = obs.hash_ip(_client_ip(websocket.headers, websocket.client))
         cid = users.resolve_id(client, ip_hash)
         run = runs.get(run_id)
-        if run is None:
+        if run is None or run.client_id != cid:
             tlog.warning("ws.not_found", extra={"run_id": run_id, "client_id": cid})
             await websocket.close(code=4404)
             return

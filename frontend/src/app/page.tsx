@@ -11,10 +11,11 @@ import CalibrationDrop from "@/components/launcher/CalibrationDrop";
 import { Button, Disclosure, NumberField, Slider, Term, Toggle } from "@/components/ui";
 import { api, waitForBackend } from "@/lib/api";
 import { MODEL_BLURB } from "@/lib/models";
-import { PRESET_ORDER, applyPreset, defaultConfig, startRun } from "@/lib/runConfig";
+import { PRESET_ORDER, applyPreset, defaultConfig, readError, startRun } from "@/lib/runConfig";
 import { apiBase, type CalibrationSummary, type Catalog, type LayerRow, type Preset, type RunIn, type SearchIn, type UploadedModel } from "@/lib/telemetry/protocol";
 
 interface RunSummary { run_id: string; status: string; config: RunIn; created_at: number }
+interface ProjectSummary { project_id: string; name: string; metadata: Record<string, unknown>; updated_at: number }
 
 function chipBlurb(d: Record<string, number>): string {
   const n = d.n_cores ?? 0;
@@ -56,6 +57,9 @@ export default function Home() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [presets, setPresets] = useState<Record<string, Preset> | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [projectName, setProjectName] = useState("");
+  const [projectBusy, setProjectBusy] = useState(false);
   const [uploads, setUploads] = useState<UploadedModel[]>([]);
   const [calibrations, setCalibrations] = useState<Record<string, CalibrationSummary>>({});
   const [cfg, setCfg] = useState<RunIn>(defaultConfig());
@@ -75,12 +79,13 @@ export default function Home() {
         return;
       }
       try {
-        const [c, p, r] = await Promise.all([api("/catalog"), api("/presets"), api("/runs")]);
+        const [c, p, r, projectResponse] = await Promise.all([api("/catalog"), api("/presets"), api("/runs"), api("/projects")]);
         const cat = (await c.json()) as Catalog;
         const pre = (await p.json()) as Record<string, Preset>;
         setCatalog(cat);
         setPresets(pre);
         setRuns(((await r.json()) as RunSummary[]).sort((a, b) => b.created_at - a.created_at));
+        if (projectResponse.ok) setProjects(((await projectResponse.json()) as { projects: ProjectSummary[] }).projects);
         if (pre.balanced_edge) setCfg((c0) => applyPreset(c0, "balanced_edge", pre.balanced_edge!));
       } catch {
         setErr(`Cannot reach the Nomo server at ${apiBase()}.`);
@@ -116,6 +121,29 @@ export default function Home() {
     }
   };
 
+  const createProject = async () => {
+    const name = projectName.trim();
+    if (!name) return;
+    setProjectBusy(true);
+    setErr(null);
+    try {
+      const response = await api("/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, metadata: { hardware: cfg.hardware, model: cfg.model } }),
+      });
+      if (!response.ok) throw new Error(await readError(response));
+      const project = (await response.json() as { project: ProjectSummary }).project;
+      setProjects((current) => [project, ...current]);
+      setCfg((current) => ({ ...current, project_id: project.project_id }));
+      setProjectName("");
+    } catch (reason) {
+      setErr(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setProjectBusy(false);
+    }
+  };
+
   const weights = search.asf_weights ?? [1, 1, 1];
   const setWeight = (i: number, v: number) => {
     const w = [...weights] as [number, number, number];
@@ -147,6 +175,21 @@ export default function Home() {
 
       <div className="mt-8">
         <Step n={1} title="Choose a model" aside="Start with an example, or upload your own network.">
+          <Disclosure title="Project workspace" summary={cfg.project_id ? projects.find((project) => project.project_id === cfg.project_id)?.name ?? "selected project" : "optional"}>
+            <div className="space-y-3">
+              <p className="text-sm text-ink-muted">Attach this search to a named workspace so your team can keep related runs together. On the free hosted service, workspaces are scoped to this browser and may be lost when the service sleeps unless a durable database is configured.</p>
+              <div className="flex flex-wrap gap-2">
+                <select value={cfg.project_id ?? ""} onChange={(event) => setCfg((current) => ({ ...current, project_id: event.target.value || null }))}
+                  className="min-w-[220px] flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm">
+                  <option value="">No project</option>
+                  {projects.map((project) => <option key={project.project_id} value={project.project_id}>{project.name}</option>)}
+                </select>
+                <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="New project name"
+                  onKeyDown={(event) => { if (event.key === "Enter") void createProject(); }} className="min-w-[180px] flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm outline-none focus:border-ann" />
+                <Button kind="secondary" onClick={createProject} disabled={projectBusy || !projectName.trim()}>{projectBusy ? "Creating…" : "Create project"}</Button>
+              </div>
+            </div>
+          </Disclosure>
           <div className="grid gap-3 sm:grid-cols-2">
             {Object.keys(catalog?.models ?? {}).map((m) => (
               <Choice key={m} selected={cfg.model === m} onClick={() => setCfg((c) => ({ ...c, model: m, pins: {} }))}

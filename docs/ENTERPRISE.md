@@ -1,6 +1,6 @@
-# Nomo v5 enterprise co-design surface
+# Nomo v6 enterprise co-design surface
 
-This document is the implementation boundary for the v5 co-design workflow. Nomo is a local-first
+This document is the implementation boundary for the v6 co-design workflow. Nomo is a local-first
 search, compilation, and release tool: it can produce a reproducible design package and expose the
 interfaces needed to connect real simulators, EDA tools, and hardware measurements. It does not claim
 silicon results from a proxy model.
@@ -8,7 +8,7 @@ silicon results from a proxy model.
 ## Architecture outline
 
 ```text
-model upload / nomo.yaml
+project / enterprise profile / model upload / nomo.yaml
         |
         v
 ingest -> ModelGraph + architecture contract + provenance
@@ -16,6 +16,8 @@ ingest -> ModelGraph + architecture contract + provenance
         +--> tri-domain policy -> constrained NSGA-II -> Pareto archive
         |                              |
         |                              +--> target weights -> recommendation
+        |
+        +--> bounded accelerator co-search -> PE/SRAM/bandwidth/precision Pareto evidence
         |
         +--> calibration tensors -> MSE/KL PTQ -> activation edge ranges
         |
@@ -25,7 +27,7 @@ RunContext / Workbench state
         +--> native integer QGraph -> Python integer driver + C11 microkernel
         +--> float/reference exports -> PyTorch, ONNX, Core ML, NIR, PDF
         +--> silicon boundary -> SystemVerilog, Chisel, Yosys/OpenROAD, DEF
-        +--> validation ledger -> proxy, calibration fidelity, TTFS efficiency, HITL
+        +--> validation ledger -> proxy, simulated cycle/cache evidence, calibration fidelity, TTFS efficiency, HITL
         |
         v
 zip or tar.gz structured release package
@@ -60,6 +62,16 @@ Modes are recorded in `RunIn.mode`, `design.json`, the Workbench response, and t
 Warnings are explicit when a mode is selected without the budget or policy needed to enforce its contract.
 
 ## API contracts
+
+### Projects and enterprise profiles
+
+`POST /projects` creates an owner-scoped project workspace. Include its `project_id` in `POST /runs` to
+associate searches with the project. Set `NOMO_STATE_DB` to a durable SQLite path for local or on-premise
+history; the free hosted deployment intentionally remains ephemeral when it is unset.
+
+`POST /enterprise/profile/validate` accepts a versioned YAML-derived JSON profile and returns its canonical
+form, fingerprint, and evidence requirements. A profile can be attached to a run with `enterprise_profile`;
+the server enforces its target hardware, allowed domains, and pinned precisions.
 
 ### Start a run
 
@@ -131,6 +143,17 @@ Content-Type: application/json
 
 All levels keep a stable layer/design selection and a revision number. Target weights re-score the cached
 feasible archive; they do not mutate the original run or fabricate a new search result.
+
+### Co-search and bounded emulation
+
+`POST /runs/{run_id}/co-design` explores a finite accelerator space around cached deployment candidates.
+The result labels PE, SRAM, bandwidth, precision, energy, latency, accuracy-loss, and area evidence as
+analytic/model priors until a simulator or target measurement replaces them.
+
+`POST /runs/{run_id}/emulation` compiles the selected supported integer graph into Nomo's deterministic
+cycle/cache model. It returns per-layer cycles, memory traffic, cache hit/miss data, and spike/event counts
+with `backend.capability = simulated` and `physical_measurement = false`. It is not SystemC, Verilator, Gem5,
+or a physical-board measurement.
 
 ### Export
 
@@ -231,6 +254,9 @@ Every validation report separates:
 | `neuromorphic_efficiency` | deterministic TTFS event-vs-dense operation estimate |
 | `unified_cost_function` | energy/latency/area objective with area source marked proxy |
 | `hitl` | externally measured values, when a trusted agent supplied them |
+
+The bounded emulator's cycle/cache output is recorded separately as `simulated`; it must not be promoted to
+physical latency, energy, or PPA without target evidence.
 
 Synthetic built-in weights are marked `DEMO WEIGHTS` in PDF and package documentation. Calibration
 fidelity is not task accuracy. Proxy PPA is not silicon PPA.

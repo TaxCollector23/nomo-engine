@@ -1,10 +1,12 @@
-# Nomo Engine — v5 (v0.5)
+# Nomo Engine — v6 (v0.6)
 
-Supersedes **v4**. v5 adds a calibration-aware post-training quantisation path, a native integer
+Supersedes **v5**. v6 adds enterprise profiles and project workspaces, bounded cycle evidence, hardware/deployment
+co-search, and an enterprise Workbench on top of the calibration-aware post-training quantisation path and native integer
 deployment driver, a six-level hardware/software workbench, architecture-family adapters, operational
 modes, RTL/Chisel/EDA release artifacts, and hardware-in-the-loop measurement boundaries.
 
-Tri-domain (continuous / spiking / symbolic) hardware-aware architecture search and compiler.
+Tri-domain (continuous / spiking / symbolic) hardware-aware architecture search and compiler with
+enterprise design contracts, project workspaces, bounded cycle simulation, and hardware/deployment co-search.
 Upload a model, pick a chip and a goal, and Nomo finds the best trade-offs between energy, latency and
 accuracy, explains them, and exports the chosen design to a structured package containing model metadata,
 runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an executive PDF brief.
@@ -25,6 +27,7 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
     nomo search  --model attitude_policy --hardware akd1500 --out run.json
     nomo compile --model attitude_policy --hardware akd1500 --genome run.json --out build/
     nomo-cli pipeline --config nomo.yaml.example --out release.tar.gz
+    nomo emulate --artifact artifact.json --config emulator.json --out emulation.json
 
 ## Live deployment
 
@@ -37,7 +40,7 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
 | Engine — repo | https://github.com/TaxCollector23/nomo-engine |
 | Prototype — repo | https://github.com/TaxCollector23/nomo-ai |
 
-## What's new in v0.5
+## What's new in v0.6
 
 - **Calibration + PTQ:** attach 100–500 `.npz`, `.npy`, or JSON tensors from the launcher/API. MSE and
   KL threshold selection is recorded per activation edge and used by integer export; labels are retained
@@ -57,6 +60,16 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
 - **Operational modes and HITL:** low-power neuromorphic, hard real-time, radiation-hardened, and on-chip
   learning contracts are catalogued and carried into manifests. `nomo hitl` accepts a trusted benchmark-agent
   result; no arbitrary remote shell execution is part of the protocol.
+- **Enterprise design profiles:** versioned YAML/JSON profiles capture organization, project, safety policy,
+  allowed precision, hardware assumptions, objectives, constraints, and required evidence. Start with
+  `nomo/enterprise/examples/hard_realtime_robotics.yaml` and validate one with `POST /enterprise/profile/validate`.
+- **Project workspaces:** `POST /projects` creates an owner-scoped project and `RunIn.project_id` associates
+  searches with it. Set `NOMO_STATE_DB` to a durable SQLite path for local/on-prem persistence; unset means
+  intentionally ephemeral storage.
+- **Hardware/deployment co-search:** `POST /runs/{id}/co-design` explores bounded PE-array, SRAM, bandwidth,
+  and precision choices around existing deployment candidates. Results are analytic priors, not silicon claims.
+- **Bounded cycle evidence:** `POST /runs/{id}/emulation` or `nomo emulate` produces deterministic simulated
+  cycles, memory references, cache hits/misses, and spike/event counts. Results are explicitly labelled simulated.
 
 ## What's retained from v0.4
 - **Your own models:** upload `.onnx`, PyTorch `state_dict` (`.pt/.pth`, read without executing code) or a
@@ -77,7 +90,7 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
 - The platform-independent suite passes with `pytest -q --ignore=tests/test_v4.py`; the v4 full-bundle test
   additionally needs the native Core ML ML-storage extension. On Linux it is reported as unavailable when
   that extension is missing; run the Core ML export test on supported macOS tooling.
-- Frontend: strict `tsc --noEmit` and `next build` pass after the workbench and calibration UI changes.
+- Frontend: strict `tsc --noEmit` and `next build` pass after the enterprise Workbench and calibration UI changes.
 - Existing v4 coverage still exercises policy/pins, repair idempotence, crossing penalties, hardware
   overrides, presets, ONNX ingestion, safe checkpoint loading, export self-checks, Copilot, and API routes.
 - Memory: worst case measured (camera model search + all formats in one export) peaks at 382 MB, under
@@ -89,8 +102,9 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
   sensitivities.
 - PTQ calibration measures runtime ranges and quantisation/reconstruction fidelity. It does **not** promote
   task accuracy without labeled evaluation and an oracle result.
-- PPA, thermal density, cycle count, cache behavior, and power are proxy values until the generated design is
-  synthesized, simulated, or measured through the HITL benchmark protocol.
+- PPA, thermal density, and physical power remain proxy values until the generated design is synthesized or
+  measured through HITL. The bounded Nomo emulator can provide deterministic **simulated** cycle/cache evidence,
+  but simulated cycles are not a board measurement.
 - Built-in model weights are synthetic demo weights. Upload trained weights before making model-quality claims.
 - FNO/ViT/GNN blocks preserve their graph contracts but only backends listed in their architecture profile
   are enabled; unsupported lowerings are included as explicit `.unavailable.txt` notes in the package.
@@ -99,6 +113,6 @@ runtime code, software SDK files, RTL/EDA artifacts, validation evidence, and an
 - Core ML packages are built and structurally validated on Linux; running them needs macOS/iOS.
 - `.pt/.pth` uploads: weights-only `state_dict`; structure is inferred (ReLU between layers, stride 1).
   The `.pt` tests use files synthesised in PyTorch's format; a real-PyTorch test runs where torch exists.
-- Not modelled: phase coding, FP16. Not implemented: branching/residual graphs, grouped convolutions,
+- Not modelled: phase coding, FP16. Not implemented: SystemC/Verilator/Gem5 execution, branching/residual graphs, grouped convolutions,
   surrogate-gradient fine-tuning, multi-chip partitioning, TTFS/conv C11 lowering, full operator-family
   ONNX/Core ML lowering, MLIR/microTVM output, and closed-loop silicon PPA without a target measurement.
