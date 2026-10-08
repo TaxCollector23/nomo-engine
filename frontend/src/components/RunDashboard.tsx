@@ -100,13 +100,13 @@ export default function RunDashboard({ runId }: { runId: string }) {
         </aside>
 
         {drawer && (
-          <div className="relative z-20 w-[380px] shrink-0 border-l border-line shadow-[-8px_0_24px_-12px_rgba(29,36,51,0.25)]">
+          <div className={`relative z-20 shrink-0 border-l border-line shadow-[-8px_0_24px_-12px_rgba(29,36,51,0.25)] ${drawer === "workbench" ? "w-[480px]" : "w-[380px]"}`}>
             {drawer === "copilot" && (
               <CopilotDrawer runId={runId} status={status} config={meta.config} pending={pendingQ}
                 onClose={() => setDrawer(null)} />
             )}
             {drawer === "export" && <ExportDrawer runId={runId} detail={detail} onClose={() => setDrawer(null)} />}
-            {drawer === "workbench" && <WorkbenchDrawer runId={runId} onClose={() => setDrawer(null)} />}
+            {drawer === "workbench" && <WorkbenchDrawer runId={runId} meta={meta} detail={detail} onClose={() => setDrawer(null)} />}
           </div>
         )}
       </div>

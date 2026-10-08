@@ -21,6 +21,7 @@ const WHAT: Record<string, string> = {
 
 export default function ExportDrawer({ runId, detail, onClose }: { runId: string; detail: DesignDetail | null; onClose: () => void }) {
   const caps = detail?.capabilities;
+  const unavailable = caps ? Object.entries(caps).filter(([, capability]) => !capability.available) : [];
   const [pick, setPick] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -65,6 +66,15 @@ export default function ExportDrawer({ runId, detail, onClose }: { runId: string
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto px-5 py-4">
         {!detail && <p className="text-sm text-ink-muted">Exports are available once the search has finished.</p>}
+        {unavailable.length > 0 && (
+          <section aria-label="Unavailable export formats" className="rounded-lg border border-dashed border-line-strong bg-paper p-3">
+            <p className="text-sm font-bold">Some outputs are unavailable</p>
+            <p className="mt-1 text-2xs leading-relaxed text-ink-muted">Nomo will not pretend to export an unsupported backend. The reason for each gap is recorded below.</p>
+            <ul className="mt-2 space-y-1.5">
+              {unavailable.map(([key, capability]) => <li key={key} className="text-2xs leading-relaxed"><span className="font-bold">{capability.label}:</span> <span className="text-cross">{capability.reason ?? "not supported for this design"}.</span></li>)}
+            </ul>
+          </section>
+        )}
         {caps && ORDER.map((k) => {
           const c = caps[k];
           if (!c) return null;
