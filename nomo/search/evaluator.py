@@ -233,6 +233,19 @@ class NeurosymbolicEvaluator:
         for k, ev in list(self.cache.items()):
             self.cache[k] = self._assemble(ev.genome, ev.cost, ev.accuracy, ev.accuracy_source, ev.accuracy_terms)
 
+    def co_design(self, deployments, space=None, constraints=None):
+        """Run the optional hardware/deployment co-search dimension.
+
+        Existing deployment search APIs are unchanged.  ``deployments`` may
+        be genomes or cached evaluations; the added dimension explores a
+        bounded accelerator architecture space and reports analytic hardware
+        trade-offs with evidence labels.  This is hardware/deployment
+        co-search, not neural-topology NAS.
+        """
+        from .co_design import CoDesignSearch
+
+        return CoDesignSearch(self, space=space, constraints=constraints).run(deployments)
+
     # -------------------------------------------------------------- multi-fidelity
     def promote(self, candidates: Sequence[Evaluation], k: int) -> List[Evaluation]:
         """Run the oracle on up to k not-yet-measured candidates (feasible first, then lowest CV)."""
