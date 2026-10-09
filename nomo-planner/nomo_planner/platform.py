@@ -68,9 +68,10 @@ class PlatformStore:
         if self.path == ":memory:":
             self.path = f"file:nomo-{uuid.uuid4().hex}?mode=memory&cache=shared"
             self._uri = True
-            self._memory_connection = sqlite3.connect(self.path, uri=True, timeout=30)
+            self._memory_connection = sqlite3.connect(self.path, uri=True, timeout=30, check_same_thread=False)
             self._memory_connection.row_factory = sqlite3.Row
             self._memory_connection.execute("PRAGMA foreign_keys = ON")
+            self._memory_connection.execute("PRAGMA busy_timeout = 30000")
             connection = self._memory_connection
         else:
             self._uri = False

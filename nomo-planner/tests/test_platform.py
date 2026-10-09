@@ -89,6 +89,21 @@ def test_sdk_local_and_http_modes(store):
         thread.join(timeout=2)
 
 
+def test_threaded_http_supports_in_memory_store():
+    store = PlatformStore(":memory:")
+    server = PlatformHTTPServer(("127.0.0.1", 0), store)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        remote = PlatformClient(base_url=f"http://127.0.0.1:{server.server_port}")
+        project = remote.create_project("threaded memory")
+        assert remote.list_projects()[0]["name"] == "threaded memory"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_http_healthz_capabilities_cors_and_bearer_auth(store):
     server = PlatformHTTPServer(("127.0.0.1", 0), store, token="test-token", cors_origins=["https://lab.example"])
     thread = threading.Thread(target=server.serve_forever, daemon=True)
