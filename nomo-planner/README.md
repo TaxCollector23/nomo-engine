@@ -67,6 +67,7 @@ set a bearer token and an explicit origin allowlist before exposing it:
 ```bash
 NOMO_API_TOKEN='use-a-secret-from-your-secret-manager' \
 NOMO_CORS_ORIGINS='https://your-lab.example' \
+NOMO_MAX_REQUEST_BODY_BYTES='10000000' \
 PYTHONPATH=. python -m nomo_planner.cli serve --host 0.0.0.0 --port 8765
 ```
 
@@ -74,6 +75,8 @@ PYTHONPATH=. python -m nomo_planner.cli serve --host 0.0.0.0 --port 8765
 require `Authorization: Bearer ...` when `NOMO_API_TOKEN` is set. `OPTIONS`
 preflight requests are limited to the configured origins and the API exposes
 `GET /capabilities` for clients that need to discover the available project,
-run, artifact, simulation, and report operations. The service does not provide
+run, artifact, simulation, and report operations. Request bodies are capped at
+10 MB by default and can be lowered with `NOMO_MAX_REQUEST_BODY_BYTES`; an
+oversized body receives HTTP 413 before JSON parsing. The service does not provide
 accounts, tenant isolation, or a hosted secret manager; those remain deployment
 responsibilities before using it for multiple customers.

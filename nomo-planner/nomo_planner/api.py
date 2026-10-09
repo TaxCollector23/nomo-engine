@@ -14,6 +14,11 @@ from .platform import NotFoundError, PlatformStore
 
 
 PLATFORM_API_VERSION = "1.1.0"
+DEFAULT_MAX_REQUEST_BODY_BYTES = 10_000_000
+
+
+class RequestBodyTooLargeError(ValueError):
+    """Raised before JSON parsing when a client exceeds the service body cap."""
 
 
 class PlatformService:
@@ -280,11 +285,19 @@ class PlatformHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, address: tuple[str, int], store: PlatformStore, *, token: str | None = None,
-                 cors_origins: Iterable[str] | None = None):
+                 cors_origins: Iterable[str] | None = None, max_body_bytes: int | None = None):
         self.service = PlatformService(store)
         service = self.service
         auth_token = token or os.environ.get("NOMO_API_TOKEN")
         allowed_origins = frozenset(origin.strip() for origin in (cors_origins or ()) if origin.strip())
+        configured_limit = os.environ.get("NOMO_MAX_REQUEST_BODY_BYTES")
+        if max_body_bytes is None:
+            try:
+                max_body_bytes = int(configured_limit) if configured_limit else DEFAULT_MAX_REQUEST_BODY_BYTES
+            except ValueError as exc:
+                raise ValueError("NOMO_MAX_REQUEST_BODY_BYTES must be an integer") from exc
+        if max_body_bytes <= 0:
+            raise ValueError("max_body_bytes must be positive")
 
         class Handler(BaseHTTPRequestHandler):
             server_version = f"NomoPlatform/{PLATFORM_API_VERSION}"
@@ -339,8 +352,10 @@ class PlatformHTTPServer(ThreadingHTTPServer):
 
             def _body(self) -> dict[str, Any]:
                 length = int(self.headers.get("Content-Length", "0"))
-                if length > 10_000_000:
-                    raise ValueError("request body exceeds 10 MB")
+                if length < 0:
+                    raise ValueError("invalid Content-Length")
+                if length > max_body_bytes:
+                    raise RequestBodyTooLargeError(f"request body exceeds {max_body_bytes} bytes")
                 raw = self.rfile.read(length) if length else b"{}"
                 value = json.loads(raw.decode("utf-8"))
                 if not isinstance(value, dict):
@@ -401,6 +416,8 @@ class PlatformHTTPServer(ThreadingHTTPServer):
                     self._route(method)
                 except NotFoundError as exc:
                     self._respond(404, {"error": str(exc)})
+                except RequestBodyTooLargeError as exc:
+                    self._respond(413, {"error": str(exc)})
                 except (KeyError, ValueError, json.JSONDecodeError) as exc:
                     self._respond(400, {"error": str(exc)})
                 except Exception:

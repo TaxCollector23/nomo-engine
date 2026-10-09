@@ -132,6 +132,23 @@ def test_http_healthz_capabilities_cors_and_bearer_auth(store):
         thread.join(timeout=2)
 
 
+def test_http_rejects_oversized_json_before_parsing(store):
+    server = PlatformHTTPServer(("127.0.0.1", 0), store, max_body_bytes=32)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        request = Request(f"http://127.0.0.1:{server.server_port}/projects", data=b'{"name":"' + (b"x" * 64) + b'"}', method="POST",
+                          headers={"Content-Type": "application/json"})
+        with pytest.raises(HTTPError) as oversized:
+            urlopen(request)
+        assert oversized.value.code == 413
+        assert json.loads(oversized.value.read()) == {"error": "request body exceeds 32 bytes"}
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 def test_mcp_json_rpc_tools_and_errors(store):
     service = PlatformService(store)
     listed = handle_mcp_message(service, {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
