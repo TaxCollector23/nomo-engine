@@ -90,6 +90,15 @@ nomo-plan_<question>_<date>/
   5-paper-materials/  best-tradeoffs-table.tex, methods.md, references.bib
 ```
 
+### Enterprise workspace and optional sync
+
+The Lab's Enterprise workspace keeps named projects and saved planner or deterministic simulation runs in the browser,
+with side-by-side comparison, exact configuration restore, and JSON import/export. It is local-only until the user
+explicitly enters a compatible platform API URL and chooses to sync. The optional sync sends project/run records to the
+dependency-free `nomo-planner` service; bearer tokens stay in the current browser session and are never included in
+workspace exports. The platform API must be deployed with `NOMO_API_TOKEN` and `NOMO_CORS_ORIGINS` for shared use;
+authentication, tenant isolation, backups, and permissions are not claimed by the static Lab itself.
+
 ### Engine and verification
 `src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
 on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22

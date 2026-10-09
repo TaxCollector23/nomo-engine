@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const STORE = "nomo-enterprise-workspace-v1";
+const REMOTE_STORE = "nomo-enterprise-remote-v1";
+const REMOTE_TOKEN_STORE = "nomo-enterprise-remote-token-v1";
 const VERSION = 1;
 const MAX_PROJECTS = 12;
 const MAX_RUNS_PER_PROJECT = 60;
+type ReviewState = "draft" | "review" | "approved";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -15,6 +18,9 @@ export interface WorkspaceRun {
   mode: string;
   label: string;
   planKey: string;
+  review: ReviewState;
+  remoteId?: string;
+  remoteReview?: ReviewState;
   plan: JsonRecord;
   settings: JsonRecord;
   locks: JsonRecord;
@@ -31,6 +37,7 @@ interface WorkspaceProject {
   purpose: string;
   createdAt: string;
   updatedAt: string;
+  remoteId?: string;
   runs: WorkspaceRun[];
 }
 
@@ -84,14 +91,52 @@ function loadState(): WorkspaceState {
       purpose: typeof project.purpose === "string" ? project.purpose.slice(0, 240) : "",
       createdAt: typeof project.createdAt === "string" ? project.createdAt : new Date().toISOString(),
       updatedAt: typeof project.updatedAt === "string" ? project.updatedAt : new Date().toISOString(),
+      remoteId: typeof project.remoteId === "string" ? project.remoteId : undefined,
       runs: project.runs.filter((run): run is WorkspaceRun => {
         return Boolean(run && typeof run === "object" && typeof run.id === "string" && typeof run.module === "string" && typeof run.label === "string" && typeof run.planKey === "string" && asRecord(run.plan) && asRecord(run.settings) && asRecord(run.locks) && run.objectives && typeof run.objectives === "object");
-      }).slice(0, MAX_RUNS_PER_PROJECT),
+      }).slice(0, MAX_RUNS_PER_PROJECT).map((run) => ({ ...run, review: validReview(run.review), remoteId: typeof run.remoteId === "string" ? run.remoteId : undefined, remoteReview: run.remoteReview ? validReview(run.remoteReview) : undefined })),
     }));
     return { version: VERSION, projects };
   } catch {
     return EMPTY_STATE;
   }
+}
+
+function loadRemoteConfig(): { baseUrl: string; token: string } {
+  try {
+    return {
+      baseUrl: localStorage.getItem(REMOTE_STORE) ?? "",
+      token: sessionStorage.getItem(REMOTE_TOKEN_STORE) ?? "",
+    };
+  } catch {
+    return { baseUrl: "", token: "" };
+  }
+}
+
+function saveRemoteConfig(baseUrl: string, token: string): void {
+  try {
+    localStorage.setItem(REMOTE_STORE, baseUrl);
+    if (token) sessionStorage.setItem(REMOTE_TOKEN_STORE, token);
+    else sessionStorage.removeItem(REMOTE_TOKEN_STORE);
+  } catch {
+    // Browser storage is optional; the connection still works for this tab.
+  }
+}
+
+async function remoteRequest(baseUrl: string, token: string, path: string, init: RequestInit = {}): Promise<unknown> {
+  const headers = new Headers(init.headers);
+  headers.set("Accept", "application/json");
+  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}${path}`, { ...init, headers });
+  const text = await response.text();
+  let value: unknown = null;
+  try { value = text ? JSON.parse(text) : null; } catch { value = text; }
+  if (!response.ok) {
+    const detail = value && typeof value === "object" && "error" in value ? String((value as { error: unknown }).error) : `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  return value;
 }
 
 function timestamp(value: string): string {
@@ -119,10 +164,19 @@ function metricValue(value: number): string {
   return value.toFixed(3);
 }
 
+function validReview(value: unknown): ReviewState {
+  return value === "review" || value === "approved" ? value : "draft";
+}
+
 export default function WorkspacePanel({ current, onClose, onRestore }: WorkspacePanelProps) {
   const [state, setState] = useState<WorkspaceState>(() => loadState());
   const [activeId, setActiveId] = useState(() => loadState().projects[0]?.id ?? "");
   const [creating, setCreating] = useState(() => loadState().projects.length === 0);
+  const [remoteUrl, setRemoteUrl] = useState(() => loadRemoteConfig().baseUrl);
+  const [remoteToken, setRemoteToken] = useState(() => loadRemoteConfig().token);
+  const [remoteStatus, setRemoteStatus] = useState<"idle" | "checking" | "connected" | "error">("idle");
+  const [remoteDescription, setRemoteDescription] = useState("");
+  const [syncing, setSyncing] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPurpose, setNewPurpose] = useState("");
   const [notice, setNotice] = useState("");
@@ -169,7 +223,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
 
   function saveCurrent() {
     if (!project || !current) return;
-    const run: WorkspaceRun = { ...current, id: id("run"), createdAt: new Date().toISOString() };
+    const run: WorkspaceRun = { ...current, id: id("run"), createdAt: new Date().toISOString(), review: "draft" };
     setState((previous) => ({
       ...previous,
       projects: previous.projects.map((candidate) => candidate.id === project.id
@@ -189,6 +243,27 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
     }));
   }
 
+  function updateReview(runId: string, review: ReviewState) {
+    if (!project) return;
+    setState((previous) => ({
+      ...previous,
+      projects: previous.projects.map((candidate) => candidate.id === project.id
+        ? { ...candidate, updatedAt: new Date().toISOString(), runs: candidate.runs.map((run) => run.id === runId ? { ...run, review } : run) }
+        : candidate),
+    }));
+    setNotice("Review flag updated locally. It is not a signed approval.");
+  }
+
+  function exportWorkspace() {
+    return {
+      schema_version: VERSION,
+      exported_at: new Date().toISOString(),
+      source: "nomo-browser-workspace",
+      version: state.version,
+      projects: state.projects,
+    };
+  }
+
   async function importWorkspace(file: File) {
     try {
       const parsed = JSON.parse(await file.text()) as Partial<WorkspaceState>;
@@ -203,6 +278,93 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
     }
   }
 
+  async function connectRemote() {
+    const baseUrl = remoteUrl.trim().replace(/\/+$/, "");
+    if (!baseUrl) {
+      setRemoteStatus("error");
+      setRemoteDescription("Enter the platform API URL first.");
+      return;
+    }
+    setRemoteStatus("checking");
+    setRemoteDescription("Checking the platform capabilities…");
+    try {
+      const capabilities = await remoteRequest(baseUrl, remoteToken.trim(), "/capabilities") as { service?: string; version?: string; operations?: unknown };
+      if (capabilities.service !== "nomo-platform" || !Array.isArray(capabilities.operations)) throw new Error("Endpoint is reachable but is not the Nomo platform API.");
+      saveRemoteConfig(baseUrl, remoteToken.trim());
+      setRemoteUrl(baseUrl);
+      setRemoteStatus("connected");
+      setRemoteDescription(`Connected to Nomo platform ${capabilities.version ?? "unknown"}.`);
+    } catch (error) {
+      setRemoteStatus("error");
+      setRemoteDescription(error instanceof Error ? error.message : "Could not connect to the platform API.");
+    }
+  }
+
+  async function syncRemote() {
+    if (!project || remoteStatus !== "connected") return;
+    const baseUrl = remoteUrl.trim().replace(/\/+$/, "");
+    if (!baseUrl) return;
+    setSyncing(true);
+    try {
+      let remoteProjectId = project.remoteId;
+      if (!remoteProjectId) {
+        const created = await remoteRequest(baseUrl, remoteToken.trim(), "/projects", {
+          method: "POST",
+          body: JSON.stringify({
+            name: project.name,
+            description: project.purpose,
+            metadata: { source: "nomo-browser-workspace", local_project_id: project.id },
+          }),
+        }) as { id?: string };
+        if (!created.id) throw new Error("Platform did not return a project id.");
+        remoteProjectId = created.id;
+      }
+
+      const unsyncedRuns = runs.filter((run) => !run.remoteId);
+      const changedRuns = runs.filter((run) => run.remoteId && run.remoteReview !== run.review);
+      const remoteRunIds = new Map<string, string>();
+      for (const run of unsyncedRuns) {
+        const created = await remoteRequest(baseUrl, remoteToken.trim(), `/projects/${encodeURIComponent(remoteProjectId)}/runs`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: run.label,
+            config: { module: run.module, mode: run.mode, plan_key: run.planKey, plan: run.plan, settings: run.settings, locks: run.locks },
+            result: { objectives: run.objectives, constraints: run.constraints, evidence: run.evidence, evaluated: run.evaluated, duration_ms: run.durationMs },
+            metadata: { source: "nomo-browser-workspace", local_run_id: run.id, review: run.review, schema_version: 1 },
+          }),
+        }) as { id?: string };
+        if (!created.id) throw new Error(`Platform did not return a run id for ${run.label}.`);
+        remoteRunIds.set(run.id, created.id);
+      }
+      for (const run of changedRuns) {
+        await remoteRequest(baseUrl, remoteToken.trim(), `/runs/${encodeURIComponent(run.remoteId!)}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            metadata: { source: "nomo-browser-workspace", local_run_id: run.id, review: run.review, schema_version: 1 },
+          }),
+        });
+      }
+
+      const syncedAt = new Date().toISOString();
+      setState((previous) => ({
+        ...previous,
+        projects: previous.projects.map((candidate) => candidate.id === project.id ? {
+          ...candidate,
+          remoteId: remoteProjectId,
+          updatedAt: syncedAt,
+          runs: candidate.runs.map((run) => remoteRunIds.has(run.id) ? { ...run, remoteId: remoteRunIds.get(run.id), remoteReview: run.review } : changedRuns.some((changed) => changed.id === run.id) ? { ...run, remoteReview: run.review } : run),
+        } : candidate),
+      }));
+      setRemoteDescription(`Synced ${unsyncedRuns.length} new and ${changedRuns.length} updated run${unsyncedRuns.length + changedRuns.length === 1 ? "" : "s"} to the shared project.`);
+      setNotice(`Workspace “${project.name}” is synced to the platform.`);
+    } catch (error) {
+      setRemoteStatus("error");
+      setRemoteDescription(error instanceof Error ? error.message : "Workspace sync failed.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <section className="workspace-panel lab-card" aria-labelledby="workspace-title">
       <div className="workspace-head">
@@ -214,7 +376,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
         <button type="button" className="lab-close workspace-close" onClick={onClose} aria-label="Close workspace">×</button>
       </div>
 
-      <div className="workspace-boundary"><strong>Browser-local workspace</strong><span>Nothing is uploaded or shared yet. Export the record before switching devices.</span></div>
+      <div className="workspace-boundary"><strong>{project?.remoteId ? "Local + shared copy" : "Browser-local workspace"}</strong><span>{project?.remoteId ? "This project has a platform copy; new runs still sync only when you choose Sync." : "Nothing is uploaded or shared yet. Export the record before switching devices."}</span></div>
 
       {!project ? (
         <div className="workspace-create">
@@ -240,12 +402,19 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
 
           <div className="workspace-actions">
             <button type="button" className="ui-button ui-button--primary ui-button--compact" disabled={!current} onClick={saveCurrent}>Save current run</button>
-            <button type="button" className="ui-button ui-button--outline ui-button--compact" onClick={() => downloadJson(`${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "nomo-workspace"}.json`, state)}>Export workspace</button>
+            <button type="button" className="ui-button ui-button--outline ui-button--compact" onClick={() => downloadJson(`${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "nomo-workspace"}.json`, exportWorkspace())}>Export workspace</button>
             <button type="button" className="ui-button ui-button--outline ui-button--compact" onClick={() => importRef.current?.click()}>Import workspace</button>
             <input ref={importRef} className="workspace-file" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importWorkspace(file); event.target.value = ""; }} />
           </div>
 
-          {current ? <div className="workspace-current"><span className="workspace-current-mark" aria-hidden="true">●</span><div><strong>Current Lab result ready to save</strong><span>{current.moduleTitle} · {current.label} · {current.evaluated.toLocaleString("en-US")} plans checked</span></div><span className="workspace-evidence">{current.evidence}</span></div> : <p className="workspace-empty">Open a planner module and choose a result to save it here. Simulation runs remain downloadable from the Simulation core.</p>}
+          <div className="workspace-remote">
+            <div className="workspace-runs-head"><div><h3>Optional shared platform</h3><p className="lab-muted">Connect an authenticated Nomo platform API when this decision needs team persistence. The token stays in this browser session and is never exported.</p></div><span className={`workspace-remote-status is-${remoteStatus}`}>{remoteStatus === "connected" ? "Connected" : remoteStatus === "checking" ? "Checking…" : remoteStatus === "error" ? "Needs attention" : "Not connected"}</span></div>
+            <div className="workspace-remote-fields"><label>Platform URL<input value={remoteUrl} onChange={(event) => { setRemoteUrl(event.target.value); setRemoteStatus("idle"); }} placeholder="https://platform.example" /></label><label>Bearer token <span className="lab-muted">(optional if server is local)</span><input type="password" value={remoteToken} onChange={(event) => { setRemoteToken(event.target.value); setRemoteStatus("idle"); }} placeholder="Stored for this session only" autoComplete="off" /></label></div>
+            <div className="workspace-remote-actions"><button type="button" className="ui-button ui-button--outline ui-button--compact" disabled={remoteStatus === "checking"} onClick={() => void connectRemote()}>{remoteStatus === "checking" ? "Connecting…" : "Check connection"}</button><button type="button" className="ui-button ui-button--primary ui-button--compact" disabled={remoteStatus !== "connected" || syncing} onClick={() => void syncRemote()}>{syncing ? "Syncing…" : project.remoteId ? "Sync new runs" : "Create shared project"}</button></div>
+            {remoteDescription && <p className={`workspace-remote-note is-${remoteStatus}`} role="status">{remoteDescription}</p>}
+          </div>
+
+          {current ? <div className="workspace-current"><span className="workspace-current-mark" aria-hidden="true">●</span><div><strong>Current Lab result ready to save</strong><span>{current.moduleTitle} · {current.label} · {current.evaluated.toLocaleString("en-US")} plans checked</span></div><span className="workspace-evidence">{current.evidence}</span></div> : <p className="workspace-empty">Open a planner or Simulation module and choose a result to save it here.</p>}
 
           <div className="workspace-runs-head"><div><h3>Decision history</h3><p className="lab-muted">{runs.length ? `${runs.length} saved run${runs.length === 1 ? "" : "s"}; newest first.` : "No saved runs yet."}</p></div>{runs.length > 0 && <span className="workspace-updated">Updated {timestamp(project.updatedAt)}</span>}</div>
           {runs.length > 0 && (
@@ -254,7 +423,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
                 <article className="workspace-run" key={run.id}>
                   <div className="workspace-run-main"><div className="workspace-run-title"><strong>{run.label}</strong><span>{run.moduleTitle} · {run.mode}</span></div><time dateTime={run.createdAt}>{timestamp(run.createdAt)}</time></div>
                   <div className="workspace-run-metrics">{metricEntries(run).map(([name, value]) => <span key={name}><b>{metricValue(value)}</b>{name.replace(/_/g, " ")}</span>)}</div>
-                  <div className="workspace-run-foot"><span className="workspace-evidence">{run.evidence}</span><span className="workspace-run-buttons"><button type="button" className="lab-link" onClick={() => onRestore(run)}>{run.module === "simulation" ? "Open simulation" : "Load into Lab"}</button><button type="button" className="lab-link" onClick={() => removeRun(run.id)}>Remove</button></span></div>
+                  <div className="workspace-run-foot"><span className="workspace-evidence">{run.evidence}</span><span className="workspace-run-buttons"><label className="workspace-review">Review<select aria-label={`Review state for ${run.label}`} value={run.review} onChange={(event) => updateReview(run.id, event.target.value as ReviewState)}><option value="draft">Draft</option><option value="review">Needs review</option><option value="approved">Approved locally</option></select></label><button type="button" className="lab-link" onClick={() => onRestore(run)}>{run.module === "simulation" ? "Open simulation" : "Load into Lab"}</button><button type="button" className="lab-link" onClick={() => removeRun(run.id)}>Remove</button></span></div>
                 </article>
               ))}
             </div>
@@ -278,6 +447,7 @@ function loadImportedProjects(value: unknown[]): WorkspaceProject[] {
     purpose: typeof project.purpose === "string" ? project.purpose.slice(0, 240) : "",
     createdAt: typeof project.createdAt === "string" ? project.createdAt : new Date().toISOString(),
     updatedAt: typeof project.updatedAt === "string" ? project.updatedAt : new Date().toISOString(),
-    runs: project.runs.filter((run): run is WorkspaceRun => Boolean(run && typeof run === "object" && typeof run.id === "string" && typeof run.module === "string" && typeof run.label === "string" && typeof run.planKey === "string" && asRecord(run.plan) && asRecord(run.settings) && asRecord(run.locks) && run.objectives && typeof run.objectives === "object")).slice(0, MAX_RUNS_PER_PROJECT),
+    remoteId: typeof project.remoteId === "string" ? project.remoteId : undefined,
+    runs: project.runs.filter((run): run is WorkspaceRun => Boolean(run && typeof run === "object" && typeof run.id === "string" && typeof run.module === "string" && typeof run.label === "string" && typeof run.planKey === "string" && asRecord(run.plan) && asRecord(run.settings) && asRecord(run.locks) && run.objectives && typeof run.objectives === "object")).slice(0, MAX_RUNS_PER_PROJECT).map((run) => ({ ...run, review: validReview(run.review), remoteId: typeof run.remoteId === "string" ? run.remoteId : undefined, remoteReview: run.remoteReview ? validReview(run.remoteReview) : undefined })),
   }));
 }

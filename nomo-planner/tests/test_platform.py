@@ -3,6 +3,7 @@ import json
 import sys
 import threading
 import types
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pytest
@@ -67,17 +68,61 @@ def test_sdk_local_and_http_modes(store):
         remote = PlatformClient(base_url=f"http://127.0.0.1:{server.server_port}")
         created = remote.create_project("http sdk", metadata={"from": "http"})
         assert remote.list_projects()[-1]["id"] == created["id"]
-        run = remote.create_run(created["id"], result={"score": 3})
+        run = remote.create_run(created["id"], result={"score": 3}, status="running")
         assert remote.get_run(run["id"])["result"] == {"score": 3}
         artifact = remote.create_artifact(created["id"], "remote.json", {"ok": True}, run_id=run["id"])
         assert remote.list_artifacts(created["id"], run_id=run["id"])[0]["id"] == artifact["id"]
         assert remote.list_runs(created["id"])[0]["id"] == run["id"]
-        assert remote.update_run(run["id"], status="completed")["status"] == "completed"
+        updated = remote.update_run(run["id"], status="completed", result={"score": 4}, metadata={"review": "ready"})
+        assert updated["status"] == "completed"
+        assert updated["result"] == {"score": 4}
+        assert updated["metadata"] == {"review": "ready"}
         report = remote.render_report(run["id"])
         assert report["html_artifact"]["media_type"].startswith("text/html")
         request = Request(f"http://127.0.0.1:{server.server_port}/health")
         with urlopen(request) as response:
             assert json.loads(response.read())["status"] == "ok"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_http_healthz_capabilities_cors_and_bearer_auth(store):
+    server = PlatformHTTPServer(("127.0.0.1", 0), store, token="test-token", cors_origins=["https://lab.example"])
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        with urlopen(Request(f"{base}/healthz")) as response:
+            health = json.loads(response.read())
+            assert health["status"] == "ok"
+            assert health["version"] == "1.1.0"
+
+        with pytest.raises(HTTPError) as unauthorized:
+            urlopen(Request(f"{base}/projects"))
+        assert unauthorized.value.code == 401
+
+        authorized = Request(f"{base}/projects", headers={"Authorization": "Bearer test-token", "Origin": "https://lab.example"})
+        with urlopen(authorized) as response:
+            assert response.headers["Access-Control-Allow-Origin"] == "https://lab.example"
+            assert json.loads(response.read()) == []
+
+        preflight = Request(f"{base}/projects", method="OPTIONS", headers={
+            "Origin": "https://lab.example", "Access-Control-Request-Method": "POST",
+        })
+        with urlopen(preflight) as response:
+            assert response.status == 204
+            assert "PATCH" in response.headers["Access-Control-Allow-Methods"]
+
+        with pytest.raises(HTTPError) as forbidden_origin:
+            urlopen(Request(f"{base}/projects", method="OPTIONS", headers={"Origin": "https://other.example"}))
+        assert forbidden_origin.value.code == 403
+
+        with urlopen(Request(f"{base}/capabilities", headers={"Authorization": "Bearer test-token"})) as response:
+            capabilities = json.loads(response.read())
+            assert capabilities["authentication"] == "bearer"
+            assert "simulations" in capabilities["operations"]
     finally:
         server.shutdown()
         server.server_close()

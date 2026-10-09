@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
+import hmac
+import os
 from dataclasses import asdict, fields
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from .platform import NotFoundError, PlatformStore
+
+
+PLATFORM_API_VERSION = "1.1.0"
 
 
 class PlatformService:
@@ -274,20 +279,62 @@ def _rpc_error(request_id: Any, code: int, message: str) -> dict[str, Any]:
 class PlatformHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address: tuple[str, int], store: PlatformStore):
+    def __init__(self, address: tuple[str, int], store: PlatformStore, *, token: str | None = None,
+                 cors_origins: Iterable[str] | None = None):
         self.service = PlatformService(store)
         service = self.service
+        auth_token = token or os.environ.get("NOMO_API_TOKEN")
+        allowed_origins = frozenset(origin.strip() for origin in (cors_origins or ()) if origin.strip())
 
         class Handler(BaseHTTPRequestHandler):
-            server_version = "NomoPlatform/1.0"
+            server_version = f"NomoPlatform/{PLATFORM_API_VERSION}"
 
             def _respond(self, status: int, value: Any, content_type: str = "application/json; charset=utf-8") -> None:
                 body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value, ensure_ascii=False).encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Referrer-Policy", "no-referrer")
+                origin = self.headers.get("Origin")
+                if origin and ("*" in allowed_origins or origin in allowed_origins):
+                    self.send_header("Access-Control-Allow-Origin", "*" if "*" in allowed_origins else origin)
+                    self.send_header("Vary", "Origin")
                 self.end_headers()
                 self.wfile.write(body)
+
+            def _authorized(self) -> bool:
+                if not auth_token:
+                    return True
+                request_path = urlsplit(self.path).path
+                if self.command == "GET" and request_path in {"/health", "/healthz"}:
+                    return True
+                supplied = self.headers.get("Authorization", "")
+                scheme, separator, value = supplied.partition(" ")
+                if separator != " " or scheme.lower() != "bearer" or not hmac.compare_digest(value, auth_token):
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("WWW-Authenticate", 'Bearer realm="nomo-platform"')
+                    self.end_headers()
+                    return False
+                return True
+
+            def _preflight(self) -> None:
+                origin = self.headers.get("Origin")
+                if allowed_origins and origin not in allowed_origins and "*" not in allowed_origins:
+                    self._respond(403, {"error": "origin is not allowed"})
+                    return
+                self.send_response(204)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+                self.send_header("Access-Control-Max-Age", "600")
+                if origin and ("*" in allowed_origins or origin in allowed_origins):
+                    self.send_header("Access-Control-Allow-Origin", "*" if "*" in allowed_origins else origin)
+                    self.send_header("Vary", "Origin")
+                self.end_headers()
 
             def _body(self) -> dict[str, Any]:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -301,9 +348,13 @@ class PlatformHTTPServer(ThreadingHTTPServer):
 
             def _route(self, method: str) -> None:
                 path = [unquote(part) for part in urlsplit(self.path).path.strip("/").split("/") if part]
-                body = self._body() if method == "POST" else {}
-                if path == ["health"] and method == "GET":
-                    self._respond(200, {"status": "ok"}); return
+                body = self._body() if method in {"POST", "PATCH"} else {}
+                if path in (["health"], ["healthz"]) and method == "GET":
+                    self._respond(200, {"status": "ok", "service": "nomo-platform", "version": PLATFORM_API_VERSION}); return
+                if path == ["capabilities"] and method == "GET":
+                    self._respond(200, {"service": "nomo-platform", "version": PLATFORM_API_VERSION,
+                                        "operations": ["projects", "runs", "artifacts", "simulations", "reports"],
+                                        "authentication": "bearer" if auth_token else "none"}); return
                 if path == ["projects"] and method == "GET":
                     self._respond(200, service.dispatch("projects.list")); return
                 if path == ["projects"] and method == "POST":
@@ -342,15 +393,22 @@ class PlatformHTTPServer(ThreadingHTTPServer):
 
             def _safe_route(self, method: str) -> None:
                 try:
+                    if method == "OPTIONS":
+                        self._preflight(); return
+                    if not self._authorized():
+                        return
                     self._route(method)
                 except NotFoundError as exc:
                     self._respond(404, {"error": str(exc)})
                 except (KeyError, ValueError, json.JSONDecodeError) as exc:
                     self._respond(400, {"error": str(exc)})
+                except Exception:
+                    self._respond(500, {"error": "internal server error"})
 
             def do_GET(self) -> None: self._safe_route("GET")
             def do_POST(self) -> None: self._safe_route("POST")
             def do_PATCH(self) -> None: self._safe_route("PATCH")
+            def do_OPTIONS(self) -> None: self._safe_route("OPTIONS")
 
             def log_message(self, format: str, *args: Any) -> None:
                 return

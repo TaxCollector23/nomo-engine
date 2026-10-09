@@ -12,7 +12,7 @@ npm run build
 ```
 
 The root Vite app is the source for the `nomo-engine` Vercel project and the stable mode-shell alias
-`https://frontend-gray-ten-c3tj1luab.vercel.app/`. The root `vercel.json` rewrites client-side Lab routes to
+`https://frontend-gray-ten-c3tj1luab7.vercel.app/`. The root `vercel.json` rewrites client-side Lab routes to
 `index.html`; it does not run the hosted search API.
 
 ## Neuromorphic dashboard
@@ -34,6 +34,11 @@ The Next.js app is the source for the separate `nomo-engine-dashboard` Vercel pr
 The dashboard's default API is the Render deployment at `https://nomo-engine.onrender.com`. Its server source and
 deployment configuration are outside this repository. A deployment of the frontend alone must not be described as a
 backend redeploy.
+
+The dependency-free platform store under `nomo-planner/` is a separate project/run/artifact API. It can be run locally
+with `PYTHONPATH=. python -m nomo_planner.cli serve`; when exposed to a browser, configure `NOMO_API_TOKEN` and
+`NOMO_CORS_ORIGINS` and bind it behind TLS. It is not the source of the existing Render dashboard API, and it is not
+multi-tenant until authentication, tenant isolation, backups, and operational monitoring are supplied by deployment.
 
 ## Landing page
 

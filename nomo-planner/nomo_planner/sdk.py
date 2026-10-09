@@ -14,21 +14,25 @@ class PlatformClient:
     """Client with a local-store mode and a standard-library HTTP mode.
 
     Pass ``store=PlatformStore(...)`` for embedded use, or ``base_url`` for a
-    running :class:`nomo_planner.api.PlatformHTTPServer` service.
+    running :class:`nomo_planner.api.PlatformHTTPServer` service. Pass
+    ``token=...`` when the HTTP service is configured with ``NOMO_API_TOKEN``;
+    the SDK sends it as a bearer token and never stores it itself.
     """
 
     def __init__(self, *, store: PlatformStore | None = None, base_url: str | None = None,
-                 timeout: float = 10.0) -> None:
+                 timeout: float = 10.0, token: str | None = None) -> None:
         if (store is None) == (base_url is None):
             raise ValueError("provide exactly one of store or base_url")
-        self.store, self.base_url, self.timeout = store, base_url.rstrip("/") if base_url else None, timeout
+        self.store, self.base_url, self.timeout, self.token = store, base_url.rstrip("/") if base_url else None, timeout, token
 
     def _request(self, method: str, path: str, body: Mapping[str, Any] | None = None) -> Any:
         if self.base_url is None:
             raise RuntimeError("HTTP request requires base_url")
         data = None if body is None else json.dumps(body).encode("utf-8")
-        request = Request(self.base_url + path, data=data, method=method,
-                          headers={"Content-Type": "application/json", "Accept": "application/json"})
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        request = Request(self.base_url + path, data=data, method=method, headers=headers)
         try:
             with urlopen(request, timeout=self.timeout) as response:
                 return json.loads(response.read().decode("utf-8")) if response.status != 204 else None
