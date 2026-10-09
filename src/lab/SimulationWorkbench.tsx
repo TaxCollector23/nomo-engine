@@ -13,6 +13,7 @@ import {
   type TimelineEvent,
 } from "../simulation";
 import { provenanceLabel } from "../simulation/provenance";
+import type { CurrentWorkspaceRun } from "./WorkspacePanel";
 import "./simulation-workbench.css";
 
 type WorkloadMode = "training" | "serving";
@@ -49,6 +50,16 @@ function milliseconds(value: number): string {
   if (value < 1e-3) return `${(value * 1e6).toFixed(1)} µs`;
   if (value < 1) return `${(value * 1e3).toFixed(2)} ms`;
   return `${value.toFixed(2)} s`;
+}
+
+function restoredNumber(settings: Record<string, unknown> | null, key: string, fallback: number): number {
+  const value = settings?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function restoredChoice<T>(settings: Record<string, unknown> | null, key: string, choices: readonly T[], fallback: T): T {
+  const value = settings?.[key];
+  return choices.some((choice) => choice === value) ? value as T : fallback;
 }
 
 function phaseClass(event: TimelineEvent): string {
@@ -104,12 +115,29 @@ function TimelineView({ events, makespan }: { events: readonly TimelineEvent[]; 
   );
 }
 
-export default function SimulationWorkbench() {
+interface SimulationWorkbenchProps {
+  onWorkspaceRun?: (run: CurrentWorkspaceRun) => void;
+  onOpenWorkspace?: () => void;
+  restore?: Record<string, unknown> | null;
+  onRestoreConsumed?: () => void;
+}
+
+export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, restore = null, onRestoreConsumed }: SimulationWorkbenchProps) {
   const [mode, setMode] = useState<WorkloadMode>("training");
   const [dtype, setDtype] = useState<DType>("bf16");
   const [devices, setDevices] = useState(4);
   const [sequenceLength, setSequenceLength] = useState(GRAPH_DEFAULTS.sequenceLength);
   const [seed, setSeed] = useState(20261005);
+
+  useEffect(() => {
+    if (!restore) return;
+    setMode(restoredChoice(restore, "mode", ["training", "serving"] as const, "training"));
+    setDtype(restoredChoice(restore, "dtype", ["bf16", "fp16", "fp8", "int8"] as const, "bf16") as DType);
+    setDevices(restoredChoice(restore, "devices", [1, 2, 4, 8] as const, 4));
+    setSequenceLength(restoredChoice(restore, "sequenceLength", [512, 1024, 2048, 4096] as const, GRAPH_DEFAULTS.sequenceLength));
+    setSeed(restoredNumber(restore, "seed", 20261005));
+    onRestoreConsumed?.();
+  }, [onRestoreConsumed, restore]);
 
   const graphMode = mode === "training" ? "training" as const : "inference" as const;
   const graph = useMemo(() => buildOperatorGraph({
@@ -164,6 +192,27 @@ export default function SimulationWorkbench() {
     participants: topology.devices.map((device) => device.id),
     bytes: Math.max(1, graph.accounting.parameterBytes / devices),
   }) : null, [devices, graph.accounting.parameterBytes, mode, topology]);
+  useEffect(() => {
+    onWorkspaceRun?.({
+      module: "simulation",
+      moduleTitle: "Simulation core",
+      mode,
+      label: `${mode === "training" ? "Training" : "Serving"} · ${dtype.toUpperCase()} · ${devices} GPU${devices > 1 ? "s" : ""} · ${sequenceLength.toLocaleString()} tokens`,
+      planKey: `simulation:${mode}:${dtype}:${devices}:${sequenceLength}:${seed}`,
+      plan: { mode, dtype, devices, sequenceLength, seed, graphId: graph.id, topologyId: topology.id },
+      settings: { mode, dtype, devices, sequenceLength, seed },
+      locks: {},
+      objectives: {
+        makespan_seconds: result.metrics.makespanSeconds,
+        peak_memory_bytes: result.metrics.peakMemoryBytes,
+        communication_seconds: result.metrics.communicationSeconds,
+      },
+      constraints: {},
+      evidence: `Graph ${provenanceLabel(graph.provenance)}; result ${provenanceLabel(result.provenance)}`,
+      evaluated: result.metrics.eventCount,
+      durationMs: 0,
+    });
+  }, [devices, dtype, graph, mode, onWorkspaceRun, result, seed, sequenceLength, topology]);
   const [showAll, setShowAll] = useState(false);
   const timelineEvents = showAll ? result.timeline.events : result.timeline.events.slice(0, 28);
 
@@ -190,7 +239,10 @@ export default function SimulationWorkbench() {
           <h2 id="simulation-workbench-title">See the work before it runs.</h2>
           <p className="simulation-workbench-lede">One operator graph accounts for forward, backward, communication, and memory events. The same contract feeds training and serving studies; large calibration searches stay on the Python reference API.</p>
         </div>
-        <button className="ui-button ui-button--outline ui-button--compact" type="button" onClick={downloadRun}>Export run JSON</button>
+        <div className="simulation-workbench-actions">
+          <button className="ui-button ui-button--outline ui-button--compact" type="button" onClick={downloadRun}>Export run JSON</button>
+          {onOpenWorkspace && <button className="ui-button ui-button--primary ui-button--compact" type="button" onClick={onOpenWorkspace}>Save run to workspace</button>}
+        </div>
       </div>
 
       <div className="sim-controls" aria-label="Simulation controls">

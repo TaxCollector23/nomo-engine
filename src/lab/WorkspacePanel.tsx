@@ -254,7 +254,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
                 <article className="workspace-run" key={run.id}>
                   <div className="workspace-run-main"><div className="workspace-run-title"><strong>{run.label}</strong><span>{run.moduleTitle} · {run.mode}</span></div><time dateTime={run.createdAt}>{timestamp(run.createdAt)}</time></div>
                   <div className="workspace-run-metrics">{metricEntries(run).map(([name, value]) => <span key={name}><b>{metricValue(value)}</b>{name.replace(/_/g, " ")}</span>)}</div>
-                  <div className="workspace-run-foot"><span className="workspace-evidence">{run.evidence}</span><span className="workspace-run-buttons"><button type="button" className="lab-link" onClick={() => onRestore(run)}>Load into Lab</button><button type="button" className="lab-link" onClick={() => removeRun(run.id)}>Remove</button></span></div>
+                  <div className="workspace-run-foot"><span className="workspace-evidence">{run.evidence}</span><span className="workspace-run-buttons"><button type="button" className="lab-link" onClick={() => onRestore(run)}>{run.module === "simulation" ? "Open simulation" : "Load into Lab"}</button><button type="button" className="lab-link" onClick={() => removeRun(run.id)}>Remove</button></span></div>
                 </article>
               ))}
             </div>

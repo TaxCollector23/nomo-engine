@@ -91,6 +91,8 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const [ghost, setGhost] = useState<Evaluated | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [simulationCurrent, setSimulationCurrent] = useState<CurrentWorkspaceRun | null>(null);
+  const [simulationRestore, setSimulationRestore] = useState<Record<string, unknown> | null>(null);
   const [axes, setAxes] = useState<Record<DomainId, [string, string]>>({
     llm_training: ["days", "cost_usd"], llm_inference: ["usd_per_mtok", "ms_per_token"], arch_codesign: ["total_cost_usd", "loss"] });
 
@@ -102,6 +104,8 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   }, []);
   const go = (m: ModuleId) => { window.history.replaceState(null, "", `#${m}`); setModule(m); setSelKey(null); setGhost(null); };
   const setMode = (m: Mode) => { setModeRaw(m); setPrefs(MODE_PREFS[m]); };
+  const publishSimulationRun = useCallback((run: CurrentWorkspaceRun) => setSimulationCurrent(run), []);
+  const consumeSimulationRestore = useCallback(() => setSimulationRestore(null), []);
 
   const domain = (["llm_training", "llm_inference", "arch_codesign"] as string[]).includes(module) ? (module as DomainId) : null;
   const key = domain ? JSON.stringify([domain, settings[domain], locks[domain]]) : "";
@@ -311,6 +315,12 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   }, [computed, domain, locks, mode, pack, res, reliability.text, selected, settings]);
 
   const restoreWorkspaceRun = (run: WorkspaceRun) => {
+    if (run.module === "simulation") {
+      setSimulationRestore(run.settings);
+      go("simulation");
+      setWorkspaceOpen(false);
+      return;
+    }
     if (!(run.module === "llm_training" || run.module === "llm_inference" || run.module === "arch_codesign")) return;
     const restoredDomain = run.module as DomainId;
     const restoredMode: Mode = run.mode === "explore" || run.mode === "rigor" ? run.mode : "guided";
@@ -323,6 +333,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
     setGhost(null);
     setWorkspaceOpen(false);
   };
+  const activeWorkspaceCurrent = module === "simulation" ? simulationCurrent : workspaceCurrent;
 
   return (
     <div className="lab">
@@ -378,9 +389,9 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
         </nav>
 
         <main className="lab-main" id="lab-main">
-          {workspaceOpen && <WorkspacePanel current={workspaceCurrent} onClose={() => setWorkspaceOpen(false)} onRestore={restoreWorkspaceRun} />}
+          {workspaceOpen && <WorkspacePanel current={activeWorkspaceCurrent} onClose={() => setWorkspaceOpen(false)} onRestore={restoreWorkspaceRun} />}
           {module === "layers" && <LayerPlanner mode={mode} />}
-          {module === "simulation" && <SimulationWorkbench />}
+          {module === "simulation" && <SimulationWorkbench onWorkspaceRun={publishSimulationRun} onOpenWorkspace={() => setWorkspaceOpen(true)} restore={simulationRestore} onRestoreConsumed={consumeSimulationRestore} />}
           {module === "auditor" && <Auditor />}
           {module === "products" && <ProductStudio mode={mode} />}
           {module === "costs" && <CostTracker />}

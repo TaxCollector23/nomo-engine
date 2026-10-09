@@ -15,6 +15,7 @@
 }
 
 .simulation-workbench-heading { align-items: flex-start; }
+.simulation-workbench-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; flex: none; }
 .simulation-workbench-heading h2 { margin: .2rem 0 .55rem; }
 .simulation-workbench-lede { max-width: 72ch; margin: 0; color: var(--ink-muted, #6f756f); }
 
@@ -80,4 +81,4 @@
 .sim-table-badge.is-measured { background: #eaf5ef; color: #1f5d48; }
 
 @media (max-width: 900px) { .sim-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sim-workbench-grid { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .simulation-workbench-heading, .sim-panel-heading { display: grid; } .sim-controls { align-items: stretch; } .sim-controls label, .sim-control-group { width: 100%; } .sim-controls select, .sim-controls input { width: 100%; } .sim-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sim-metric { min-height: 5.6rem; } .sim-timeline-scale { margin-left: 8rem; } .sim-event-row { grid-template-columns: 7.4rem minmax(13rem, 1fr) 3rem; min-width: 26rem; } }
+@media (max-width: 560px) { .simulation-workbench-heading, .sim-panel-heading { display: grid; } .simulation-workbench-actions { justify-content: start; } .sim-controls { align-items: stretch; } .sim-controls label, .sim-control-group { width: 100%; } .sim-controls select, .sim-controls input { width: 100%; } .sim-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sim-metric { min-height: 5.6rem; } .sim-timeline-scale { margin-left: 8rem; } .sim-event-row { grid-template-columns: 7.4rem minmax(13rem, 1fr) 3rem; min-width: 26rem; } }
