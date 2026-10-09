@@ -21,9 +21,9 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Verification: root build, `npm run verify` (14,337 checks; worst relative difference `4.37e-16`),
   `npm run simulation:golden` (123 checks), root production audit, dashboard typecheck/lint/build, dashboard
   production audit, Python compileall, the CLI-launched 413 smoke path, and 137 planner tests all passed.
-- Engine commits `19fa250`, `e6e6555`, `d43b498`, `d569905`, `974a8c2`, `3e12a66`, `d766474`, `c1d3489`, and `6fd1ea7` are pushed to `main`; landing commit `6a15658` is
-  pushed to `master`. Vercel deployments are READY: mode shell `dpl_Duoot73CBkKitpKww3TkwtQhBk5h`, neuromorphic
-  dashboard `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`.
+- Engine commits through `33cc98d` and landing commits through `fc4325d` are pushed (`main`/`master`). Vercel
+  deployments are READY: mode shell `dpl_5BTQes4WsxCBopPzjUjFiRMHEVpu`, neuromorphic dashboard
+  `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_H3Jj5LqT7EVDz87eZCESJ1BecLAe`.
 
 ## 2026-10-05 simulation-core implementation
 
@@ -158,13 +158,14 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Current deployment evidence
 
-- Mode-shell commit `d766474`: `dpl_Duoot73CBkKitpKww3TkwtQhBk5h`, direct URL
-  `https://nomo-engine-dqsyvnoy3-rangan-alt.vercel.app/`, stable alias
-  `https://frontend-gray-ten-c3tj1luab.vercel.app/`. The stable shell serves `index-B2JztU6w.js`; the deployed Lab
-  bundle contains `Review journal`, `Optional shared platform`, `workspace file exceeds`, and `workspace-note` markers.
+- Mode-shell commit `f46905e`: `dpl_5BTQes4WsxCBopPzjUjFiRMHEVpu`, direct URL
+  `https://nomo-engine-h3rbdoedb-rangan-alt.vercel.app/`, stable alias
+  `https://frontend-gray-ten-c3tj1luab.vercel.app/`. The stable shell serves `index-CC74U8jT.js`; the deployed Lab
+  bundle contains `Review journal`, `Use HTTPS for a non-local platform URL`, `workspace file exceeds`, and
+  `workspace-note` markers.
 - Neuromorphic dashboard commit `19fa250`: `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, stable alias
   `https://nomo-engine-dashboard.vercel.app/`; `/` and `/admin` return HTTP 200.
-- Landing commit `6a15658`: `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`, stable alias
+- Landing commit `fc4325d`: `dpl_H3Jj5LqT7EVDz87eZCESJ1BecLAe`, stable alias
   `https://nomoailanding.vercel.app/`; production deployment is READY and returns HTTP 200.
 
 ## Delivery bundles
