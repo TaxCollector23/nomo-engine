@@ -16,6 +16,8 @@ explicitly Preview/open where the required artifacts or server contract are abse
   parsing, with the same limit available through the `serve --max-body-bytes` CLI flag.
 - Hardened the SQLite platform store's documented `:memory:` mode for threaded HTTP use by enabling cross-thread
   connections and the same busy timeout as file-backed stores.
+- Contained malformed MCP tool inputs as JSON-RPC validation/internal errors so the stdin integration does not leak
+  exceptions into the host process.
 - Modernized the separate neuromorphic dashboard on commit `19fa250`: Next 16.4.0, React 19.3.0, current React
   Three bindings, strict typecheck, real ESLint configuration, and browser state handling without synchronous
   effect resets. Production audit reports zero vulnerabilities; the full development audit still has Tailwind 3 and
@@ -23,7 +25,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Verification: root build, `npm run verify` (14,337 checks; worst relative difference `4.37e-16`),
   `npm run simulation:golden` (123 checks), root production audit, dashboard typecheck/lint/build, dashboard
   production audit, Python compileall, the CLI-launched 413 smoke path, and 138 planner tests all passed.
-- Engine commits through `483c73a` and landing commits through `fc4325d` are pushed (`main`/`master`). Vercel
+- Engine commits through `9f14177` and landing commits through `fc4325d` are pushed (`main`/`master`). Vercel
   deployments are READY: mode shell `dpl_5BTQes4WsxCBopPzjUjFiRMHEVpu`, neuromorphic dashboard
   `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_H3Jj5LqT7EVDz87eZCESJ1BecLAe`.
 
