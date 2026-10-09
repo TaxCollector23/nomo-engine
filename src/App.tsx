@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "./components/ui/button";
-import LabPage from "./lab/LabPage";
+
+const LabPage = lazy(() => import("./lab/LabPage"));
 
 const ENGINE_URL = "https://nomo-engine-dashboard.vercel.app/";
 const ENGINE_REPO_URL = "https://github.com/TaxCollector23/nomo-engine";
@@ -779,7 +780,9 @@ function App() {
     return (
       <div className="site-shell">
         <SiteHeader />
-        <LabPage engineUrl={ENGINE_URL} />
+        <Suspense fallback={<main className="lab lab-loading" aria-live="polite">Loading Nomo Lab…</main>}>
+          <LabPage engineUrl={ENGINE_URL} />
+        </Suspense>
         <SiteFooter />
       </div>
     );

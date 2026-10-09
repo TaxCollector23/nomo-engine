@@ -19,6 +19,7 @@ import ProductStudio from "./ProductStudio";
 import CostTracker from "./CostTracker";
 import SimulationWorkbench, { SimulationEvidencePanel } from "./SimulationWorkbench";
 import TradeoffChart from "./TradeoffChart";
+import WorkspacePanel, { type CurrentWorkspaceRun, type WorkspaceRun } from "./WorkspacePanel";
 import "./lab.css";
 
 type ModuleId = DomainId | "layers" | "simulation" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic";
@@ -89,6 +90,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const [selKey, setSelKey] = useState<string | null>(null);
   const [ghost, setGhost] = useState<Evaluated | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [axes, setAxes] = useState<Record<DomainId, [string, string]>>({
     llm_training: ["days", "cost_usd"], llm_inference: ["usd_per_mtok", "ms_per_token"], arch_codesign: ["total_cost_usd", "loss"] });
 
@@ -287,8 +289,40 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
     ? (calib ? (res?.uncertainty ? { cls: "warn", text: `Hardware calibrated on ${calib.observations} runs; 90% intervals covered ${UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${Math.round(UNCERTAINTY_VALIDATION.actual * UNCERTAINTY_VALIDATION.n!)} / ${UNCERTAINTY_VALIDATION.n}`} held-out runs` }
       : { cls: "ok", text: `Hardware calibrated on ${calib.observations} published runs (held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}%)` })
       : { cls: "warn", text: "Uncalibrated hardware numbers: compare plans, treat absolute values as indicative" })
-    : domain === "llm_inference" ? { cls: "warn", text: "Uncalibrated upper bound; quality effects are assumptions" }
+      : domain === "llm_inference" ? { cls: "warn", text: "Uncalibrated upper bound; quality effects are assumptions" }
       : { cls: "warn", text: "Published scaling law; prices and attention quality effects are assumptions" };
+  const workspaceCurrent = useMemo<CurrentWorkspaceRun | null>(() => {
+    if (!domain || !selected || !pack || !res) return null;
+    return {
+      module: domain,
+      moduleTitle: MODULES.find((candidate) => candidate.id === domain)?.title ?? domain,
+      mode,
+      label: pack.describe(selected.plan),
+      planKey: planKey(selected),
+      plan: selected.plan as unknown as Record<string, unknown>,
+      settings: settings[domain] as unknown as Record<string, unknown>,
+      locks: locks[domain] as unknown as Record<string, unknown>,
+      objectives: selected.metrics.objectives,
+      constraints: selected.metrics.constraints,
+      evidence: reliability.text,
+      evaluated: res.evaluated,
+      durationMs: computed?.ms ?? 0,
+    };
+  }, [computed, domain, locks, mode, pack, res, reliability.text, selected, settings]);
+
+  const restoreWorkspaceRun = (run: WorkspaceRun) => {
+    if (!(run.module === "llm_training" || run.module === "llm_inference" || run.module === "arch_codesign")) return;
+    const restoredDomain = run.module as DomainId;
+    const restoredMode: Mode = run.mode === "explore" || run.mode === "rigor" ? run.mode : "guided";
+    window.history.replaceState(null, "", `#${restoredDomain}`);
+    setModule(restoredDomain);
+    setMode(restoredMode);
+    setSettings((currentSettings) => ({ ...currentSettings, [restoredDomain]: { ...DEFAULT_SETTINGS[restoredDomain], ...run.settings } as Settings }));
+    setLocks((currentLocks) => ({ ...currentLocks, [restoredDomain]: { ...run.locks } as Record<string, Choice> }));
+    setSelKey(run.planKey || null);
+    setGhost(null);
+    setWorkspaceOpen(false);
+  };
 
   return (
     <div className="lab">
@@ -337,10 +371,14 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                 <Toggle label="Provenance of numbers" checked={prefs.provenance} onChange={(v) => setPrefs({ ...prefs, provenance: v })} />
               </div>
             )}
+            <button type="button" className="lab-link" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((open) => !open)}>
+              {workspaceOpen ? "Hide enterprise workspace" : "Open enterprise workspace"}
+            </button>
           </div>
         </nav>
 
         <main className="lab-main" id="lab-main">
+          {workspaceOpen && <WorkspacePanel current={workspaceCurrent} onClose={() => setWorkspaceOpen(false)} onRestore={restoreWorkspaceRun} />}
           {module === "layers" && <LayerPlanner mode={mode} />}
           {module === "simulation" && <SimulationWorkbench />}
           {module === "auditor" && <Auditor />}
