@@ -181,6 +181,9 @@ def test_mcp_json_rpc_tools_and_errors(store):
     missing = handle_mcp_message(service, {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
         "params": {"name": "runs.get", "arguments": {"run_id": "absent"}}})
     assert missing["result"]["isError"] is True
+    malformed = handle_mcp_message(service, {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+        "params": {"name": "projects.create", "arguments": {"name": object()}}})
+    assert malformed["result"]["isError"] is True
 
 
 def test_compare_runs_reports_numeric_and_timeline_deltas(store):

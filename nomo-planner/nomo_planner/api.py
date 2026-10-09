@@ -272,9 +272,11 @@ def handle_mcp_message(service: PlatformService, message: Mapping[str, Any]) -> 
         value = service.dispatch(params["name"], params.get("arguments", {}))
         return {"jsonrpc": "2.0", "id": request_id, "result": {
             "content": [{"type": "text", "text": json.dumps(value, sort_keys=True, ensure_ascii=False)}], "isError": False}}
-    except (KeyError, ValueError, NotFoundError) as exc:
+    except (KeyError, ValueError, NotFoundError, TypeError) as exc:
         return {"jsonrpc": "2.0", "id": request_id, "result": {
             "content": [{"type": "text", "text": str(exc)}], "isError": True}}
+    except Exception:
+        return _rpc_error(request_id, -32603, "internal error")
 
 
 def _rpc_error(request_id: Any, code: int, message: str) -> dict[str, Any]:
