@@ -66,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve = commands.add_parser("serve", help="run the HTTP API")
     serve.add_argument("--host", default="127.0.0.1"); serve.add_argument("--port", type=int, default=8765)
     serve.add_argument("--cors-origin", action="append", default=[], help="allowed browser origin; repeat for multiple origins (or use NOMO_CORS_ORIGINS)")
+    serve.add_argument("--max-body-bytes", type=int, help="maximum JSON request size (or use NOMO_MAX_REQUEST_BODY_BYTES; default 10000000)")
     commands.add_parser("mcp", help="serve MCP-style JSON-RPC over stdin/stdout")
     simulate = commands.add_parser("simulate", help="run a labeled training or serving preview simulation")
     simulate.add_argument("project_id")
@@ -114,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
             })
         elif args.command == "serve":
             configured_origins = args.cors_origin or [origin.strip() for origin in os.environ.get("NOMO_CORS_ORIGINS", "").split(",") if origin.strip()]
-            server = PlatformHTTPServer((args.host, args.port), store, cors_origins=configured_origins)
+            server = PlatformHTTPServer((args.host, args.port), store, cors_origins=configured_origins, max_body_bytes=args.max_body_bytes)
             print(f"Nomo platform API listening at http://{args.host}:{args.port}", file=sys.stderr)
             try: server.serve_forever()
             except KeyboardInterrupt: pass

@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 from nomo_planner.api import PlatformHTTPServer, PlatformService, handle_mcp_message
+from nomo_planner.cli import build_parser
 from nomo_planner.platform import NotFoundError, PlatformStore, render_html_report
 from nomo_planner.sdk import PlatformClient
 
@@ -147,6 +148,11 @@ def test_http_rejects_oversized_json_before_parsing(store):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_cli_exposes_request_body_limit():
+    args = build_parser().parse_args(["serve", "--max-body-bytes", "4096"])
+    assert args.max_body_bytes == 4096
 
 
 def test_mcp_json_rpc_tools_and_errors(store):

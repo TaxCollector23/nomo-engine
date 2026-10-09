@@ -68,7 +68,7 @@ set a bearer token and an explicit origin allowlist before exposing it:
 NOMO_API_TOKEN='use-a-secret-from-your-secret-manager' \
 NOMO_CORS_ORIGINS='https://your-lab.example' \
 NOMO_MAX_REQUEST_BODY_BYTES='10000000' \
-PYTHONPATH=. python -m nomo_planner.cli serve --host 0.0.0.0 --port 8765
+PYTHONPATH=. python -m nomo_planner.cli serve --host 0.0.0.0 --port 8765 --max-body-bytes 10000000
 ```
 
 `GET /healthz` is intentionally public for readiness checks. Other routes
