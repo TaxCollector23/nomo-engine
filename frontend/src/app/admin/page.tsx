@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { api } from "@/lib/api";
 import { apiBase } from "@/lib/telemetry/protocol";
@@ -10,6 +10,21 @@ const STREAMS = ["all", "backend", "access", "users", "runs", "telemetry", "erro
 type Stream = (typeof STREAMS)[number];
 type Tab = "logs" | "users" | "runs" | "stats";
 const TOKEN_KEY = "nomo.admin_token";
+const TOKEN_EVENT = "nomo.admin_token_changed";
+
+function subscribeAdminToken(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(TOKEN_EVENT, onChange);
+  return () => window.removeEventListener(TOKEN_EVENT, onChange);
+}
+
+function readAdminToken(): string {
+  try { return sessionStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; }
+}
+
+function readServerAdminToken(): string {
+  return "";
+}
 
 interface LogRecord { ts: number; time: string; level: string; stream: string; event: string; [k: string]: unknown }
 type Json = Record<string, unknown>;
@@ -33,7 +48,7 @@ function ago(ts: number): string {
 }
 
 export default function AdminPage() {
-  const [token, setToken] = useState("");
+  const token = useSyncExternalStore(subscribeAdminToken, readAdminToken, readServerAdminToken);
   const [draft, setDraft] = useState("");
   const [tab, setTab] = useState<Tab>("logs");
   const [stream, setStream] = useState<Stream>("all");
@@ -45,12 +60,6 @@ export default function AdminPage() {
   const [data, setData] = useState<Json | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const lastTs = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    const t = sessionStorage.getItem(TOKEN_KEY) ?? "";
-    setToken(t);
-    setDraft(t);
-  }, []);
 
   const authed = useCallback(async (path: string): Promise<Response> => {
     const r = await api(path, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
@@ -134,7 +143,7 @@ export default function AdminPage() {
   const signIn = (e: React.FormEvent) => {
     e.preventDefault();
     sessionStorage.setItem(TOKEN_KEY, draft.trim());
-    setToken(draft.trim());
+    window.dispatchEvent(new Event(TOKEN_EVENT));
   };
 
   const box = "border border-neutral-800 bg-black px-2 py-1 text-xs text-neutral-100 focus:border-neutral-300 focus:outline-none";
@@ -174,7 +183,7 @@ export default function AdminPage() {
         <div className="flex items-center gap-3 text-[10px] text-neutral-500">
           <span>{apiBase()}</span>
           <button className="border border-neutral-800 px-2 py-0.5 hover:text-neutral-200"
-            onClick={() => { sessionStorage.removeItem(TOKEN_KEY); setToken(""); }}>sign out</button>
+            onClick={() => { sessionStorage.removeItem(TOKEN_KEY); setDraft(""); window.dispatchEvent(new Event(TOKEN_EVENT)); }}>sign out</button>
         </div>
       </header>
       {err && <div className="mb-3 border border-neutral-600 p-2 text-xs">{err}</div>}

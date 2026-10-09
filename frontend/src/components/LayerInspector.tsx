@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { weightMemory } from "./launcher/LayerLockTable";
 import { formatSI } from "@/lib/pareto";
@@ -14,6 +14,7 @@ import { Button, DOMAIN_META, DomainChip, Term } from "./ui";
 
 const DOM = ["ANN", "SNN", "SYM"] as const;
 const PREC: Record<number, string> = { 16: "INT16", 8: "INT8", 4: "INT4", 2: "INT2", 1: "BINARY" };
+interface EditorState { key: string; dom: string; bits: string; err: string | null }
 
 /** Opened by clicking a layer: what it costs, and a one-click re-run with it locked. */
 export default function LayerInspector({ meta, detail, onAsk }: { meta: RunMeta; detail: DesignDetail | null; onAsk: (q: string) => void }) {
@@ -22,17 +23,20 @@ export default function LayerInspector({ meta, detail, onAsk }: { meta: RunMeta;
   const setInspect = useRunStore((s) => s.setInspect);
   const item = useRunStore((s) => (s.selectedKey ? s.items.get(s.selectedKey) : undefined));
   const names = useRunStore((s) => s.run?.layers ?? []);
-  const [dom, setDom] = useState<string>("");
-  const [bits, setBits] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const name = idx !== null ? names[idx] : undefined;
-  useEffect(() => {
-    const pin = name ? meta.config?.pins?.[name] : undefined;
-    setDom(pin?.domain ?? "");
-    setBits(pin?.w_bits ? String(pin.w_bits) : "");
-    setErr(null);
-  }, [name, meta.config]);
+  const pin = name ? meta.config?.pins?.[name] : undefined;
+  const editorKey = `${name ?? ""}|${pin?.domain ?? ""}|${pin?.w_bits ?? ""}`;
+  const [editor, setEditor] = useState<EditorState | null>(null);
+  const current = editor?.key === editorKey ? editor : {
+    key: editorKey,
+    dom: pin?.domain ?? "",
+    bits: pin?.w_bits ? String(pin.w_bits) : "",
+    err: null,
+  };
+  const dom = current.dom;
+  const bits = current.bits;
+  const err = current.err;
   if (idx === null || !item || !name) return null;
 
   const gene = item.genome.layers[idx]!;
@@ -46,7 +50,7 @@ export default function LayerInspector({ meta, detail, onAsk }: { meta: RunMeta;
   const rerun = async () => {
     if (!meta.config) return;
     setBusy(true);
-    setErr(null);
+    setEditor({ ...current, err: null });
     const pin: PinIn = { domain: (dom || null) as PinIn["domain"], w_bits: bits ? (PREC[Number(bits)] as PinIn["w_bits"]) ?? Number(bits) : null };
     const pins = { ...(meta.config.pins ?? {}) };
     if (pin.domain || pin.w_bits) pins[name] = pin; else delete pins[name];
@@ -54,7 +58,7 @@ export default function LayerInspector({ meta, detail, onAsk }: { meta: RunMeta;
       const id = await startRun({ ...mergeConfig(meta.config, {}), pins, preset: null });
       router.push(`/runs/${id}`);
     } catch (x) {
-      setErr(x instanceof Error ? x.message : String(x));
+      setEditor({ ...current, err: x instanceof Error ? x.message : String(x) });
       setBusy(false);
     }
   };
@@ -87,11 +91,11 @@ export default function LayerInspector({ meta, detail, onAsk }: { meta: RunMeta;
       <div className="mt-4 border-t border-line pt-4">
         <p className="mb-2 text-sm font-bold">Lock this layer and search again</p>
         <div className="grid grid-cols-2 gap-2">
-          <select aria-label="Lock style" value={dom} onChange={(e) => setDom(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-1.5 text-sm">
+          <select aria-label="Lock style" value={dom} onChange={(e) => setEditor({ ...current, dom: e.target.value })} className="rounded-md border border-line bg-panel px-2 py-1.5 text-sm">
             <option value="">Any style</option>
             {(row?.can_be ?? [d]).map((x) => <option key={x} value={x}>{DOMAIN_META[x].word}</option>)}
           </select>
-          <select aria-label="Lock precision" value={bits} onChange={(e) => setBits(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-1.5 text-sm">
+          <select aria-label="Lock precision" value={bits} onChange={(e) => setEditor({ ...current, bits: e.target.value })} className="rounded-md border border-line bg-panel px-2 py-1.5 text-sm">
             <option value="">Any precision</option>
             {bitOptions.map((b) => <option key={b} value={b}>{PREC[b] ?? `${b}-bit`}</option>)}
           </select>

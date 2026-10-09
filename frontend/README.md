@@ -1,4 +1,4 @@
-# Nomo dashboard (Next.js 14 · TypeScript strict · Tailwind · zustand · react-three-fiber)
+# Nomo dashboard (Next.js 16 · React 19 · TypeScript strict · Tailwind · zustand · react-three-fiber)
 
     # production builds target https://nomo-engine.onrender.com (.env.production)
     cp .env.example .env.local        # local dev: NEXT_PUBLIC_NOMO_API=http://127.0.0.1:8765
@@ -26,6 +26,6 @@ Layout (architecture rationale: ../docs/SPEC.md, especially sections 1 and 5)
     src/app/admin/page.tsx              logs (6 streams, filters, live tail, NDJSON), users, runs, stats
     src/lib/api.ts                      client id, fetch wrapper, cold-start wait
 
-Verified: `npm run typecheck` (strict, noUncheckedIndexedAccess) clean and `next build` clean. A live built-in
+Verified: `npm run typecheck`, `npm run lint`, `npm audit --omit=dev` (zero production vulnerabilities), and `next build` clean. A live built-in
 Event-camera/AKD1500 search completed through the hosted dashboard; a complete automated every-control accessibility
 matrix remains an explicit roadmap limitation.

@@ -32,28 +32,28 @@ export function useRunMeta(runId: string): RunMeta {
 }
 
 const cache = new Map<string, DesignDetail>();
+interface DesignState { requestKey: string; detail: DesignDetail | null; error: string | null }
 
 /** Full details (layers, summary, export options) for one design; only once the search has finished. */
 export function useDesign(runId: string, key: string | null, status: RunStatus): { detail: DesignDetail | null; error: string | null } {
-  const [detail, setDetail] = useState<DesignDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const done = status === "completed" || status === "stopped";
+  const requestKey = `${runId}/${key ?? ""}/${done ? "done" : "pending"}`;
+  const cacheKey = key ? `${runId}/${key}` : null;
+  const cached = cacheKey ? cache.get(cacheKey) ?? null : null;
+  const [loaded, setLoaded] = useState<DesignState>({ requestKey: "", detail: null, error: null });
+  const current = loaded.requestKey === requestKey ? loaded : { requestKey, detail: cached, error: null };
   useEffect(() => {
-    setError(null);
-    if (!key || !done) { setDetail(null); return; }
-    const ck = `${runId}/${key}`;
-    if (cache.has(ck)) { setDetail(cache.get(ck)!); return; }
+    if (!key || !done || cached) return;
     let off = false;
-    setDetail(null);
     (async () => {
       const r = await api(`/runs/${runId}/designs/${encodeURIComponent(key)}`);
       if (off) return;
-      if (!r.ok) { setError(`Could not load this design (${r.status}).`); return; }
+      if (!r.ok) { setLoaded({ requestKey, detail: null, error: `Could not load this design (${r.status}).` }); return; }
       const d = (await r.json()) as DesignDetail;
-      cache.set(ck, d);
-      setDetail(d);
-    })().catch(() => !off && setError("Could not reach the server."));
+      cache.set(cacheKey!, d);
+      setLoaded({ requestKey, detail: d, error: null });
+    })().catch(() => !off && setLoaded({ requestKey, detail: null, error: "Could not reach the server." }));
     return () => { off = true; };
-  }, [runId, key, done]);
-  return { detail, error };
+  }, [runId, key, done, cached, cacheKey, requestKey]);
+  return { detail: current.detail, error: current.error };
 }

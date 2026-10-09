@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
 import { readError } from "@/lib/runConfig";
@@ -22,13 +22,12 @@ const WHAT: Record<string, string> = {
 export default function ExportDrawer({ runId, detail, onClose }: { runId: string; detail: DesignDetail | null; onClose: () => void }) {
   const caps = detail?.capabilities;
   const unavailable = caps ? Object.entries(caps).filter(([, capability]) => !capability.available) : [];
-  const [pick, setPick] = useState<Set<string>>(new Set());
+  const selectionKey = caps ? ORDER.map((k) => `${k}:${caps[k]?.available ? "yes" : "no"}`).join("|") : "none";
+  const available = useMemo(() => new Set(ORDER.filter((k) => caps?.[k]?.available)), [caps]);
+  const [selection, setSelection] = useState<{ key: string; values: Set<string> }>({ key: "", values: new Set() });
+  const pick = selection.key === selectionKey ? selection.values : available;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-  useEffect(() => {
-    if (caps) setPick(new Set(ORDER.filter((k) => caps[k]?.available)));
-    setMsg(null);
-  }, [caps]);
 
   const download = async () => {
     if (!detail) return;
@@ -82,7 +81,7 @@ export default function ExportDrawer({ runId, detail, onClose }: { runId: string
           return (
             <label key={k} className={`flex gap-3 rounded-lg border p-3 ${c.available ? "border-line hover:border-line-strong" : "border-dashed border-line opacity-70"}`}>
               <input type="checkbox" className="mt-1 h-4 w-4 accent-[#2F5BEA]" disabled={!c.available || k === "design"} checked={on && c.available}
-                onChange={(e) => setPick((p) => { const n = new Set(p); if (e.target.checked) n.add(k); else n.delete(k); return n; })} />
+                onChange={(e) => setSelection({ key: selectionKey, values: new Set((() => { const n = new Set(pick); if (e.target.checked) n.add(k); else n.delete(k); return n; })())})} />
               <span className="text-sm">
                 <span className="font-bold">{c.label}</span>
                 <span className="block text-ink-muted">{WHAT[k]}</span>
