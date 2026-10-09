@@ -7,6 +7,7 @@ const VERSION = 1;
 const MAX_PROJECTS = 12;
 const MAX_RUNS_PER_PROJECT = 60;
 const MAX_NOTES_PER_PROJECT = 100;
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 type ReviewState = "draft" | "review" | "approved";
 
 type JsonRecord = Record<string, unknown>;
@@ -173,11 +174,12 @@ function timestamp(value: string): string {
 
 function downloadJson(filename: string, value: unknown): void {
   const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  anchor.href = URL.createObjectURL(blob);
+  anchor.href = url;
   anchor.download = filename;
   anchor.click();
-  URL.revokeObjectURL(anchor.href);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 function metricEntries(run: WorkspaceRun): Array<[string, number]> {
@@ -320,6 +322,7 @@ export default function WorkspacePanel({ current, context, onClose, onRestore }:
 
   async function importWorkspace(file: File) {
     try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("workspace file exceeds the 5 MB safety limit");
       const parsed = JSON.parse(await file.text()) as Partial<WorkspaceState>;
       if (!Array.isArray(parsed.projects)) throw new Error("The file has no workspace projects.");
       const imported = loadImportedProjects(parsed.projects);
