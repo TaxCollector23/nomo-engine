@@ -92,6 +92,14 @@ function asRecord(value: unknown): JsonRecord | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : null;
 }
 
+function normalizeRemoteUrl(value: string): string {
+  const parsed = new URL(value.trim());
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("Platform URL must use HTTP or HTTPS.");
+  const localHost = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname);
+  if (parsed.protocol === "http:" && !localHost) throw new Error("Use HTTPS for a non-local platform URL.");
+  return parsed.toString().replace(/\/+$/, "");
+}
+
 function loadState(): WorkspaceState {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE) ?? "null") as Partial<WorkspaceState> | null;
@@ -336,10 +344,10 @@ export default function WorkspacePanel({ current, context, onClose, onRestore }:
   }
 
   async function connectRemote() {
-    const baseUrl = remoteUrl.trim().replace(/\/+$/, "");
-    if (!baseUrl) {
+    let baseUrl = "";
+    try { baseUrl = normalizeRemoteUrl(remoteUrl); } catch (error) {
       setRemoteStatus("error");
-      setRemoteDescription("Enter the platform API URL first.");
+      setRemoteDescription(error instanceof Error ? error.message : "Enter a valid platform API URL first.");
       return;
     }
     setRemoteStatus("checking");
@@ -359,8 +367,12 @@ export default function WorkspacePanel({ current, context, onClose, onRestore }:
 
   async function syncRemote() {
     if (!project || remoteStatus !== "connected") return;
-    const baseUrl = remoteUrl.trim().replace(/\/+$/, "");
-    if (!baseUrl) return;
+    let baseUrl = "";
+    try { baseUrl = normalizeRemoteUrl(remoteUrl); } catch (error) {
+      setRemoteStatus("error");
+      setRemoteDescription(error instanceof Error ? error.message : "The platform URL is invalid.");
+      return;
+    }
     setSyncing(true);
     try {
       let remoteProjectId = project.remoteId;
@@ -489,7 +501,7 @@ export default function WorkspacePanel({ current, context, onClose, onRestore }:
 
           {current ? <div className="workspace-current"><span className="workspace-current-mark" aria-hidden="true">●</span><div><strong>Current Lab result ready to save</strong><span>{current.moduleTitle} · {current.label} · {current.evaluated.toLocaleString("en-US")} plans checked</span></div><span className="workspace-evidence">{current.evidence}</span></div> : <p className="workspace-empty">Open a planner or Simulation module and choose a result to save it here.</p>}
 
-          <div className="workspace-journal"><div className="workspace-runs-head"><div><h3>Review journal</h3><p className="lab-muted">Capture a decision, risk, measurement request, or follow-up from {context.moduleTitle}. Notes are local until you sync them.</p></div><span className="workspace-updated">{project.notes.length} note{project.notes.length === 1 ? "" : "s"}</span></div><div className="workspace-note-compose"><textarea value={noteText} onChange={(event) => setNoteText(event.target.value.slice(0, 2000))} placeholder="What should the team remember about this module?" rows={3} /><div className="workspace-note-compose-foot"><span className="lab-muted">{noteText.length}/2,000 · context: {context.moduleTitle}</span><button type="button" className="ui-button ui-button--outline ui-button--compact" disabled={!noteText.trim()} onClick={addNote}>Add note</button></div></div>{project.notes.length > 0 && <div className="workspace-notes">{project.notes.map((note) => <article className="workspace-note" key={note.id}><div className="workspace-note-head"><span>{note.moduleTitle}</span><time dateTime={note.createdAt}>{timestamp(note.createdAt)}</time></div><p>{note.text}</p><button type="button" className="lab-link" onClick={() => removeNote(note.id)}>Remove local note</button></article>)}</div>}</div>
+          <div className="workspace-journal"><div className="workspace-runs-head"><div><h3>Review journal</h3><p className="lab-muted">Capture a decision, risk, measurement request, or follow-up from {context.moduleTitle}. Notes are local until you sync them.</p></div><span className="workspace-updated">{project.notes.length} note{project.notes.length === 1 ? "" : "s"}</span></div><div className="workspace-note-compose"><textarea aria-label="Workspace review note" value={noteText} onChange={(event) => setNoteText(event.target.value.slice(0, 2000))} placeholder="What should the team remember about this module?" rows={3} /><div className="workspace-note-compose-foot"><span className="lab-muted">{noteText.length}/2,000 · context: {context.moduleTitle}</span><button type="button" className="ui-button ui-button--outline ui-button--compact" disabled={!noteText.trim()} onClick={addNote}>Add note</button></div></div>{project.notes.length > 0 && <div className="workspace-notes">{project.notes.map((note) => <article className="workspace-note" key={note.id}><div className="workspace-note-head"><span>{note.moduleTitle}</span><time dateTime={note.createdAt}>{timestamp(note.createdAt)}</time></div><p>{note.text}</p><button type="button" className="lab-link" onClick={() => removeNote(note.id)}>Remove local note</button></article>)}</div>}</div>
 
           <div className="workspace-runs-head"><div><h3>Decision history</h3><p className="lab-muted">{runs.length ? `${runs.length} saved run${runs.length === 1 ? "" : "s"}; newest first.` : "No saved runs yet."}</p></div>{runs.length > 0 && <span className="workspace-updated">Updated {timestamp(project.updatedAt)}</span>}</div>
           {runs.length > 0 && (
