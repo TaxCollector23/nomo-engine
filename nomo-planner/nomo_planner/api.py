@@ -289,7 +289,8 @@ class PlatformHTTPServer(ThreadingHTTPServer):
         class Handler(BaseHTTPRequestHandler):
             server_version = f"NomoPlatform/{PLATFORM_API_VERSION}"
 
-            def _respond(self, status: int, value: Any, content_type: str = "application/json; charset=utf-8") -> None:
+            def _respond(self, status: int, value: Any, content_type: str = "application/json; charset=utf-8",
+                         extra_headers: Mapping[str, str] | None = None) -> None:
                 body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value, ensure_ascii=False).encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", content_type)
@@ -301,6 +302,8 @@ class PlatformHTTPServer(ThreadingHTTPServer):
                 if origin and ("*" in allowed_origins or origin in allowed_origins):
                     self.send_header("Access-Control-Allow-Origin", "*" if "*" in allowed_origins else origin)
                     self.send_header("Vary", "Origin")
+                for name, value in (extra_headers or {}).items():
+                    self.send_header(name, value)
                 self.end_headers()
                 self.wfile.write(body)
 
@@ -313,11 +316,9 @@ class PlatformHTTPServer(ThreadingHTTPServer):
                 supplied = self.headers.get("Authorization", "")
                 scheme, separator, value = supplied.partition(" ")
                 if separator != " " or scheme.lower() != "bearer" or not hmac.compare_digest(value, auth_token):
-                    self.send_response(401)
-                    self.send_header("Content-Type", "application/json; charset=utf-8")
-                    self.send_header("Cache-Control", "no-store")
-                    self.send_header("WWW-Authenticate", 'Bearer realm="nomo-platform"')
-                    self.end_headers()
+                    self._respond(401, {"error": "authorization required"}, extra_headers={
+                        "WWW-Authenticate": 'Bearer realm="nomo-platform"',
+                    })
                     return False
                 return True
 

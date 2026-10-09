@@ -100,8 +100,11 @@ def test_http_healthz_capabilities_cors_and_bearer_auth(store):
             assert health["version"] == "1.1.0"
 
         with pytest.raises(HTTPError) as unauthorized:
-            urlopen(Request(f"{base}/projects"))
+            urlopen(Request(f"{base}/projects", headers={"Origin": "https://lab.example"}))
         assert unauthorized.value.code == 401
+        assert json.loads(unauthorized.value.read()) == {"error": "authorization required"}
+        assert unauthorized.value.headers["Access-Control-Allow-Origin"] == "https://lab.example"
+        assert unauthorized.value.headers["WWW-Authenticate"] == 'Bearer realm="nomo-platform"'
 
         authorized = Request(f"{base}/projects", headers={"Authorization": "Bearer test-token", "Origin": "https://lab.example"})
         with urlopen(authorized) as response:
