@@ -6,6 +6,7 @@ const REMOTE_TOKEN_STORE = "nomo-enterprise-remote-token-v1";
 const VERSION = 1;
 const MAX_PROJECTS = 12;
 const MAX_RUNS_PER_PROJECT = 60;
+const MAX_NOTES_PER_PROJECT = 100;
 type ReviewState = "draft" | "review" | "approved";
 
 type JsonRecord = Record<string, unknown>;
@@ -39,6 +40,16 @@ interface WorkspaceProject {
   updatedAt: string;
   remoteId?: string;
   runs: WorkspaceRun[];
+  notes: WorkspaceNote[];
+}
+
+interface WorkspaceNote {
+  id: string;
+  createdAt: string;
+  module: string;
+  moduleTitle: string;
+  text: string;
+  remoteId?: string;
 }
 
 interface WorkspaceState {
@@ -64,6 +75,7 @@ export interface CurrentWorkspaceRun {
 
 interface WorkspacePanelProps {
   current: CurrentWorkspaceRun | null;
+  context: { module: string; moduleTitle: string };
   onClose: () => void;
   onRestore: (run: WorkspaceRun) => void;
 }
@@ -95,6 +107,7 @@ function loadState(): WorkspaceState {
       runs: project.runs.filter((run): run is WorkspaceRun => {
         return Boolean(run && typeof run === "object" && typeof run.id === "string" && typeof run.module === "string" && typeof run.label === "string" && typeof run.planKey === "string" && asRecord(run.plan) && asRecord(run.settings) && asRecord(run.locks) && run.objectives && typeof run.objectives === "object");
       }).slice(0, MAX_RUNS_PER_PROJECT).map((run) => ({ ...run, review: validReview(run.review), remoteId: typeof run.remoteId === "string" ? run.remoteId : undefined, remoteReview: run.remoteReview ? validReview(run.remoteReview) : undefined })),
+      notes: loadNotes(project.notes),
     }));
     return { version: VERSION, projects };
   } catch {
@@ -111,6 +124,20 @@ function loadRemoteConfig(): { baseUrl: string; token: string } {
   } catch {
     return { baseUrl: "", token: "" };
   }
+}
+
+function loadNotes(value: unknown): WorkspaceNote[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((note): note is WorkspaceNote => {
+    return Boolean(note && typeof note === "object" && typeof (note as WorkspaceNote).id === "string" && typeof (note as WorkspaceNote).createdAt === "string" && typeof (note as WorkspaceNote).module === "string" && typeof (note as WorkspaceNote).moduleTitle === "string" && typeof (note as WorkspaceNote).text === "string");
+  }).slice(0, MAX_NOTES_PER_PROJECT).map((note) => ({
+    id: note.id,
+    createdAt: note.createdAt,
+    module: note.module,
+    moduleTitle: note.moduleTitle,
+    text: note.text.slice(0, 2000),
+    remoteId: typeof note.remoteId === "string" ? note.remoteId : undefined,
+  }));
 }
 
 function saveRemoteConfig(baseUrl: string, token: string): void {
@@ -168,7 +195,7 @@ function validReview(value: unknown): ReviewState {
   return value === "review" || value === "approved" ? value : "draft";
 }
 
-export default function WorkspacePanel({ current, onClose, onRestore }: WorkspacePanelProps) {
+export default function WorkspacePanel({ current, context, onClose, onRestore }: WorkspacePanelProps) {
   const [state, setState] = useState<WorkspaceState>(() => loadState());
   const [activeId, setActiveId] = useState(() => loadState().projects[0]?.id ?? "");
   const [creating, setCreating] = useState(() => loadState().projects.length === 0);
@@ -179,6 +206,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
   const [syncing, setSyncing] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPurpose, setNewPurpose] = useState("");
+  const [noteText, setNoteText] = useState("");
   const [notice, setNotice] = useState("");
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -202,7 +230,7 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
   function createProject() {
     const name = newName.trim() || "Untitled workspace";
     const now = new Date().toISOString();
-    const next: WorkspaceProject = { id: id("project"), name, purpose: newPurpose.trim(), createdAt: now, updatedAt: now, runs: [] };
+    const next: WorkspaceProject = { id: id("project"), name, purpose: newPurpose.trim(), createdAt: now, updatedAt: now, runs: [], notes: [] };
     setState((previous) => ({ ...previous, projects: [next, ...previous.projects].slice(0, MAX_PROJECTS) }));
     setActiveId(next.id);
     setCreating(false);
@@ -241,6 +269,32 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
         ? { ...candidate, updatedAt: new Date().toISOString(), runs: candidate.runs.filter((run) => run.id !== runId) }
         : candidate),
     }));
+  }
+
+  function addNote() {
+    if (!project) return;
+    const text = noteText.trim().slice(0, 2000);
+    if (!text) return;
+    const note: WorkspaceNote = { id: id("note"), createdAt: new Date().toISOString(), module: context.module, moduleTitle: context.moduleTitle, text };
+    setState((previous) => ({
+      ...previous,
+      projects: previous.projects.map((candidate) => candidate.id === project.id
+        ? { ...candidate, updatedAt: note.createdAt, notes: [note, ...candidate.notes].slice(0, MAX_NOTES_PER_PROJECT) }
+        : candidate),
+    }));
+    setNoteText("");
+    setNotice(`Added a note from ${context.moduleTitle}.`);
+  }
+
+  function removeNote(noteId: string) {
+    if (!project) return;
+    setState((previous) => ({
+      ...previous,
+      projects: previous.projects.map((candidate) => candidate.id === project.id
+        ? { ...candidate, updatedAt: new Date().toISOString(), notes: candidate.notes.filter((note) => note.id !== noteId) }
+        : candidate),
+    }));
+    setNotice("Note removed from this browser workspace. A previously synced copy is not deleted remotely.");
   }
 
   function updateReview(runId: string, review: ReviewState) {
@@ -322,7 +376,9 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
 
       const unsyncedRuns = runs.filter((run) => !run.remoteId);
       const changedRuns = runs.filter((run) => run.remoteId && run.remoteReview !== run.review);
+      const unsyncedNotes = project.notes.filter((note) => !note.remoteId);
       const remoteRunIds = new Map<string, string>();
+      const remoteNoteIds = new Map<string, string>();
       for (const run of unsyncedRuns) {
         const created = await remoteRequest(baseUrl, remoteToken.trim(), `/projects/${encodeURIComponent(remoteProjectId)}/runs`, {
           method: "POST",
@@ -344,6 +400,19 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
           }),
         });
       }
+      for (const note of unsyncedNotes) {
+        const created = await remoteRequest(baseUrl, remoteToken.trim(), `/projects/${encodeURIComponent(remoteProjectId)}/artifacts`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: `workspace-note-${note.id}.json`,
+            content: { schema_version: 1, source: "nomo-browser-workspace", note },
+            media_type: "application/json",
+            metadata: { kind: "workspace-note", local_note_id: note.id, module: note.module },
+          }),
+        }) as { id?: string };
+        if (!created.id) throw new Error(`Platform did not return an artifact id for the note from ${note.moduleTitle}.`);
+        remoteNoteIds.set(note.id, created.id);
+      }
 
       const syncedAt = new Date().toISOString();
       setState((previous) => ({
@@ -353,9 +422,10 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
           remoteId: remoteProjectId,
           updatedAt: syncedAt,
           runs: candidate.runs.map((run) => remoteRunIds.has(run.id) ? { ...run, remoteId: remoteRunIds.get(run.id), remoteReview: run.review } : changedRuns.some((changed) => changed.id === run.id) ? { ...run, remoteReview: run.review } : run),
+          notes: candidate.notes.map((note) => remoteNoteIds.has(note.id) ? { ...note, remoteId: remoteNoteIds.get(note.id) } : note),
         } : candidate),
       }));
-      setRemoteDescription(`Synced ${unsyncedRuns.length} new and ${changedRuns.length} updated run${unsyncedRuns.length + changedRuns.length === 1 ? "" : "s"} to the shared project.`);
+      setRemoteDescription(`Synced ${unsyncedRuns.length} new and ${changedRuns.length} updated run${unsyncedRuns.length + changedRuns.length === 1 ? "" : "s"}, plus ${unsyncedNotes.length} note${unsyncedNotes.length === 1 ? "" : "s"}.`);
       setNotice(`Workspace “${project.name}” is synced to the platform.`);
     } catch (error) {
       setRemoteStatus("error");
@@ -416,6 +486,8 @@ export default function WorkspacePanel({ current, onClose, onRestore }: Workspac
 
           {current ? <div className="workspace-current"><span className="workspace-current-mark" aria-hidden="true">●</span><div><strong>Current Lab result ready to save</strong><span>{current.moduleTitle} · {current.label} · {current.evaluated.toLocaleString("en-US")} plans checked</span></div><span className="workspace-evidence">{current.evidence}</span></div> : <p className="workspace-empty">Open a planner or Simulation module and choose a result to save it here.</p>}
 
+          <div className="workspace-journal"><div className="workspace-runs-head"><div><h3>Review journal</h3><p className="lab-muted">Capture a decision, risk, measurement request, or follow-up from {context.moduleTitle}. Notes are local until you sync them.</p></div><span className="workspace-updated">{project.notes.length} note{project.notes.length === 1 ? "" : "s"}</span></div><div className="workspace-note-compose"><textarea value={noteText} onChange={(event) => setNoteText(event.target.value.slice(0, 2000))} placeholder="What should the team remember about this module?" rows={3} /><div className="workspace-note-compose-foot"><span className="lab-muted">{noteText.length}/2,000 · context: {context.moduleTitle}</span><button type="button" className="ui-button ui-button--outline ui-button--compact" disabled={!noteText.trim()} onClick={addNote}>Add note</button></div></div>{project.notes.length > 0 && <div className="workspace-notes">{project.notes.map((note) => <article className="workspace-note" key={note.id}><div className="workspace-note-head"><span>{note.moduleTitle}</span><time dateTime={note.createdAt}>{timestamp(note.createdAt)}</time></div><p>{note.text}</p><button type="button" className="lab-link" onClick={() => removeNote(note.id)}>Remove local note</button></article>)}</div>}</div>
+
           <div className="workspace-runs-head"><div><h3>Decision history</h3><p className="lab-muted">{runs.length ? `${runs.length} saved run${runs.length === 1 ? "" : "s"}; newest first.` : "No saved runs yet."}</p></div>{runs.length > 0 && <span className="workspace-updated">Updated {timestamp(project.updatedAt)}</span>}</div>
           {runs.length > 0 && (
             <div className="workspace-runs">
@@ -449,5 +521,6 @@ function loadImportedProjects(value: unknown[]): WorkspaceProject[] {
     updatedAt: typeof project.updatedAt === "string" ? project.updatedAt : new Date().toISOString(),
     remoteId: typeof project.remoteId === "string" ? project.remoteId : undefined,
     runs: project.runs.filter((run): run is WorkspaceRun => Boolean(run && typeof run === "object" && typeof run.id === "string" && typeof run.module === "string" && typeof run.label === "string" && typeof run.planKey === "string" && asRecord(run.plan) && asRecord(run.settings) && asRecord(run.locks) && run.objectives && typeof run.objectives === "object")).slice(0, MAX_RUNS_PER_PROJECT).map((run) => ({ ...run, review: validReview(run.review), remoteId: typeof run.remoteId === "string" ? run.remoteId : undefined, remoteReview: run.remoteReview ? validReview(run.remoteReview) : undefined })),
+    notes: loadNotes(project.notes),
   }));
 }

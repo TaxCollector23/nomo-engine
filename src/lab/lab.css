@@ -114,6 +114,14 @@
 .workspace-remote-note { margin: 9px 0 0; color: var(--muted); font-size: 0.78rem; }
 .workspace-remote-note.is-connected { color: var(--good); }
 .workspace-remote-note.is-error { color: var(--signal); }
+.workspace-journal { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--soft-line); }
+.workspace-journal .workspace-runs-head { margin: 0 0 10px; }
+.workspace-note-compose textarea { display: block; box-sizing: border-box; width: 100%; resize: vertical; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-size: 0.86rem; line-height: 1.45; }
+.workspace-note-compose-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 7px; }
+.workspace-notes { display: grid; gap: 8px; margin-top: 12px; }
+.workspace-note { padding: 10px 12px; border: 1px solid var(--soft-line); border-radius: 7px; background: #fbfaf6; }
+.workspace-note-head { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 0.74rem; }
+.workspace-note p { margin: 7px 0; font-size: 0.84rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---- controls ---- */
 .lab-fields { display: flex; flex-direction: column; gap: 16px; }

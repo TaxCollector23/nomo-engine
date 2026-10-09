@@ -389,7 +389,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
         </nav>
 
         <main className="lab-main" id="lab-main">
-          {workspaceOpen && <WorkspacePanel current={activeWorkspaceCurrent} onClose={() => setWorkspaceOpen(false)} onRestore={restoreWorkspaceRun} />}
+          {workspaceOpen && <WorkspacePanel current={activeWorkspaceCurrent} context={{ module, moduleTitle: MODULES.find((candidate) => candidate.id === module)?.title ?? module }} onClose={() => setWorkspaceOpen(false)} onRestore={restoreWorkspaceRun} />}
           {module === "layers" && <LayerPlanner mode={mode} />}
           {module === "simulation" && <SimulationWorkbench onWorkspaceRun={publishSimulationRun} onOpenWorkspace={() => setWorkspaceOpen(true)} restore={simulationRestore} onRestoreConsumed={consumeSimulationRestore} />}
           {module === "auditor" && <Auditor />}
