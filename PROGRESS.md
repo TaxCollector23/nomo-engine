@@ -4,6 +4,26 @@ Current release status: the serious simulation-core implementation and the cited
 implemented, tested, and deployed. Customer evidence, raw serving traces, and the neuromorphic compiler adapter remain
 explicitly Preview/open where the required artifacts or server contract are absent.
 
+## 2026-10-08 enterprise surface and deployment refresh
+
+- Added browser-local Enterprise workspace review state: named projects now hold planner/simulation decisions,
+  locally labelled Draft/Needs review/Approved statuses, and a module-linked journal for decisions, risks, and
+  measurement requests. JSON export/import remains portable; remote sync is still explicit and session-token-only.
+- Added shared-platform synchronization for new runs, review metadata, and journal notes as JSON artifacts. The
+  dependency-free platform HTTP boundary now exposes bearer-authenticated capabilities, allowlisted CORS, health
+  checks, PATCH persistence, and browser-readable authenticated errors; it still does not claim tenancy, backups, or
+  permissions beyond deployment configuration.
+- Modernized the separate neuromorphic dashboard on commit `19fa250`: Next 16.4.0, React 19.3.0, current React
+  Three bindings, strict typecheck, real ESLint configuration, and browser state handling without synchronous
+  effect resets. Production audit reports zero vulnerabilities; the full development audit still has Tailwind 3 and
+  Next ESLint-plugin advisories whose fixes require a Tailwind major migration.
+- Verification: root build, `npm run verify` (14,337 checks; worst relative difference `4.37e-16`),
+  `npm run simulation:golden` (123 checks), root production audit, dashboard typecheck/lint/build, dashboard
+  production audit, Python compileall, and 135 planner tests all passed.
+- Engine commits `19fa250`, `e6e6555`, `d43b498`, and `d569905` are pushed to `main`; landing commit `6a15658` is
+  pushed to `master`. Vercel deployments are READY: mode shell `dpl_2zXDvtSHiUyr78z2EkauHMfEzvSk`, neuromorphic
+  dashboard `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`.
+
 ## 2026-10-05 simulation-core implementation
 
 - Added a Python-first serious-simulation layer: operator graph, roofline efficiency curves, topology/collectives,
@@ -85,7 +105,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 134 tests passed in nomo-planner.
+- Python: 135 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,337 checks, worst relative difference 4.37e-16; the simulation
@@ -134,6 +154,17 @@ explicitly Preview/open where the required artifacts or server contract are abse
   production deployment remains intact. The untracked research/pilot directory was preserved and not deployed.
 - Responsive layout code and Worker packaging are present; all 11 mode routes were directly checked at 1440×900 and
   390×844 with no document overflow or console errors/warnings.
+
+## Current deployment evidence
+
+- Mode-shell commit `d569905`: `dpl_2zXDvtSHiUyr78z2EkauHMfEzvSk`, direct URL
+  `https://nomo-engine-6f8xam7te-rangan-alt.vercel.app/`, stable alias
+  `https://frontend-gray-ten-c3tj1luab.vercel.app/`. The stable shell serves `index-B11IWhz6.js`; the deployed Lab
+  bundle contains `Review journal`, `Optional shared platform`, `Approved locally`, and `workspace-note` markers.
+- Neuromorphic dashboard commit `19fa250`: `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, stable alias
+  `https://nomo-engine-dashboard.vercel.app/`; `/` and `/admin` return HTTP 200.
+- Landing commit `6a15658`: `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`, stable alias
+  `https://nomoailanding.vercel.app/`; production deployment is READY and returns HTTP 200.
 
 ## Delivery bundles
 

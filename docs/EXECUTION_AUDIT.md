@@ -70,6 +70,8 @@ is smoke-tested. Large searches remain server-side because their input and sampl
 
 | Date | Check | Result | Notes |
 |---|---|---|---|
+| 2026-10-08 | Enterprise workspace, dashboard hardening, and API boundary refresh | PASS / PREVIEW | Browser-local workspace review journal, explicit platform sync for runs/review metadata/notes, browser-readable bearer errors, Next 16.4.0 + React 19.3.0 dashboard, and SPA shell cache policy are implemented. Root build, 14,337 parity checks, 123 simulation goldens, 135 Python tests, dashboard typecheck/lint/build, and production audits passed. Full development audit still reports Tailwind 3 / Next ESLint-plugin advisories that require a major Tailwind migration. |
+| 2026-10-08 | Current production deployments | PASS | Engine commits `19fa250`, `e6e6555`, `d43b498`, and `d569905` are pushed; mode shell `dpl_2zXDvtSHiUyr78z2EkauHMfEzvSk` and dashboard `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh` are READY. Landing commit `6a15658` is pushed and deployment `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK` is READY. Stable mode-shell and dashboard URLs return HTTP 200, and the deployed Lab bundle contains the new workspace markers. |
 | 2026-10-05 | Baseline audit | STARTED | Existing v5 surface is mostly closed-form; this prompt requires a new simulation layer. |
 | 2026-10-05 | Python simulator suite | PASS | 134 tests passed from `nomo-planner`; product, serving, calibration, artifact-ingestion, core, platform, export, regression, auditor round-trip, repaired-search, source-freshness, and cost-boundary coverage are green. |
 | 2026-10-05 | Browser simulation suite | PASS | `npm run build`; `npm run verify`; `npm run simulation:golden`; GraphIR and Python-core fixtures pass. |
