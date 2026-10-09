@@ -13,15 +13,15 @@ explicitly Preview/open where the required artifacts or server contract are abse
   dependency-free platform HTTP boundary now exposes bearer-authenticated capabilities, allowlisted CORS, health
   checks, PATCH persistence, and browser-readable authenticated errors; it still does not claim tenancy, backups, or
   permissions beyond deployment configuration. Request bodies are bounded and oversized JSON returns HTTP 413 before
-  parsing.
+  parsing, with the same limit available through the `serve --max-body-bytes` CLI flag.
 - Modernized the separate neuromorphic dashboard on commit `19fa250`: Next 16.4.0, React 19.3.0, current React
   Three bindings, strict typecheck, real ESLint configuration, and browser state handling without synchronous
   effect resets. Production audit reports zero vulnerabilities; the full development audit still has Tailwind 3 and
   Next ESLint-plugin advisories whose fixes require a Tailwind major migration.
 - Verification: root build, `npm run verify` (14,337 checks; worst relative difference `4.37e-16`),
   `npm run simulation:golden` (123 checks), root production audit, dashboard typecheck/lint/build, dashboard
-  production audit, Python compileall, and 136 planner tests all passed.
-- Engine commits `19fa250`, `e6e6555`, `d43b498`, `d569905`, `974a8c2`, `3e12a66`, and `d766474` are pushed to `main`; landing commit `6a15658` is
+  production audit, Python compileall, the CLI-launched 413 smoke path, and 137 planner tests all passed.
+- Engine commits `19fa250`, `e6e6555`, `d43b498`, `d569905`, `974a8c2`, `3e12a66`, `d766474`, `c1d3489`, and `6fd1ea7` are pushed to `main`; landing commit `6a15658` is
   pushed to `master`. Vercel deployments are READY: mode shell `dpl_Duoot73CBkKitpKww3TkwtQhBk5h`, neuromorphic
   dashboard `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`.
 
@@ -106,7 +106,7 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Verification evidence
 
-- Python: 136 tests passed in nomo-planner.
+- Python: 137 tests passed in nomo-planner.
 - TypeScript production build: passed.
 - Neuromorphic Next.js dashboard: typecheck and production build passed.
 - Python/TypeScript parity: npm run verify passed, 14,337 checks, worst relative difference 4.37e-16; the simulation
