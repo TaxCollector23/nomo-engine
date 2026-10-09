@@ -21,8 +21,8 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Verification: root build, `npm run verify` (14,337 checks; worst relative difference `4.37e-16`),
   `npm run simulation:golden` (123 checks), root production audit, dashboard typecheck/lint/build, dashboard
   production audit, Python compileall, and 136 planner tests all passed.
-- Engine commits `19fa250`, `e6e6555`, `d43b498`, `d569905`, and `3e12a66` are pushed to `main`; landing commit `6a15658` is
-  pushed to `master`. Vercel deployments are READY: mode shell `dpl_2zXDvtSHiUyr78z2EkauHMfEzvSk`, neuromorphic
+- Engine commits `19fa250`, `e6e6555`, `d43b498`, `d569905`, `974a8c2`, `3e12a66`, and `d766474` are pushed to `main`; landing commit `6a15658` is
+  pushed to `master`. Vercel deployments are READY: mode shell `dpl_Duoot73CBkKitpKww3TkwtQhBk5h`, neuromorphic
   dashboard `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, and landing `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`.
 
 ## 2026-10-05 simulation-core implementation
@@ -158,10 +158,10 @@ explicitly Preview/open where the required artifacts or server contract are abse
 
 ## Current deployment evidence
 
-- Mode-shell commit `d569905`: `dpl_2zXDvtSHiUyr78z2EkauHMfEzvSk`, direct URL
-  `https://nomo-engine-6f8xam7te-rangan-alt.vercel.app/`, stable alias
-  `https://frontend-gray-ten-c3tj1luab.vercel.app/`. The stable shell serves `index-B11IWhz6.js`; the deployed Lab
-  bundle contains `Review journal`, `Optional shared platform`, `Approved locally`, and `workspace-note` markers.
+- Mode-shell commit `d766474`: `dpl_Duoot73CBkKitpKww3TkwtQhBk5h`, direct URL
+  `https://nomo-engine-dqsyvnoy3-rangan-alt.vercel.app/`, stable alias
+  `https://frontend-gray-ten-c3tj1luab.vercel.app/`. The stable shell serves `index-B2JztU6w.js`; the deployed Lab
+  bundle contains `Review journal`, `Optional shared platform`, `workspace file exceeds`, and `workspace-note` markers.
 - Neuromorphic dashboard commit `19fa250`: `dpl_8qgaHU8QGF3ro9pAsWiA8Vds5XSh`, stable alias
   `https://nomo-engine-dashboard.vercel.app/`; `/` and `/admin` return HTTP 200.
 - Landing commit `6a15658`: `dpl_2DPpmWpJnJsXKwcbdAUPro1a3SNK`, stable alias
