@@ -21,6 +21,13 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Verification: root build passed; `npm run verify` passed 14,349 checks (worst relative difference `4.37e-16`);
   `npm run simulation:golden` passed 123 checks; landing build passed; `PYTHONPATH=. ../.venv/bin/python -m pytest -q tests`
   passed 138 tests.
+- Release: merged engine PR #4 as `1505637` and deployed Vercel production deployment `dpl_EduRfnT1Cs87Kkj6c7m8erQAEBoP`.
+  The unique deployment is `https://nomo-engine-61bcl7iv5-rangan-alt.vercel.app/`; the stable alias
+  `https://frontend-gray-ten-c3tj1luab.vercel.app/` was explicitly reassigned after a stale CDN shell check. The
+  stable root now serves `index-DzWMNivJ.js` and its lazy Lab chunk contains the Research lab markers. Root and
+  `#research` both returned HTTP 200.
+- Interactive browser smoke was not available because macOS Accessibility and Screen Recording permissions were not
+  granted to the computer-use surface; build, local HTTP, served-asset, and Vercel checks passed instead.
 - Remaining boundary: results are still user-recorded observations until raw traces, environment manifests, task-accuracy
   evaluation, and target-hardware evidence are attached. The registry is local-browser state until a hosted, authenticated,
   multi-user study service is built.
