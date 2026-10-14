@@ -4,6 +4,22 @@ Current release status: the serious simulation-core implementation and the cited
 implemented, tested, and deployed. Customer evidence, raw serving traces, and the neuromorphic compiler adapter remain
 explicitly Preview/open where the required artifacts or server contract are absent.
 
+## 2026-10-14 chip design workbench repair
+
+- Replaced the old single-screen chip calculator in the browser Lab with a four-stage workbench: design brief and
+  acceptance limits, architecture plus logical tile map, measurement calibration, and decision review.
+- Added explicit compute, memory, interconnect, and end-to-end calibration rows with CSV import/export, source/date
+  fields, path-specific fitting, residual reporting, and conservative fallbacks for paths without measurements.
+- Added constraint gates for power, die area, latency, throughput, cost per batch, and yield; the review surface shows
+  the critical path and compares transparent compute-forward, memory-forward, and edge-efficient scenarios.
+- Added browser-local persistence and versioned JSON decision-record export. The UI states that these are early design
+  estimates until PDK, synthesis, package, thermal, yield, or hardware evidence is attached.
+- Removed the obsolete chip-tab `evaluateChip` UI path so the product no longer presents a few free-form fields as the
+  primary chip-design experience.
+- Verification: production build passed; `npm run verify` passed 14,341 checks (worst relative difference
+  `4.37e-16`); `npm run simulation:golden` passed 123 checks; landing-page production build passed. The Python test
+  suite was not rerun in this checkout because `pytest` is not installed; no Python reference code changed.
+
 ## 2026-10-08 enterprise surface and deployment refresh
 
 - Added browser-local Enterprise workspace review state: named projects now hold planner/simulation decisions,
