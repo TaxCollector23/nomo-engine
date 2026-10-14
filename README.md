@@ -154,6 +154,15 @@ date supplied by the user, and leaves missing paths at explicit planning assumpt
 versioned JSON decision record or calibration CSV; its area, power, timing, yield, cost, and topology results remain early
 design estimates until PDK, synthesis, package, thermal, or hardware evidence is attached.
 
+The `Research lab` module turns that planning surface into a reproducible study workspace. A browser-local registry holds
+the research question, hypothesis, baseline, candidate, workload, hardware, measurement method, seed, repetitions, and
+limitations; a readiness checklist makes the protocol visible before preregistration. Nomo generates a paired baseline /
+candidate run matrix, keeps planned, measured, and excluded rows distinct, calculates a transparent comparison only from
+recorded values, and preserves a source field for each measured row. Each study exports a versioned JSON manifest, a
+Markdown preregistration draft, and a CSV run table. Protocols lock after preregistration or execution, and every export
+states that it is a local research artifact rather than a signed registration, calibrated hardware result, or task-accuracy
+claim.
+
 The gate reports in [docs/](docs/) record what is built and what remains partial. The current surface specification,
 deployment guide, and observability guide are [`docs/SPEC.md`](docs/SPEC.md), [`docs/DEPLOY.md`](docs/DEPLOY.md), and
 [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). The strict line-by-line audit is in

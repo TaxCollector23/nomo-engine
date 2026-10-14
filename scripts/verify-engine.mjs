@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}chipDesign"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration";`));
+  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}chipDesign"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration"; export * from "${src}research";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
@@ -127,6 +127,42 @@ productClose(designFit.calibration.computeEfficiency, 0.5, "chip workbench compu
 if (E.buildChipDesignVariants(E.DEFAULT_CHIP_DESIGN).length !== 4) fail("chip workbench scenario count");
 checks += 1;
 console.log("ok  chip workbench: constraint gate, calibration fit, and scenario set");
+
+const researchStudy = E.createResearchStudy("2026-10-14T00:00:00.000Z");
+researchStudy.protocol = {
+  ...researchStudy.protocol,
+  title: "Paired latency pilot",
+  question: "Does the candidate lower end-to-end latency on the fixed trace?",
+  hypothesis: "The candidate will lower latency by at least ten percent.",
+  primaryMetric: "latency (ms)",
+  successThreshold: 10,
+  baseline: "control",
+  candidate: "candidate",
+  model: "fixture-model@abc123",
+  workload: "fixed-trace-v1",
+  hardware: "fixture-device / runtime 1",
+  method: "five warmup runs, then paired measurements",
+  seed: 7,
+  repetitions: 2,
+  limitations: "Synthetic verification rows; not a hardware claim.",
+};
+researchStudy.checklist = Object.fromEntries(E.CHECKLIST.map((item) => [item.id, true]));
+researchStudy.runs = E.buildRunMatrix(researchStudy);
+if (researchStudy.runs.length !== 4 || researchStudy.runs[0].seed !== researchStudy.runs[1].seed) fail("research paired run matrix");
+const researchPreview = E.summarizeResearchRuns(researchStudy);
+if (researchPreview.evidence !== "preview" || researchPreview.improvementPct !== null) fail("research empty rows remain preview");
+researchStudy.runs = researchStudy.runs.map((run, index) => ({
+  ...run,
+  status: "measured",
+  metricValue: run.condition === "baseline" ? (index === 0 ? 10 : 12) : (index === 1 ? 8 : 9),
+  source: "fixture-run",
+}));
+const researchMeasured = E.summarizeResearchRuns(researchStudy);
+if (researchMeasured.pairedCount !== 2 || researchMeasured.thresholdMet !== true) fail("research measured comparison");
+if (!E.studyMarkdown(researchStudy).includes("# Paired latency pilot") || !E.studyCsv(researchStudy).startsWith("study_id,")) fail("research exports");
+if (E.studyManifest(researchStudy).schemaVersion !== "nomo-research-study/1") fail("research manifest schema");
+checks += 8;
+console.log("ok  research lab: paired protocol, preview boundary, measured comparison, and exports");
 
 for (const fixture of auditorGolden) {
   const parsed = fixture.format === "deepspeed-json" ? E.parseDeepSpeedConfig(fixture.input) : fixture.format === "vllm" ? E.parseVllmCommand(fixture.input) : E.parseMegatronCommand(fixture.input);

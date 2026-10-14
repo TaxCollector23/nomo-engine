@@ -4,6 +4,27 @@ Current release status: the serious simulation-core implementation and the cited
 implemented, tested, and deployed. Customer evidence, raw serving traces, and the neuromorphic compiler adapter remain
 explicitly Preview/open where the required artifacts or server contract are absent.
 
+## 2026-10-14 reproducible research lab
+
+- Added a browser-local **Research lab** module so Nomo can carry an experiment from question to reviewable evidence instead
+  of stopping at a recommendation or calculator result.
+- Added a versioned study model with a research question, hypothesis, baseline, candidate, primary metric and direction,
+  threshold, model/workload/hardware context, measurement method, seed, repetitions, notes, and limitations.
+- Added an explicit readiness checklist and protocol boundary. Preregistration is blocked until the required fields and
+  acknowledgements are complete; after preregistration or execution, protocol edits are locked until the study returns to Draft.
+- Added paired baseline/candidate run generation, source/artifact fields, primary metric plus energy/latency capture,
+  planned/measured/excluded states, mean/median/coverage summaries, and a no-result Preview state that never treats missing
+  measurements as zero.
+- Added versioned JSON manifest, Markdown preregistration draft, and CSV run-table exports with explicit local-only and
+  non-signed-artifact language. Import is bounded to 5 MB and the local registry holds up to 20 studies.
+- Added pure-model verification for paired seeds, preview boundaries, threshold comparisons, and all three export formats.
+- Verification: root build passed; `npm run verify` passed 14,349 checks (worst relative difference `4.37e-16`);
+  `npm run simulation:golden` passed 123 checks; landing build passed; `PYTHONPATH=. ../.venv/bin/python -m pytest -q tests`
+  passed 138 tests.
+- Remaining boundary: results are still user-recorded observations until raw traces, environment manifests, task-accuracy
+  evaluation, and target-hardware evidence are attached. The registry is local-browser state until a hosted, authenticated,
+  multi-user study service is built.
+
 ## 2026-10-14 chip design workbench repair
 
 - Replaced the old single-screen chip calculator in the browser Lab with a four-stage workbench: design brief and
