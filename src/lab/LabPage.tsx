@@ -17,12 +17,13 @@ import LayerPlanner from "./LayerPlanner";
 import Methods, { Equations } from "./Methods";
 import ProductStudio from "./ProductStudio";
 import CostTracker from "./CostTracker";
+import ResearchLab from "./ResearchLab";
 import SimulationWorkbench, { SimulationEvidencePanel } from "./SimulationWorkbench";
 import TradeoffChart from "./TradeoffChart";
 import WorkspacePanel, { type CurrentWorkspaceRun, type WorkspaceRun } from "./WorkspacePanel";
 import "./lab.css";
 
-type ModuleId = DomainId | "layers" | "simulation" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic";
+type ModuleId = DomainId | "layers" | "simulation" | "auditor" | "products" | "costs" | "evidence" | "methods" | "neuromorphic" | "research";
 type Mode = "guided" | "explore" | "rigor";
 interface Prefs { animate: boolean; anatomy: boolean; whatif: boolean; table: boolean; equations: boolean; provenance: boolean }
 
@@ -44,6 +45,7 @@ const MODULES: { id: ModuleId; n: string; title: string; blurb: string }[] = [
   { id: "costs", n: "09", title: "Cost tracker", blurb: "Cited compute and token prices" },
   { id: "evidence", n: "10", title: "Evidence", blurb: "22 published runs, predicted" },
   { id: "methods", n: "11", title: "Methods", blurb: "Equations, verification, references" },
+  { id: "research", n: "12", title: "Research lab", blurb: "Protocols, runs, results, exports" },
 ];
 
 const QUESTIONS: Record<DomainId, string> = {
@@ -397,6 +399,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
           {module === "costs" && <CostTracker />}
           {module === "evidence" && <><Evidence /><SimulationEvidencePanel /></>}
           {module === "methods" && <Methods />}
+          {module === "research" && <ResearchLab />}
           {module === "neuromorphic" && (
             <div className="lab-neuro">
               <p className="section-kicker">Neuromorphic chips</p>
