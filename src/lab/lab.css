@@ -132,6 +132,99 @@
 .product-check { flex-direction: row; align-items: center; gap: 8px; padding-top: 8px; }
 .product-check input { width: auto; }
 .product-result { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--soft-line); }
+
+/* ---- chip design workbench ---- */
+.product-studio-shell.is-chip { width: 100%; max-width: none; align-items: stretch; }
+.chip-workbench { display: grid; gap: 16px; width: 100%; }
+.chip-workbench-head { display: flex; justify-content: space-between; gap: 24px; align-items: start; padding: 16px 0 18px; border-bottom: 1px solid var(--soft-line); }
+.chip-workbench-head h3 { margin: 4px 0 7px; font-size: clamp(1.3rem, 2.1vw, 1.8rem); letter-spacing: -0.02em; }
+.chip-workbench-lede { max-width: 74ch; margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+.chip-workbench-actions, .chip-calibration-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.chip-status { display: inline-flex; align-items: center; min-height: 26px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+.chip-status--assumption { color: #8a5a12; border-color: #d9c28f; background: #fff8eb; }
+.chip-status--partial { color: #8a5a12; border-color: #d9c28f; background: #fff8eb; }
+.chip-status--calibrated { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); background: #f1f8f2; }
+.chip-tabs { display: flex; flex-wrap: wrap; gap: 3px; border-bottom: 1px solid var(--soft-line); }
+.chip-tabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); padding: 10px 13px 9px; font: inherit; font-size: 0.83rem; cursor: pointer; }
+.chip-tabs button:hover, .chip-tabs button.is-on { color: var(--ink); border-bottom-color: var(--ink); }
+.chip-notice { margin: 0; padding: 9px 11px; border-left: 3px solid var(--signal); background: #fbf4ef; color: var(--muted); font-size: 0.82rem; }
+.chip-guided-note { margin: 0; color: var(--muted); font-size: 0.78rem; }
+.chip-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.chip-section-grid--wide { grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr); }
+.chip-architecture-side { display: grid; gap: 16px; min-width: 0; }
+.chip-panel { min-width: 0; padding: 18px 20px; border: 1px solid var(--soft-line); border-radius: 10px; background: var(--card); }
+.chip-panel-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 14px; }
+.chip-panel-head h4 { margin: 3px 0 0; font-size: 1.02rem; letter-spacing: -0.01em; }
+.chip-panel-copy { max-width: 70ch; margin: 6px 0 0; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.chip-panel-code { color: var(--muted); font: 0.7rem var(--mono); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.chip-evidence-select { display: grid; gap: 3px; min-width: 118px; color: var(--muted); font-size: 0.68rem; text-align: right; }
+.chip-evidence-select select { min-width: 118px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); font: inherit; font-size: 0.76rem; }
+.chip-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.chip-field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; grid-column: 1 / -1; }
+.chip-field { display: grid; gap: 5px; color: var(--ink); font-size: 0.8rem; }
+.chip-field > span { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.chip-field b { font-weight: 500; }
+.chip-field small { color: var(--muted); font-size: 0.7rem; text-align: right; }
+.chip-field input, .chip-field select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-variant-numeric: tabular-nums; }
+.chip-field-note { margin: 14px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.chip-tile-map { display: grid; grid-template-columns: repeat(8, minmax(34px, 1fr)); gap: 5px; }
+.chip-tile-map button { min-height: 47px; display: grid; align-content: center; gap: 2px; border: 1px solid var(--soft-line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; font: inherit; }
+.chip-tile-map button:hover, .chip-tile-map button.is-selected { border-color: var(--ink); box-shadow: inset 0 -3px 0 var(--signal); }
+.chip-tile-map b { font: 0.68rem var(--mono); }
+.chip-tile-map small { color: var(--muted); font-size: 0.62rem; }
+.chip-tile-detail { margin: 12px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.chip-hidden-file { display: none; }
+.chip-calibration-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 16px 0; }
+.chip-metric { min-width: 0; min-height: 78px; display: grid; align-content: center; gap: 3px; padding: 11px 12px; border: 1px solid var(--soft-line); border-radius: 8px; background: #fff; }
+.chip-metric span, .chip-metric small { color: var(--muted); font-size: 0.72rem; line-height: 1.25; }
+.chip-metric strong { overflow: hidden; color: var(--ink); font-size: 1.06rem; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip-metric.is-good { border-color: color-mix(in srgb, var(--good) 35%, var(--soft-line)); }
+.chip-metric.is-good strong { color: var(--good); }
+.chip-metric.is-warn { border-color: #d9c28f; background: #fffaf0; }
+.chip-metric.is-warn strong { color: #8a5a12; }
+.chip-empty { display: grid; gap: 5px; padding: 18px; border: 1px dashed var(--line); color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.chip-empty b { color: var(--ink); }
+.chip-table-wrap { overflow-x: auto; }
+.chip-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.chip-table th, .chip-table td { padding: 8px 9px 8px 0; border-bottom: 1px solid #eeeae2; text-align: left; vertical-align: middle; }
+.chip-table th { color: var(--muted); font-size: 0.7rem; font-weight: 500; white-space: nowrap; }
+.chip-table td input, .chip-table td select { width: 100%; min-width: 82px; box-sizing: border-box; padding: 6px 7px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); font: inherit; }
+.chip-table td:first-child input { min-width: 130px; }
+.chip-table td:nth-child(6) input { min-width: 150px; }
+.chip-remove { border: 0; background: transparent; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+.chip-remove:hover { color: var(--signal); }
+.chip-review { display: grid; gap: 16px; }
+.chip-review-hero { display: flex; justify-content: space-between; gap: 20px; align-items: start; padding: 18px 20px; border: 1px solid var(--ink); border-radius: 10px; background: #fff; }
+.chip-review-hero h4 { margin: 3px 0 7px; font-size: 1.08rem; }
+.chip-feasibility { display: grid; gap: 3px; flex: none; min-width: 170px; padding: 10px 12px; border-left: 3px solid #d9c28f; background: #fff8eb; color: #8a5a12; font-size: 0.78rem; }
+.chip-feasibility span { color: var(--muted); }
+.chip-feasibility.is-pass { border-left-color: var(--good); background: #f1f8f2; color: var(--good); }
+.chip-metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+.chip-review-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 16px; align-items: start; }
+.chip-constraint-list { display: grid; gap: 2px; }
+.chip-constraint { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid #eeeae2; }
+.chip-constraint div { display: grid; gap: 2px; }
+.chip-constraint div b { font-size: 0.8rem; font-weight: 500; }
+.chip-constraint div span, .chip-constraint small { color: var(--muted); font-size: 0.7rem; }
+.chip-constraint strong { font-size: 0.8rem; white-space: nowrap; }
+.chip-constraint strong.is-pass, .chip-pass { color: var(--good); }
+.chip-constraint strong.is-fail, .chip-fail { color: var(--signal); }
+.chip-bar-list { display: grid; gap: 10px; }
+.chip-bar-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) 58px; gap: 8px; align-items: center; color: var(--muted); font-size: 0.75rem; }
+.chip-bar-row > div { height: 9px; overflow: hidden; border-radius: 5px; background: #eeeae2; }
+.chip-bar-row i { display: block; height: 100%; border-radius: 5px; background: var(--ink); }
+.chip-bar-row b { color: var(--ink); font-size: 0.72rem; text-align: right; }
+.chip-notes { margin: 16px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.chip-notes li + li { margin-top: 6px; }
+.chip-variant-panel { min-width: 0; }
+.chip-variant-table { min-width: 820px; }
+.chip-variant-table tbody tr { cursor: pointer; }
+.chip-variant-table tbody tr:hover, .chip-variant-table tbody tr.is-selected { background: #fff; }
+.chip-variant-table tbody tr.is-selected { box-shadow: inset 3px 0 0 var(--signal); }
+.chip-variant-table td:first-child { min-width: 210px; }
+.chip-variant-table td:first-child b, .chip-variant-table td:first-child small { display: block; }
+.chip-variant-table td:first-child small { margin-top: 3px; color: var(--muted); font-size: 0.68rem; line-height: 1.35; }
+.chip-error { padding: 10px 12px; border-left: 3px solid var(--signal); background: #fbf4ef; color: var(--signal); font-size: 0.82rem; }
 .lab-field-label { font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; }
 .lab-field-hint { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
 .lab-select { width: 100%; font: inherit; font-size: 0.9rem; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
@@ -432,4 +525,25 @@ pre.lab-note { max-width: 100%; box-sizing: border-box; overflow: auto; white-sp
 @media (prefers-reduced-motion: reduce) {
   .lab-gpu, .lab-model-stack span, .lab-modal-backdrop { animation: none; }
   .lab-ev-pt, .lab-bar-seg, .lab-sens-bar i, .lab-whatifs button { transition: none; }
+}
+
+@media (max-width: 980px) {
+  .chip-section-grid, .chip-section-grid--wide, .chip-review-grid { grid-template-columns: 1fr; }
+  .chip-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .chip-workbench-head, .chip-review-hero { display: grid; }
+  .chip-workbench-actions, .chip-calibration-actions { justify-content: start; }
+  .chip-fields, .chip-calibration-summary { grid-template-columns: 1fr 1fr; }
+  .chip-metrics-grid { grid-template-columns: 1fr 1fr; }
+  .chip-field-pair { grid-column: 1 / -1; }
+  .chip-evidence-select { text-align: left; }
+  .chip-tile-map { grid-template-columns: repeat(4, minmax(40px, 1fr)); }
+}
+
+@media (max-width: 430px) {
+  .chip-fields, .chip-calibration-summary, .chip-metrics-grid { grid-template-columns: 1fr; }
+  .chip-field-pair { grid-template-columns: 1fr; }
+  .chip-panel { padding: 15px; }
 }

@@ -104,7 +104,8 @@ static Lab itself.
 ### Engine and verification
 `src/planner/` is a TypeScript port of the Python reference planner (nomo-planner). `npm run verify` compares both
 on 1,050 plans across seven problems, every best-trade-off set, recommendation and counterfactual, and all 22
-calibration predictions, layer goldens, product goldens, auditor fixtures, and evidence/cost boundaries (14,337 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
+calibration predictions, layer goldens, product goldens, auditor fixtures, evidence/cost boundaries, and the chip
+workbench constraint/calibration smoke cases (14,341 checks; worst relative difference 4.37e-16). `npm run bench` times the searches.
 Limits: only A100 training is calibrated; serving throughput is an uncalibrated upper bound; precision and
 attention-type quality effects, prices and training utilisation are labelled assumptions.
 
@@ -145,6 +146,13 @@ checkpoint/restart goodput, hourly fleet sizing, fine-tuning modes, and buy/rent
 with cited formulas and physics-sanity tests; they are not measured product specifications. `Cost tracker` contains cited
 model-card GPU-hour rows and provider-token price rows plus a local physical-cost calculator and provider/physical
 comparison. Rows are hand-entered and not scraped at runtime, and provider prices must be rechecked before procurement.
+
+The `Chip design` pack is now a browser-local design workbench rather than a single calculator. It moves through a design
+brief, architecture and logical-tile sketch, CSV measurement calibration, hard constraint checks, and transparent
+compute-forward/memory-forward/edge-efficient scenarios. Calibration fits only the named path, records the source and
+date supplied by the user, and leaves missing paths at explicit planning assumptions. The workbench can export a
+versioned JSON decision record or calibration CSV; its area, power, timing, yield, cost, and topology results remain early
+design estimates until PDK, synthesis, package, thermal, or hardware evidence is attached.
 
 The gate reports in [docs/](docs/) record what is built and what remains partial. The current surface specification,
 deployment guide, and observability guide are [`docs/SPEC.md`](docs/SPEC.md), [`docs/DEPLOY.md`](docs/DEPLOY.md), and

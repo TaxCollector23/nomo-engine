@@ -10,7 +10,7 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration";`));
+  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}chipDesign"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
@@ -113,6 +113,20 @@ productExact(rlResult.schedule, rl.expected.schedule, "RL schedule");
 productExact(rlResult.colocation, rl.expected.colocation, "RL colocation");
 productExact(rlResult.feasible, rl.expected.feasible, "RL feasibility");
 console.log("ok  products: chip, reliability, fleet, fine-tune, TCO, RL goldens");
+
+const designPreview = E.evaluateChipDesign(E.DEFAULT_CHIP_DESIGN, E.DEFAULT_CHIP_WORKLOAD, E.DEFAULT_CHIP_CONSTRAINTS);
+productExact(designPreview.calibration.status, "assumption", "chip workbench defaults remain preview");
+const calibratedRows = [
+  { id: "compute", name: "compute", kind: "compute", baselineSeconds: 1, observedSeconds: 2, observedPowerW: 240, source: "fixture", observedAt: "2026-10-14" },
+  { id: "memory", name: "memory", kind: "memory", baselineSeconds: 1, observedSeconds: 2, observedPowerW: 240, source: "fixture", observedAt: "2026-10-14" },
+  { id: "link", name: "link", kind: "interconnect", baselineSeconds: 1, observedSeconds: 2, observedPowerW: 240, source: "fixture", observedAt: "2026-10-14" },
+];
+const designFit = E.evaluateChipDesign(E.DEFAULT_CHIP_DESIGN, E.DEFAULT_CHIP_WORKLOAD, E.DEFAULT_CHIP_CONSTRAINTS, calibratedRows);
+productExact(designFit.calibration.status, "calibrated", "chip workbench measurement fit");
+productClose(designFit.calibration.computeEfficiency, 0.5, "chip workbench compute efficiency");
+if (E.buildChipDesignVariants(E.DEFAULT_CHIP_DESIGN).length !== 4) fail("chip workbench scenario count");
+checks += 1;
+console.log("ok  chip workbench: constraint gate, calibration fit, and scenario set");
 
 for (const fixture of auditorGolden) {
   const parsed = fixture.format === "deepspeed-json" ? E.parseDeepSpeedConfig(fixture.input) : fixture.format === "vllm" ? E.parseVllmCommand(fixture.input) : E.parseMegatronCommand(fixture.input);
