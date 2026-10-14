@@ -19,6 +19,11 @@ explicitly Preview/open where the required artifacts or server contract are abse
 - Verification: production build passed; `npm run verify` passed 14,341 checks (worst relative difference
   `4.37e-16`); `npm run simulation:golden` passed 123 checks; landing-page production build passed. The Python test
   suite was not rerun in this checkout because `pytest` is not installed; no Python reference code changed.
+- Release: engine main is `b132d76` after merged PRs #1 and #2. Vercel production deployment
+  `dpl_9sgnvG9mVSWgyxq6fUsXULXTsM7E` is READY at `https://nomo-engine-p153oyzsv-rangan-alt.vercel.app/` and is
+  explicitly assigned to the stable `https://frontend-gray-ten-c3tj1luab.vercel.app/` alias. The stable root now
+  returns the new `index-DnL41IUL.js` shell and the Lab chunk contains the chip workbench markers. The root no-store
+  cache header was added after the first deployment exposed a stale cached shell.
 
 ## 2026-10-08 enterprise surface and deployment refresh
 
