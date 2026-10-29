@@ -29,16 +29,26 @@ The Next.js app is the source for the separate `nomo-engine-dashboard` Vercel pr
 `NEXT_PUBLIC_NOMO_API` when using a different API; otherwise the client uses
 `https://nomo-engine.onrender.com`. The dashboard cannot produce a search without a reachable API.
 
-## Hosted API
+## Tri-domain engine API (in this repository)
 
-The dashboard's default API is the Render deployment at `https://nomo-engine.onrender.com`. Its server source and
-deployment configuration are outside this repository. A deployment of the frontend alone must not be described as a
-backend redeploy.
+The dashboard's default API (`https://nomo-engine.onrender.com`) is the `nomo` package that now lives **in this
+repository under `server/`** — search (NSGA-II over continuous/spiking/symbolic genomes), the hardware profiles,
+the copilot, the telemetry server, and the export pipeline. Its deployment configuration ships alongside it
+(`server/render.yaml`, `server/Dockerfile`). To run it locally:
 
-The dependency-free platform store under `nomo-planner/` is a separate project/run/artifact API. It can be run locally
-with `PYTHONPATH=. python -m nomo_planner.cli serve`; when exposed to a browser, configure `NOMO_API_TOKEN` and
-`NOMO_CORS_ORIGINS` and bind it behind TLS. It is not the source of the existing Render dashboard API, and it is not
-multi-tenant until authentication, tenant isolation, backups, and operational monitoring are supplied by deployment.
+```bash
+pip install -e "./server[server,dev]"
+uvicorn nomo.telemetry.server:app --port 8000        # or: nomo serve
+```
+
+To deploy it, point a Render blueprint at `server/` (the pinned render.yaml is included). A deployment of a
+frontend alone must still not be described as a backend redeploy.
+
+The dependency-free platform store under `nomo-planner/` is a separate project/run/artifact API. It can be run
+locally with `PYTHONPATH=. python -m nomo_planner.cli serve`; when exposed to a browser, configure `NOMO_API_TOKEN`
+and `NOMO_CORS_ORIGINS` and bind it behind TLS. It is the workspace/persistence surface, not the search API, and
+it is not multi-tenant until authentication, tenant isolation, backups, and operational monitoring are supplied by
+deployment.
 
 ## Landing page
 

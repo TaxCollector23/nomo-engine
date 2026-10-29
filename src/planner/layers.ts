@@ -60,6 +60,8 @@ export interface LayerHardware {
   cpuOffloadBytesS: number;
   overheadBytes: number;
   usableMemory: number;
+  /** Device HBM bandwidth for roofline classification (default: H100 HBM3, ~3.35 TB/s). */
+  memoryBandwidthBytesS: number;
 }
 
 export interface LayerTrainingProblem {
@@ -335,6 +337,7 @@ function hardware(problem: LayerTrainingProblem): LayerHardware {
   return {
     devices: 8, memoryBytes: 80e9, peakFlops: 989e12, costPerDeviceHour: 3.5,
     interconnectBytesS: 600e9, cpuOffloadBytesS: 32e9, overheadBytes: 3e9, usableMemory: 0.9,
+    memoryBandwidthBytesS: 3.35e12,
     ...(problem.hardware ?? {}),
   };
 }
@@ -354,7 +357,11 @@ export function evaluateLayerPlan(problem: LayerTrainingProblem, rawPlan: LayerT
     const r = plan.recompute[index]!;
     const s = plan.stages[index]!;
     stageTimes[s]! += node.forwardFlops * RECOMPUTE_MULTIPLIER[r]! / (hw.peakFlops * PRECISION_SPEEDUP[p]!);
-    const stateBytes = node.parameterCount * (p === "fp8" ? 1 : 16);
+    // Training-state bytes per parameter. bf16 mixed precision: 2 (weights) + 2 (grads) +
+    // 4 (fp32 master) + 8 (Adam m,v) = 16. fp8 stores weights in 1 byte but gradients,
+    // the fp32 master copy, and optimizer states remain — 1 + 2 + 4 + 8 = 15.
+    // (The historical 1 B/param for fp8 silently dropped grads + optimizer states.)
+    const stateBytes = node.parameterCount * (p === "fp8" ? 15 : 16);
     if (plan.offload[index]) {
       memoryByStage[s]! += stateBytes + node.activationBytes * 0.15;
       const transfer = node.activationBytes * 0.85 / hw.cpuOffloadBytesS;
@@ -405,6 +412,89 @@ export function evaluateLayerPlan(problem: LayerTrainingProblem, rawPlan: LayerT
 
 function feasible(metrics: LayerMetrics): boolean {
   return Object.values(metrics.constraints).every((value) => value <= 0);
+}
+
+// ------------------------------------------------------------------ visualisation helpers
+// Both helpers reuse the evaluator's own work and memory definitions (forward FLOPs
+// x recompute multiplier; states + activation residency incl. the 15% offload keep),
+// so charts in the browser can never disagree with the reported metrics.
+
+export interface RooflinePoint {
+  id: string; kind: string; stage: number; precision: LayerPrecision;
+  flops: number; bytesMin: number; intensity: number;
+  peakFlops: number; ridgeFlops: number; attainableFlops: number;
+  bound: "memory" | "compute";
+}
+
+export function rooflinePoints(problem: LayerTrainingProblem, rawPlan: LayerTrainingPlan, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>> = {}): RooflinePoint[] {
+  const graph = problem.graph;
+  const plan = repairLayerPlan(graph, rawPlan, locks);
+  const hw = hardware(problem);
+  return graph.nodes.map((node, i) => {
+    const p = plan.precision[i]!, r = plan.recompute[i]!;
+    const speed = PRECISION_SPEEDUP[p]!;
+    const flops = node.forwardFlops * RECOMPUTE_MULTIPLIER[r]!;
+    const stateBytes = node.parameterCount * (p === "fp8" ? 15.0 : 16.0);
+    const bytesMin = stateBytes + node.activationBytes;
+    const intensity = flops / bytesMin;
+    const peak = hw.peakFlops * speed;
+    const ridge = peak / hw.memoryBandwidthBytesS;
+    return {
+      id: node.id, kind: node.kind, stage: plan.stages[i]!, precision: p,
+      flops, bytesMin, intensity, peakFlops: peak, ridgeFlops: ridge,
+      attainableFlops: Math.min(peak, intensity * hw.memoryBandwidthBytesS),
+      bound: intensity < ridge ? "memory" as const : "compute" as const,
+    };
+  });
+}
+
+export interface MemoryTimelineStage {
+  stage: number;
+  baselineBytes: number;
+  forwardPeakBytes: number;
+  endBytes: number;
+  evaluatorBytes: number;
+  forwardWalk: Array<{ node: string; phase: "forward"; bytesAfter: number }>;
+}
+
+export interface MemoryTimeline {
+  stages: MemoryTimelineStage[];
+  microBatches: number;
+  notes: string[];
+}
+
+export function memoryTimeline(problem: LayerTrainingProblem, rawPlan: LayerTrainingPlan, locks: Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>> = {}): MemoryTimeline {
+  const graph = problem.graph;
+  const plan = repairLayerPlan(graph, rawPlan, locks);
+  const hw = hardware(problem);
+  const metrics = evaluateLayerPlan(problem, plan, locks);
+  const stageCount = Math.max(...plan.stages) + 1;
+  const stages: MemoryTimelineStage[] = [];
+  for (let stage = 0; stage < stageCount; stage++) {
+    const indices = graph.nodes.map((_, i) => i).filter((i) => plan.stages[i] === stage);
+    const baseline = hw.overheadBytes + indices.reduce((sum, i) =>
+      sum + graph.nodes[i]!.parameterCount * (plan.precision[i] === "fp8" ? 15.0 : 16.0), 0);
+    let cumulative = 0;
+    let forwardPeak = baseline;
+    const forwardWalk: MemoryTimelineStage["forwardWalk"] = [];
+    for (const i of indices) {
+      cumulative += graph.nodes[i]!.activationBytes * (plan.offload[i] ? 0.15 : 1.0);
+      forwardPeak = Math.max(forwardPeak, baseline + cumulative);
+      forwardWalk.push({ node: graph.nodes[i]!.id, phase: "forward", bytesAfter: baseline + cumulative });
+    }
+    stages.push({
+      stage, baselineBytes: baseline, forwardPeakBytes: forwardPeak, endBytes: baseline,
+      evaluatorBytes: metrics.memoryByStage[stage] ?? 0, forwardWalk,
+    });
+  }
+  return {
+    stages,
+    microBatches: Math.max(1, problem.microBatches ?? 8),
+    notes: [
+      "Gradients, the fp32 master copy and Adam moments are charged inside the persistent states for the whole step, matching the evaluator",
+      "Offloaded activations keep 15% resident, matching the evaluator's CPU-offload accounting",
+    ],
+  };
 }
 
 function objectiveVector(metrics: LayerMetrics): [number, number, number] {

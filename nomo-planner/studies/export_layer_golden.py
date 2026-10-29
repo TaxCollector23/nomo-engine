@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from nomo_planner.layers import TrainingProblem, build_graph, search
+from nomo_planner.layers import TrainingProblem, build_graph, memory_timeline, roofline_points, search
 from nomo_planner.model_configs import BUILTIN_MODEL_CONFIGS
 
 
@@ -43,6 +43,12 @@ def main(output: str) -> None:
             "global_objectives": result.global_best[1].objectives,
             "precision_gain_pct": result.precision_gain_pct,
             "per_layer_gain_pct": result.per_layer_gain_pct,
+            "roofline": roofline_points(problem, result.best),
+            # forward_walk is a UI-only detail; the parity contract is the per-stage numbers.
+            "timeline": {**memory_timeline(problem, result.best), "stages": [
+                {k: v for k, v in stage.items() if k != "forward_walk"}
+                for stage in memory_timeline(problem, result.best)["stages"]
+            ]},
         })
     Path(output).write_text(json.dumps({"cases": cases}, indent=2) + "\n", encoding="utf-8")
 

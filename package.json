@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "verify": "node scripts/verify-engine.mjs",
     "simulation:golden": "node scripts/simulation-golden.mjs",
-    "bench": "node scripts/bench.mjs"
+    "bench": "node scripts/bench.mjs",
+    "stats": "node scripts/generate-stats.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

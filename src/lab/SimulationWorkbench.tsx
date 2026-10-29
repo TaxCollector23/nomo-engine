@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   buildOperatorGraph,
   createDefaultTopology,
+  DeterministicRng,
   planCollective,
   runSimulation,
   SIMULATION_CONTRACT_VERSION,
   type SimulationWorkerResponse,
   type DType,
+  type NumericDistribution,
   type OperatorGraph,
   type SimulationResult,
   type TimelineEvent,
@@ -29,6 +31,26 @@ const GRAPH_DEFAULTS = {
   sequenceLength: 2048,
   batchSize: 1,
 };
+
+/** Mean of the Exponential duration noise added on top of the analytic estimate (multiplier = 1 + noise ≥ 1). */
+const DURATION_NOISE_MEAN = 0.15;
+
+/**
+ * Per-operator duration multipliers for stochastic replay: 1 + Exponential(mean DURATION_NOISE_MEAN),
+ * drawn with the engine's own DeterministicRng so a given seed reproduces identical multipliers in the
+ * browser and in the Worker. The engine's NumericDistribution contract has no shifted-exponential kind
+ * and a plain normal draw could be non-positive (the engine rejects multiplier <= 0), so each draw is
+ * passed as a constant distribution — sampled once per operator, exactly the engine's documented semantics.
+ */
+function stochasticDurationDistributions(graph: OperatorGraph, seed: number): Record<string, NumericDistribution> {
+  const distributions: Record<string, NumericDistribution> = {};
+  for (const operator of graph.operators) {
+    const draw = new DeterministicRng(`${seed}:${operator.id}`).next();
+    const noise = -Math.log(Math.max(1 - draw, Number.MIN_VALUE)) * DURATION_NOISE_MEAN;
+    distributions[operator.id] = { kind: "constant", value: 1 + noise };
+  }
+  return distributions;
+}
 
 function compactNumber(value: number, digits = 2): string {
   if (!Number.isFinite(value)) return "—";
@@ -79,11 +101,11 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
   );
 }
 
-function EvidenceLabel({ graph, result }: { graph: OperatorGraph; result: SimulationResult }) {
+function EvidenceLabel({ graph, result, stochastic = false }: { graph: OperatorGraph; result: SimulationResult; stochastic?: boolean }) {
   return (
     <div className="sim-evidence" aria-label="Simulation evidence boundary">
       <span className="sim-status-dot" aria-hidden="true" />
-      <strong>Preview · deterministic simulation</strong>
+      <strong>Preview · {stochastic ? "stochastic" : "deterministic"} simulation</strong>
       <span>
         Graph: {provenanceLabel(graph.provenance)} · results: {provenanceLabel(result.provenance)}. Replace the default topology with measured
         device and link artifacts before treating absolute time as a hardware claim.
@@ -128,6 +150,9 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
   const [devices, setDevices] = useState(4);
   const [sequenceLength, setSequenceLength] = useState(GRAPH_DEFAULTS.sequenceLength);
   const [seed, setSeed] = useState(20261005);
+  // OFF (default) = deterministic: no durationDistributions are passed and the run stays byte-identical
+  // to the Python-parity goldens. ON = seeded stochastic multipliers per operator.
+  const [stochastic, setStochastic] = useState(false);
 
   useEffect(() => {
     if (!restore) return;
@@ -136,6 +161,7 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
     setDevices(restoredChoice(restore, "devices", [1, 2, 4, 8] as const, 4));
     setSequenceLength(restoredChoice(restore, "sequenceLength", [512, 1024, 2048, 4096] as const, GRAPH_DEFAULTS.sequenceLength));
     setSeed(restoredNumber(restore, "seed", 20261005));
+    setStochastic(restoredChoice(restore, "stochastic", [true, false] as const, false));
     onRestoreConsumed?.();
   }, [onRestoreConsumed, restore]);
 
@@ -161,7 +187,15 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
     source: "nomo-lab-browser-workbench",
   }), [devices]);
 
-  const fallbackResult = useMemo(() => runSimulation({ graph, topology }, { seed, deviceAssignment: "round-robin" }), [graph, seed, topology]);
+  const durationDistributions = useMemo(
+    () => (stochastic ? stochasticDurationDistributions(graph, seed) : undefined),
+    [graph, seed, stochastic],
+  );
+
+  const fallbackResult = useMemo(() => stochastic && durationDistributions
+    ? runSimulation({ graph, topology }, { seed, deviceAssignment: "round-robin", durationDistributions })
+    : runSimulation({ graph, topology }, { seed, deviceAssignment: "round-robin" }),
+  [durationDistributions, graph, seed, stochastic, topology]);
   const [workerResult, setWorkerResult] = useState<SimulationResult | null>(null);
   useEffect(() => {
     setWorkerResult(fallbackResult);
@@ -179,13 +213,13 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
       contractVersion: SIMULATION_CONTRACT_VERSION,
       input: { graph, topology },
       seed,
-      options: { deviceAssignment: "round-robin" },
+      options: stochastic && durationDistributions ? { deviceAssignment: "round-robin", durationDistributions } : { deviceAssignment: "round-robin" },
     });
     return () => {
       worker.removeEventListener("message", handleMessage);
       worker.terminate();
     };
-  }, [fallbackResult, graph, seed, topology]);
+  }, [durationDistributions, fallbackResult, graph, seed, stochastic, topology]);
   const result = workerResult ?? fallbackResult;
   const collective = useMemo(() => devices > 1 ? planCollective(topology, {
     kind: mode === "training" ? "all-reduce" : "all-gather",
@@ -198,9 +232,9 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
       moduleTitle: "Simulation core",
       mode,
       label: `${mode === "training" ? "Training" : "Serving"} · ${dtype.toUpperCase()} · ${devices} GPU${devices > 1 ? "s" : ""} · ${sequenceLength.toLocaleString()} tokens`,
-      planKey: `simulation:${mode}:${dtype}:${devices}:${sequenceLength}:${seed}`,
-      plan: { mode, dtype, devices, sequenceLength, seed, graphId: graph.id, topologyId: topology.id },
-      settings: { mode, dtype, devices, sequenceLength, seed },
+      planKey: `simulation:${mode}:${dtype}:${devices}:${sequenceLength}:${seed}:${stochastic ? "stochastic" : "deterministic"}`,
+      plan: { mode, dtype, devices, sequenceLength, seed, stochastic, graphId: graph.id, topologyId: topology.id },
+      settings: { mode, dtype, devices, sequenceLength, seed, stochastic },
       locks: {},
       objectives: {
         makespan_seconds: result.metrics.makespanSeconds,
@@ -212,7 +246,7 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
       evaluated: result.metrics.eventCount,
       durationMs: 0,
     });
-  }, [devices, dtype, graph, mode, onWorkspaceRun, result, seed, sequenceLength, topology]);
+  }, [devices, dtype, graph, mode, onWorkspaceRun, result, seed, sequenceLength, stochastic, topology]);
   const [showAll, setShowAll] = useState(false);
   const timelineEvents = showAll ? result.timeline.events : result.timeline.events.slice(0, 28);
 
@@ -221,7 +255,9 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
       graph: { id: graph.id, accounting: graph.accounting, operator_count: graph.operators.length, provenance: graph.provenance },
       topology: { id: topology.id, devices: topology.devices.length, links: topology.links.length, provenance: topology.provenance },
       result: { metrics: result.metrics, events: result.timeline.events.map((event) => typeof event.asDict === "function" ? event.asDict() : event), provenance: result.provenance },
-      evidence: "Deterministic analytic browser simulation; default topology is a placeholder.",
+      evidence: stochastic
+        ? "Stochastic browser simulation: per-operator duration multipliers 1 + Exponential(mean 0.15) drawn from the run seed. Python parity goldens cover the deterministic schedule only; default topology is a placeholder."
+        : "Deterministic analytic browser simulation; default topology is a placeholder.",
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const anchor = document.createElement("a");
@@ -254,10 +290,19 @@ export default function SimulationWorkbench({ onWorkspaceRun, onOpenWorkspace, r
         <label>Precision<select value={dtype} onChange={(event) => setDtype(event.target.value as DType)}><option value="bf16">BF16</option><option value="fp16">FP16</option><option value="fp8">FP8</option><option value="int8">INT8</option></select></label>
         <label>Devices<select value={devices} onChange={(event) => setDevices(Number(event.target.value))}>{[1, 2, 4, 8].map((count) => <option key={count} value={count}>{count} GPU{count > 1 ? "s" : ""}</option>)}</select></label>
         <label>Sequence<select value={sequenceLength} onChange={(event) => setSequenceLength(Number(event.target.value))}>{[512, 1024, 2048, 4096].map((length) => <option key={length} value={length}>{length.toLocaleString()} tokens</option>)}</select></label>
-        <label>Seed<input type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value) || 0)} /></label>
+        <div className="sim-control-group" role="group" aria-label="Duration model">
+          <span>Durations</span>
+          <button type="button" className={!stochastic ? "is-selected" : ""} onClick={() => setStochastic(false)} title="Analytic durations only — the schedule the Python parity goldens cover">Deterministic</button>
+          <button type="button" className={stochastic ? "is-selected" : ""} onClick={() => setStochastic(true)} title={`Per-operator multipliers 1 + Exponential(mean ${DURATION_NOISE_MEAN}), seeded by the Seed input`}>Stochastic</button>
+        </div>
+        <label>Seed<input type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value) || 0)} title={stochastic ? "Seeds the stochastic duration draws" : "Inactive while durations are deterministic"} /></label>
       </div>
 
-      <EvidenceLabel graph={graph} result={result} />
+      {stochastic && (
+        <p className="sim-note" role="note">Stochastic replay — Python parity goldens cover the deterministic schedule only. Per-operator multipliers are 1 + Exponential(mean {DURATION_NOISE_MEAN}), drawn once per operator from the Seed.</p>
+      )}
+
+      <EvidenceLabel graph={graph} result={result} stochastic={stochastic} />
 
       <div className="sim-metrics-grid">
         <Metric label="Operators" value={graph.operators.length.toLocaleString()} detail={`${graph.tensors.length.toLocaleString()} tensors · ${graph.edges.length.toLocaleString()} edges`} />

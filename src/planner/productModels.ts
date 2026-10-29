@@ -39,20 +39,49 @@ export function optimizeReliability(problem: ReliabilityProblem, intervals = [0.
 }
 
 export interface TrafficHour { hour: number; arrivalRps: number; serviceRpsPerReplica: number; p99TargetMs: number }
-export function sizeFleet(traffic: TrafficHour[], targetUtilization = 0.7, replicaHourlyCost = 1) {
+/** Fleet sizing with a real queueing tail: exact M/M/1 sojourn p99 P(T>t)=exp(-(mu-lambda)t).
+ * The historical 1000*ln(100)/spare understated p99 by roughly the replica count. With a
+ * service-time CV > 1 the Pollaczek-Khinchine (Kingman) mean-wait excess is added; CV = 1
+ * reproduces M/M/1 exactly. */
+export function sizeFleet(traffic: TrafficHour[], targetUtilization = 0.7, replicaHourlyCost = 1, serviceCv = 1) {
   if (!(targetUtilization > 0 && targetUtilization < 1)) throw new Error("target utilization must be between 0 and 1");
+  if (!(serviceCv > 0)) throw new Error("service coefficient of variation must be positive");
   return traffic.map((row) => {
     const replicas = Math.max(1, Math.ceil(row.arrivalRps / (row.serviceRpsPerReplica * targetUtilization)));
-    const spare = replicas * row.serviceRpsPerReplica - row.arrivalRps;
-    const p99 = spare <= 0 ? Infinity : 1000 * Math.log(100) / spare;
-    return { hour: row.hour, replicas, approxP99Ms: p99, hourlyCostUsd: replicas * replicaHourlyCost, withinTarget: p99 <= row.p99TargetMs, arrivalRps: row.arrivalRps };
+    const perReplicaRps = row.arrivalRps / replicas;
+    const mu = row.serviceRpsPerReplica;
+    const rho = perReplicaRps / mu;
+    let p99: number, queueModel: string;
+    if (rho < 1) {
+      const mm1P99S = Math.log(100) / (mu - perReplicaRps);
+      const meanWaitMg1 = (rho * (1 + serviceCv * serviceCv)) / (2 * mu * (1 - rho));
+      const meanWaitMm1 = rho / (mu - perReplicaRps);
+      p99 = 1000 * (mm1P99S + Math.max(0, meanWaitMg1 - meanWaitMm1));
+      queueModel = serviceCv === 1 ? "M/M/1 sojourn tail" : "M/G/1 tail (Pollaczek-Khinchine excess)";
+    } else {
+      p99 = Infinity; queueModel = "saturated (rho >= 1)";
+    }
+    return { hour: row.hour, replicas, approxP99Ms: p99, hourlyCostUsd: replicas * replicaHourlyCost, withinTarget: p99 <= row.p99TargetMs, arrivalRps: row.arrivalRps, perReplicaUtilization: rho, queueModel };
   });
 }
 
-export interface FineTuneProblem { parameterCount: number; trainingTokens: number; memoryBytes: number; peakTflops: number; gpuMemoryBytes: number; gpuCostPerHour: number; qualityLoss: Record<string, number> }
+export interface FineTuneProblem { parameterCount: number; trainingTokens: number; memoryBytes: number; peakTflops: number; gpuMemoryBytes: number; gpuCostPerHour: number; qualityLoss: Record<string, number>; adapterParamFraction?: number }
+/** Fine-tuning from first principles (replaces the invented 0.08/0.35 and 0.04/0.25 factors).
+ * Memory: full = 16 B/param training state (2 weights + 2 grads + 4 fp32 master + 8 Adam) plus
+ * activations (recovered from the user-supplied full footprint); LoRA = frozen bf16 base
+ * (2 B/param) + adapters (adapterParamFraction of params, 16 B/param state) + activations
+ * (Hu et al. 2021, arXiv:2106.09685); QLoRA = NF4 base ~0.55 B/param incl. quantization
+ * constants (Dettmers et al. 2023, arXiv:2305.14314). Compute: full ~6ND FLOPs/token;
+ * LoRA skips the frozen-weight gradient term ~4ND; QLoRA adds an assumed ~10%
+ * de-quantization overhead (4ND/0.9). Quality stays a customer-supplied assumption. */
 export function fineTuneOptions(problem: FineTuneProblem) {
-  const modes: Record<string, [number, number]> = { full: [16, 1], lora: [0.08, 0.35], qlora: [0.04, 0.25] };
-  return Object.entries(modes).map(([mode, [memoryFactor, computeFactor]]) => { const memoryBytes = problem.memoryBytes * memoryFactor; const timeHours = 6 * problem.parameterCount * problem.trainingTokens / (problem.peakTflops * 1e12 * computeFactor) / 3600; return { mode, memoryBytes, timeHours, costUsd: timeHours * problem.gpuCostPerHour, qualityLoss: problem.qualityLoss[mode] ?? NaN, feasible: memoryBytes <= problem.gpuMemoryBytes, notes: "quality is a customer-supplied assumption" }; });
+  const adapterFraction = problem.adapterParamFraction ?? 0.005;
+  const modes: Record<string, { memoryBytes: number; flopsPerToken: number; note: string }> = {
+    full: { memoryBytes: problem.memoryBytes, flopsPerToken: 6, note: "16 B/param training state (2 weights + 2 grads + 4 master + 8 Adam) plus activations" },
+    lora: { memoryBytes: 2 * problem.parameterCount + 16 * problem.parameterCount * adapterFraction + Math.max(0, problem.memoryBytes - 16 * problem.parameterCount), flopsPerToken: 4, note: `frozen bf16 base (2 B/param) + adapters (${adapterFraction} of params, 16 B/param state) + activations; ~4ND FLOPs/token vs 6ND full (Hu et al. 2021, arXiv:2106.09685)` },
+    qlora: { memoryBytes: 0.55 * problem.parameterCount + 16 * problem.parameterCount * adapterFraction + Math.max(0, problem.memoryBytes - 16 * problem.parameterCount), flopsPerToken: 4 / 0.9, note: "NF4 base ~0.55 B/param incl. quantization constants (Dettmers et al. 2023, arXiv:2305.14314) + adapter states + activations; ~10% de-quantization overhead assumed" },
+  };
+  return Object.entries(modes).map(([mode, model]) => { const timeHours = model.flopsPerToken * problem.parameterCount * problem.trainingTokens / (problem.peakTflops * 1e12) / 3600; return { mode, memoryBytes: model.memoryBytes, timeHours, costUsd: timeHours * problem.gpuCostPerHour, qualityLoss: problem.qualityLoss[mode] ?? NaN, feasible: model.memoryBytes <= problem.gpuMemoryBytes, notes: `quality is a customer-supplied assumption; ${model.note}` }; });
 }
 
 export interface TcoOption { name: string; purchaseUsd: number; leaseUsdPerHour: number; utilization: number; years: number; hoursPerYear: number; energyUsdPerHour: number; maintenancePct: number; priceLowUsd?: number; priceHighUsd?: number }

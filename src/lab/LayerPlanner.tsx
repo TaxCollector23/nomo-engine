@@ -10,7 +10,9 @@ import {
   type LayerTrainingPlan,
   type RecomputeMode,
 } from "../planner/layers";
+import { CLUSTERS } from "../planner/hardware";
 import { searchServing } from "../planner/serving";
+import { MemoryWaterfall, PipelineGantt, RooflineScatter } from "./PlannerVisuals";
 
 type LayerLocks = Record<string, Partial<{ stage: number; precision: LayerPrecision; recompute: RecomputeMode; offload: boolean }>>;
 
@@ -101,23 +103,44 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
   const [tab, setTab] = useState<"train" | "serve" | "neuromorphic">("train");
   const [selectedId, setSelectedId] = useState("block.5.mlp");
   const [locks, setLocks] = useState<LayerLocks>({});
+  const [deviceKey, setDeviceKey] = useState("h100_nvlink_ib");
 
-  const result = useMemo(() => searchLayerTraining({
+  // Hardware overrides from the selected cluster: memory capacity, HBM bandwidth (roofline
+  // ridge), bf16 peak, intra-node fabric bandwidth, and price all follow the GPU picker so
+  // AMD Instinct plans are evaluated on AMD numbers, not silently on H100 defaults.
+  const deviceHw = useMemo(() => {
+    const c = CLUSTERS[deviceKey] ?? CLUSTERS.h100_nvlink_ib;
+    return {
+      key: c.key,
+      label: c.device.name,
+      overrides: {
+        devices: c.devicesPerNode,
+        memoryBytes: c.device.memBytes,
+        peakFlops: c.device.peakFlops.bf16 ?? c.device.peakFlops.fp32,
+        memoryBandwidthBytesS: c.device.memBw,
+        interconnectBytesS: c.intra.bw,
+        costPerDeviceHour: c.costPerDeviceHour,
+      },
+    };
+  }, [deviceKey]);
+
+  const trainProblem = useMemo(() => ({
     graph,
-    hardware: { devices: 8, memoryBytes: 80e9, usableMemory: 0.9, costPerDeviceHour: 3.5 },
+    hardware: { ...deviceHw.overrides, usableMemory: 0.9 },
     pipelineStages: [1, 2, 4, 8, 16, 32],
     microBatches: 8,
     maxCandidates: 20000,
     totalSteps: 1000,
     seed: 20261003,
-  }, locks), [graph, locks]);
+  }), [graph, deviceHw]);
+  const result = useMemo(() => searchLayerTraining(trainProblem, locks), [trainProblem, locks]);
   const servingResult = useMemo(() => searchServing({
     graph,
-    hardware: { devices: graph.parameterCount > 25e9 ? 8 : 1, memoryBytes: 80e9, usableMemory: 0.9, costPerDeviceHour: 3.5 },
+    hardware: { ...deviceHw.overrides, usableMemory: 0.9, devices: graph.parameterCount > 25e9 ? (CLUSTERS[deviceKey] ?? CLUSTERS.h100_nvlink_ib).devicesPerNode : 1 },
     maxQualityPenaltyPct: 1,
     maxCandidates: 20000,
     seed: 20261003,
-  }, locks), [graph, locks]);
+  }, locks), [graph, locks, deviceHw]);
   const selected = graph.nodes.find((node) => node.id === selectedId) ?? graph.nodes[0]!;
   const selectedLock = locks[selected.id] ?? {};
   const best = result.best;
@@ -177,6 +200,7 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
         <section className="lab-card">
           <div className="lab-card-head"><h3>Model or graph JSON</h3><label className="ui-button ui-button--outline ui-button--compact" htmlFor="layer-config-file">Choose JSON</label></div>
           <label className="layer-model-select">Built-in model<select aria-label="Built-in model config" value={modelKey} onChange={(event) => selectModel(event.target.value as typeof modelKey)}>{MODEL_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="layer-model-select">GPUs<select aria-label="Layer planner GPU" value={deviceKey} onChange={(event) => setDeviceKey(event.target.value)}>{Object.values(CLUSTERS).map((c) => <option key={c.key} value={c.key}>{c.device.name}</option>)}</select></label>
           <input id="layer-config-file" className="layer-file" type="file" accept="application/json,.json" onChange={(event) => {
             const file = event.target.files?.[0];
             if (!file) return;
@@ -255,14 +279,21 @@ export default function LayerPlanner({ mode }: { mode: "guided" | "explore" | "r
           <section className="lab-card layer-answer">
             <div className="lab-card-head"><h3>Layer-aware training plan</h3><span className={`lab-rel ${result.exhaustive ? "ok" : "warn"}`}>{result.exhaustive ? "Exhaustive" : "Bounded search"}</span></div>
             {best && metrics ? <>
-              <p className="layer-plan-summary">{planSummary(graph, best)}</p>
+              <p className="layer-plan-summary">{planSummary(graph, best)} · evaluated on <b>{deviceHw.label}</b> ({(deviceHw.overrides.memoryBytes / 1e9).toFixed(0)} GB, {(deviceHw.overrides.memoryBandwidthBytesS / 1e12).toFixed(1)} TB/s HBM)</p>
                <div className="lab-metrics"><div className="lab-metric"><b>{formatSeconds(metrics.objectives.stepTimeS)}</b><span>estimated step time</span><small>best global {formatSeconds(baseline.objectives.stepTimeS)} · {percentChange(metrics.objectives.stepTimeS, baseline.objectives.stepTimeS)}</small></div><div className="lab-metric"><b>{formatUsd(metrics.objectives.costUsdPerStep)}</b><span>estimated cost / step</span><small>best global {formatUsd(baseline.objectives.costUsdPerStep)} · {percentChange(metrics.objectives.costUsdPerStep, baseline.objectives.costUsdPerStep)}</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.wholeRunTimeS)}</b><span>whole run · 1,000 steps</span><small>estimated total time</small></div><div className="lab-metric"><b>{formatUsd(metrics.objectives.wholeRunCostUsd)}</b><span>whole run cost</span><small>estimated total cost</small></div><div className="lab-metric"><b>{(metrics.objectives.memoryHeadroom * 100).toFixed(1)}%</b><span>memory headroom</span></div></div>
                <div className="lab-metrics"><div className="lab-metric"><b>{result.precisionGainPct.toFixed(1)}%</b><span>gain from global precision choice</span><small>BF16 global → best global</small></div><div className="lab-metric"><b>{result.perLayerGainPct.toFixed(1)}%</b><span>gain from per-layer decisions</span><small>best global → per-layer plan</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.pipelineBubbleS)}</b><span>pipeline bubble / step</span><small>charged estimate</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.communicationS)}</b><span>inter-stage transfer / step</span><small>charged estimate</small></div><div className="lab-metric"><b>{formatSeconds(metrics.objectives.offloadTransferS)}</b><span>CPU offload transfer / step</span><small>PCIe/host bandwidth assumption</small></div></div>
                <p className="lab-note">The fair comparison is against the best global-only plan allowed the same precision, recompute, offload, and stage choices. All values are model estimates; hardware measurements and bandwidth remain customer inputs. Search evaluated {result.evaluated.toLocaleString("en-US")} repaired candidates with fixed seed {result.seed}.</p>
-              {mode === "rigor" && <div className="layer-rigor"><p><b>Validity:</b> stages are contiguous and non-empty; endpoint nodes stay BF16 unless explicitly locked; every stage must fit the 80 GB × 90% assumed capacity.</p><p><b>Customer inputs still needed:</b> FP8 quality evaluation, CPU offload bandwidth, framework overhead, and cluster-specific utilization.</p></div>}
+              {mode === "rigor" && <div className="layer-rigor"><p><b>Validity:</b> stages are contiguous and non-empty; endpoint nodes stay BF16 unless explicitly locked; every stage must fit the {(deviceHw.overrides.memoryBytes / 1e9).toFixed(0)} GB × 90% assumed capacity.</p><p><b>Customer inputs still needed:</b> FP8 quality evaluation, CPU offload bandwidth, framework overhead, and cluster-specific utilization.</p></div>}
             </> : <p role="alert">No feasible layer-aware plan under the current assumptions.</p>}
           </section>
           <section className="lab-card"><h3>Stage assignment</h3>{best && <div className="layer-stage-list">{Array.from(new Set(best.stages)).map((stage) => { const nodes = graph.nodes.filter((_node, index) => best.stages[index] === stage); const memory = metrics?.memoryByStage[stage] ?? 0; return <div key={stage} className="layer-stage"><span>S{stage + 1}</span><div><b>{nodes[0]?.id} → {nodes[nodes.length - 1]?.id}</b><small>{nodes.length} nodes · {formatBytes(memory)} assumed memory</small></div></div>; })}</div>}<p className="lab-note">{result.assumptions.join(" · ")}</p></section>
+          {best && metrics && (
+            <>
+              <section className="lab-card"><h3>Pipeline schedule</h3><PipelineGantt stageTimes={metrics.stageTimes} microBatches={8} /></section>
+              <section className="lab-card"><h3>Per-layer roofline</h3><RooflineScatter problem={trainProblem} plan={best} locks={locks} /></section>
+              <section className="lab-card"><h3>Memory through a step</h3><MemoryWaterfall problem={trainProblem} plan={best} locks={locks} memoryCapBytes={deviceHw.overrides.memoryBytes * 0.9} /></section>
+            </>
+          )}
         </div>
       )}
     </div>

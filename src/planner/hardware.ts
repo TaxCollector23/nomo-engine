@@ -31,6 +31,16 @@ export const H100: Device = { name: "NVIDIA H100 SXM", peakFlops: { bf16: 989e12
 export const A100: Device = { name: "NVIDIA A100 SXM 80GB", peakFlops: { bf16: 312e12, fp32: 19.5e12 }, memBytes: 80e9, memBw: 2.039e12, powerW: 400, efficiency: eff };
 export const L4: Device = { name: "NVIDIA L4", peakFlops: { bf16: 121e12, fp8: 242e12 }, memBytes: 24e9, memBw: 0.3e12, powerW: 72, efficiency: eff };
 
+// AMD Instinct (CDNA3/CDNA4), datasheet dense (non-sparse) rates.
+// Sources: amd.com MI300X / MI325X / MI355X product pages (peak matrix performance, dense).
+//   MI300X: BF16 1307.4 TF, FP8 2614.9 TF, FP32 163.4 TF; 192 GB HBM3 @ 5.3 TB/s; 750 W TBP.
+//   MI325X: same compute as MI300X; 256 GB HBM3E @ 6.0 TB/s; 1000 W TBP.
+//   MI355X: BF16 2500 TF, FP8 5000 TF (OCP FP8), FP32 157.3 TF; 288 GB HBM3E @ 8 TB/s; 1400 W TBP.
+// MXFP6/MXFP4 (MI355X, 10.1 PF) are outside the planner's dtype set (bf16/fp8 only).
+export const MI300X: Device = { name: "AMD Instinct MI300X", peakFlops: { bf16: 1307.4e12, fp8: 2614.9e12, fp32: 163.4e12 }, memBytes: 192e9, memBw: 5.3e12, powerW: 750, efficiency: eff };
+export const MI325X: Device = { name: "AMD Instinct MI325X", peakFlops: { bf16: 1307.4e12, fp8: 2614.9e12, fp32: 163.4e12 }, memBytes: 256e9, memBw: 6.0e12, powerW: 1000, efficiency: eff };
+export const MI355X: Device = { name: "AMD Instinct MI355X", peakFlops: { bf16: 2500e12, fp8: 5000e12, fp32: 157.3e12 }, memBytes: 288e9, memBw: 8.0e12, powerW: 1400, efficiency: eff };
+
 export const CLUSTERS: Record<string, Cluster> = {
   h100_nvlink_ib: { key: "h100_nvlink_ib", label: "H100 SXM · NVLink + InfiniBand", device: H100, devicesPerNode: 8,
     intra: { bw: 450e9, latencyS: 3e-6 }, inter: { bw: 50e9, latencyS: 10e-6 }, costPerDeviceHour: 2.5,
@@ -41,6 +51,20 @@ export const CLUSTERS: Record<string, Cluster> = {
   l4_pcie: { key: "l4_pcie", label: "L4 · PCIe", device: L4, devicesPerNode: 8,
     intra: { bw: 32e9, latencyS: 5e-6 }, inter: { bw: 12.5e9, latencyS: 15e-6 }, costPerDeviceHour: 0.8,
     provenance: { peak: "spec", "intra.bw": "spec (PCIe Gen4 x16)", "inter.bw": "placeholder", latency: "placeholder", price: "placeholder", efficiency: "placeholder" } },
+  // AMD Instinct platforms: 8 OAM modules per UBB node, fully connected over AMD Infinity Fabric (full mesh);
+  // scale-out over standard 400GbE Ethernet (RoCEv2), the common Instinct platform networking.
+  // intra bw = uni-directional aggregate per GPU: MI300X/MI325X 7 peer links x 128 GB/s / 2 = 448 GB/s;
+  // MI355X 7 links x 153 GB/s / 2 ~= 535 GB/s (CDNA4 whitepaper: >1 TB/s bi-directional per GPU).
+  // Fabric hop latency and cloud price are engineering placeholders until measured.
+  mi300x_if_roce: { key: "mi300x_if_roce", label: "MI300X · Infinity Fabric + 400GbE", device: MI300X, devicesPerNode: 8,
+    intra: { bw: 448e9, latencyS: 5e-6 }, inter: { bw: 50e9, latencyS: 10e-6 }, costPerDeviceHour: 2.0,
+    provenance: { peak: "spec (AMD datasheet, dense)", "intra.bw": "spec (7x128 GB/s IF full mesh, uni-dir)", "inter.bw": "placeholder (400GbE RoCE est.)", latency: "placeholder", price: "placeholder (market est.)", efficiency: "placeholder" } },
+  mi325x_if_roce: { key: "mi325x_if_roce", label: "MI325X · Infinity Fabric + 400GbE", device: MI325X, devicesPerNode: 8,
+    intra: { bw: 448e9, latencyS: 5e-6 }, inter: { bw: 50e9, latencyS: 10e-6 }, costPerDeviceHour: 2.5,
+    provenance: { peak: "spec (AMD datasheet, dense)", "intra.bw": "spec (7x128 GB/s IF full mesh, uni-dir)", "inter.bw": "placeholder (400GbE RoCE est.)", latency: "placeholder", price: "placeholder (market est.)", efficiency: "placeholder" } },
+  mi355x_if_roce: { key: "mi355x_if_roce", label: "MI355X · Infinity Fabric + 400GbE", device: MI355X, devicesPerNode: 8,
+    intra: { bw: 535e9, latencyS: 5e-6 }, inter: { bw: 50e9, latencyS: 10e-6 }, costPerDeviceHour: 3.0,
+    provenance: { peak: "spec (AMD datasheet, dense)", "intra.bw": "spec (7x153 GB/s IF full mesh, uni-dir)", "inter.bw": "placeholder (400GbE RoCE est.)", latency: "placeholder", price: "placeholder (market est.)", efficiency: "placeholder" } },
 };
 
 export function flops(d: Device, dtype: string): number {

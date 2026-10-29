@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nomo-planner"
+version = "1.1.0"
+description = "Dependency-free planning and simulation platform: LLM training/serving/co-design packs, layer planner (NSGA-II), roofline event simulation, and the nomo-platform projects/runs/artifacts API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Nomo AI research group" }]
+keywords = ["llm", "planner", "roofline", "nsga-ii", "pareto", "simulation"]
+# The planner, packs, layer search, simulator, and platform API are stdlib-only.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+nomo-platform = "nomo_planner.cli:main"
+
+[tool.setuptools]
+packages = ["nomo_planner", "nomo_planner.domains"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

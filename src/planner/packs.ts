@@ -148,6 +148,7 @@ export const DEFAULT_QUALITY_LOSS = { weights: { bf16: 0, fp8: 0.2, int4: 1.0 },
 export interface ServingProblem {
   model: Transformer; cluster: Cluster; promptTokens: number; outputTokens: number; maxMsPerToken: number | null;
   maxQualityLoss: number; usableMemory: number; batchSizes: number[]; qualityLoss: Record<string, Record<string, number>>;
+  pagedKvBlockTokens?: number; // vLLM-style paged KV block; 0 disables paging
 }
 
 export class InferencePack implements Pack {
@@ -172,7 +173,8 @@ export class InferencePack implements Pack {
     ];
   }
   describe(plan: Plan): string {
-    return `${plan.weights} weights, ${plan.kv} KV cache, ${plan.tp} GPU(s) per copy, batch ${plan.batch}`;
+    const tp = Number(plan.tp);
+    return `${plan.weights} weights, ${plan.kv} KV cache, ${tp} GPU${tp === 1 ? "" : "s"} per copy, batch ${plan.batch}`;
   }
   evaluate(plan: Plan): Metrics {
     const P = this.p, M = P.model, cl = P.cluster, dev = cl.device;
@@ -186,9 +188,16 @@ export class InferencePack implements Pack {
     const wBytes = N * BYTES[wq]!;
     const kvTok = 2 * L * M.kvHeads * headDim(M) * BYTES[kq]!;
     const kvFull = B * (sIn + sOut) * kvTok;
-    const mem = (wBytes + kvFull) / t + this.overheadGb * 1e9;
+    // Paged KV (vLLM-style): allocation happens in fixed-size blocks, so the cache
+    // carries expected padding of about half a block per sequence.
+    const block = P.pagedKvBlockTokens ?? 16;
+    const kvPadding = block > 0 ? 0.5 / block : 0;
+    const kvAllocated = kvFull * (1 + kvPadding);
+    const mem = (wBytes + kvAllocated) / t + this.overheadGb * 1e9;
     const cap = dev.memBytes * P.usableMemory;
-    const prefillFlops = ((2 * N * sIn + 2 * L * sIn * sIn * h) * B) / t;
+    // Attention prefill FLOPs: 4·L·s²·h (2 matmuls × 2 FLOPs/MAC) — consistent with the
+    // decode term below and with layers.ts. The historical 2·L·s²·h undercounted attention 2×.
+    const prefillFlops = ((2 * N * sIn + 4 * L * sIn * sIn * h) * B) / t;
     const prefill = rooflineTime(prefillFlops, wBytes / t, dev, cdt);
     const kvAvg = B * (sIn + sOut / 2) * kvTok;
     const decFlops = ((2 * N + 4 * L * (sIn + sOut / 2) * h) * B) / t;
@@ -198,6 +207,10 @@ export class InferencePack implements Pack {
     const cycle = prefill + sOut * decode;
     const tokS = (B * sOut) / cycle;
     const usd = ((cl.costPerDeviceHour * t) / 3600 / tokS) * 1e6;
+    // First-order latency decomposition (static batching): a decode step waits for the
+    // whole batch, so time-between-tokens carries the amortized prefill; TTFT is the prefill.
+    const tbtStaticMs = (decode + prefill / sOut) * 1e3;
+    const ttftStaticMs = prefill * 1e3;
     const q = P.qualityLoss.weights![wq]! + P.qualityLoss.kv![kq]!;
     const cons: Record<string, number> = {
       valid: problems.length ? problems.length : -1.0, memory: mem / cap - 1.0,
@@ -213,9 +226,11 @@ export class InferencePack implements Pack {
         tokens_per_s: tokS, tokens_per_s_per_gpu: tokS / t, memory_gb: mem / 1e9, memory_cap_gb: cap / 1e9,
         prefill_s: prefill, decode_step_s: decode, kv_gb: kvFull / 1e9 / t, weights_gb: wBytes / 1e9 / t,
         decode_bound: memT > cmpT ? "memory" : "compute", layout_problems: problems,
+        tbt_static_ms: tbtStaticMs, ttft_static_ms: ttftStaticMs,
         memory_parts_gb: { weights: wBytes / 1e9 / t, "KV cache": kvFull / 1e9 / t, overhead: this.overheadGb },
       },
-      notes: ["quality_loss values are assumptions until replaced by your own evaluations"],
+      notes: ["quality_loss values are assumptions until replaced by your own evaluations",
+        block > 0 ? `KV cache is paged in ${block}-token blocks with ~${(kvPadding * 100).toFixed(1)}% expected padding` : "paged KV disabled"],
     };
   }
 }

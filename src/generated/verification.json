@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-10-29T12:37:38.289Z",
+  "verify": {
+    "checks": 35556,
+    "worstRelativeDiff": "1.41e-14"
+  },
+  "bench": [
+    {
+      "domain": "llm_training",
+      "plans": 7680,
+      "ms": 77,
+      "explainMs": 1
+    },
+    {
+      "domain": "llm_training",
+      "plans": 13440,
+      "ms": 191,
+      "explainMs": 1
+    },
+    {
+      "domain": "llm_inference",
+      "plans": 216,
+      "ms": 2,
+      "explainMs": 0
+    },
+    {
+      "domain": "arch_codesign",
+      "plans": 1215,
+      "ms": 18,
+      "explainMs": 1
+    }
+  ],
+  "simulationGolden": {
+    "checks": 123
+  },
+  "pythonTests": {
+    "passed": 155,
+    "seconds": 28.27
+  }
+}

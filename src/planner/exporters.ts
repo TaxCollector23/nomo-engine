@@ -1,4 +1,5 @@
 // Export files for a planner result. Every file can be downloaded on its own or bundled as one zip.
+import verification from "../generated/verification.json";
 import { CALIBRATED, CALIBRATION_RESULTS } from "./calibration";
 import { MODELS, params } from "./hardware";
 import { CodesignPack, InferencePack, SCALING_LAWS, TrainingPack, type Pack, type Plan } from "./packs";
@@ -25,7 +26,7 @@ export const FOLDERS: Record<string, string> = {
   "5-paper-materials": "LaTeX table, methods text and references for academic write-ups",
 };
 
-const ENGINE_VERSION = "nomo-planner 0.1 (browser engine, verified against the Python reference: 14,337 checks)";
+const ENGINE_VERSION = `nomo-planner 0.1 (browser engine, verified against the Python reference: ${verification.verify.checks.toLocaleString("en-US")} checks)`;
 
 function csvEscape(v: unknown): string {
   const s = v === null || v === undefined ? "" : typeof v === "number" ? (Number.isFinite(v) ? String(v) : "") : String(v);

@@ -1,0 +1,193 @@
+{
+ "contract": "spec-mc-golden-v1",
+ "method": "spec-range Monte Carlo",
+ "cases": [
+  {
+   "name": "train_llama3_8b_mi355x",
+   "samples": 400,
+   "inputs": [
+    {
+     "name": "e_matmul",
+     "low": 0.35,
+     "high": 0.65,
+     "default": 0.55
+    },
+    {
+     "name": "dp_overlap",
+     "low": 0.5,
+     "high": 0.85,
+     "default": 0.7
+    },
+    {
+     "name": "bubble_scale",
+     "low": 0.85,
+     "high": 1.15,
+     "default": 1.0
+    }
+   ],
+   "objectives": [
+    "days",
+    "cost_usd"
+   ],
+   "case_settings": {
+    "model": "llama3-8b",
+    "cluster": "mi355x_if_roce",
+    "seq_len": 4096,
+    "global_batch_tokens": 4194304,
+    "total_tokens": 1000000000000.0,
+    "device_counts": [
+     256,
+     512,
+     1024
+    ],
+    "usable_memory": 0.92
+   },
+   "plan": {
+    "devices": 512,
+    "tp": 4,
+    "pp": 4,
+    "zero": 1,
+    "recompute": "selective",
+    "micro_batch": 2,
+    "matmul_dtype": "bf16"
+   },
+   "intervals": {
+    "days": {
+     "p10": 1.3671821068085128,
+     "p50": 1.552437003748656,
+     "p90": 1.9897299673983375
+    },
+    "cost_usd": {
+     "p10": 50399.80118538901,
+     "p50": 57229.03770619046,
+     "p90": 73349.40551817231
+    }
+   },
+   "tornado": {
+    "days": [
+     {
+      "name": "e_matmul",
+      "swingPct": 54.167977842331624
+     },
+     {
+      "name": "bubble_scale",
+      "swingPct": 3.537765060037426
+     },
+     {
+      "name": "dp_overlap",
+      "swingPct": 2.9030049835159986
+     }
+    ],
+    "cost_usd": [
+     {
+      "name": "e_matmul",
+      "swingPct": 54.16797784233162
+     },
+     {
+      "name": "bubble_scale",
+      "swingPct": 3.5377650600374286
+     },
+     {
+      "name": "dp_overlap",
+      "swingPct": 2.9030049835159852
+     }
+    ]
+   }
+  },
+  {
+   "name": "serve_llama3_8b_mi300x",
+   "samples": 400,
+   "inputs": [
+    {
+     "name": "compute_eff",
+     "low": 0.85,
+     "high": 1.0,
+     "default": 0.95
+    },
+    {
+     "name": "mem_eff",
+     "low": 0.8,
+     "high": 1.0,
+     "default": 0.92
+    }
+   ],
+   "objectives": [
+    "usd_per_mtok",
+    "ms_per_token",
+    "quality_loss"
+   ],
+   "case_settings": {
+    "model": "llama3-8b",
+    "cluster": "mi300x_if_roce",
+    "prompt_tokens": 2048,
+    "output_tokens": 256,
+    "max_ms_per_token": 50,
+    "max_quality_loss": 1.0,
+    "usable_memory": 0.9,
+    "batch_sizes": [
+     1,
+     8,
+     32,
+     64,
+     128,
+     256
+    ]
+   },
+   "plan": {
+    "weights": "fp8",
+    "kv": "int4",
+    "tp": 1,
+    "batch": 256
+   },
+   "intervals": {
+    "usd_per_mtok": {
+     "p10": 0.06885303094951539,
+     "p50": 0.07236287083699249,
+     "p90": 0.07632425137290103
+    },
+    "ms_per_token": {
+     "p10": 6.323214161548441,
+     "p50": 6.913182678352181,
+     "p90": 7.538630863100735
+    },
+    "quality_loss": {
+     "p10": 1.0,
+     "p50": 1.0,
+     "p90": 1.0
+    }
+   },
+   "tornado": {
+    "usd_per_mtok": [
+     {
+      "name": "compute_eff",
+      "swingPct": 13.280549280796322
+     },
+     {
+      "name": "mem_eff",
+      "swingPct": 4.780018355118002
+     }
+    ],
+    "ms_per_token": [
+     {
+      "name": "mem_eff",
+      "swingPct": 23.0
+     },
+     {
+      "name": "compute_eff",
+      "swingPct": 0.0
+     }
+    ],
+    "quality_loss": [
+     {
+      "name": "compute_eff",
+      "swingPct": 0.0
+     },
+     {
+      "name": "mem_eff",
+      "swingPct": 0.0
+     }
+    ]
+   }
+  }
+ ]
+}

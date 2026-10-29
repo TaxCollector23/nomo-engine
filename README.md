@@ -23,9 +23,20 @@ the repository root. The historical Next.js neuromorphic dashboard remains in
 `frontend/` and is deployed separately. The mode shell links to that dashboard
 when the Neuromorphic chips mode is selected.
 
+The tri-domain engine that backs the dashboard now lives in this repository
+under `server/` (search, hardware profiles, copilot, telemetry server, export
+pipeline), so the whole product is reproducible from this checkout:
+
 ```bash
 npm install
-npm run dev
+npm run dev                       # mode shell + Lab (browser-only planning)
+
+pip install -e "./server[server,dev]"
+nomo search --model perception_cnn --hardware akd1500   # real tri-domain NSGA-II search
+nomo serve                        # the dashboard's search API (FastAPI + WS)
+
+pip install -e "./nomo-planner[dev]"
+nomo-platform --help              # dependency-free projects/runs/artifacts API + MCP
 ```
 
 Build the production site with:
