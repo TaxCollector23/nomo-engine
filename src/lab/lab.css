@@ -676,3 +676,56 @@ pre.lab-note { max-width: 100%; box-sizing: border-box; overflow: auto; white-sp
   .chip-field-pair { grid-template-columns: 1fr; }
   .chip-panel { padding: 15px; }
 }
+
+/* ---- GPU showdown ------------------------------------------------------------------------ */
+.lab-showdown { margin-top: 18px; }
+.showdown-scroll { max-height: none; }
+.showdown-table td.sd-plan { font-size: 0.8rem; color: var(--ink); max-width: 380px; }
+.showdown-table td.sd-num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.showdown-table .sd-sub { display: block; color: var(--muted); font-size: 0.7rem; margin-top: 2px; }
+.showdown-table .sd-chip { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; background: var(--ink); color: var(--card); }
+.showdown-table .sd-best { color: var(--good); font-weight: 600; }
+.showdown-table .sd-inuse { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.showdown-table tr.sd-active td { background: #fff; }
+.showdown-table tr.sd-infeasible td { color: var(--muted); }
+.showdown-table tr.sd-infeasible td b { color: var(--muted); }
+.showdown-table tr.sd-active td:first-child { box-shadow: inset 3px 0 0 var(--ink); }
+.sd-verdict { color: var(--ink); font-weight: 500; }
+@media (max-width: 1080px) { .showdown-table td.sd-plan { max-width: 240px; } }
+
+/* ---- Capacity clinic (module 04) --------------------------------------------------------- */
+.clinic-controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; margin: 14px 0 4px; }
+.clinic-slider { min-width: 210px; }
+.clinic-seed { width: 110px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+.clinic-grid { display: grid; grid-template-columns: minmax(340px, 1.2fr) minmax(300px, 1fr); gap: 22px; margin-top: 10px; }
+.clinic-chart { width: 100%; height: auto; display: block; }
+.clinic-pass-zone { fill: rgba(47, 111, 79, 0.09); }
+.clinic-gridline { stroke: var(--line); stroke-width: 1; }
+.clinic-tick { fill: var(--muted); font-size: 10px; }
+.clinic-axis { fill: var(--muted); font-size: 10px; }
+.clinic-ideal { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; }
+.clinic-goodput-line { fill: none; stroke: #2f6f4f; stroke-width: 2.2; }
+.clinic-pass-line { fill: none; stroke: #31688e; stroke-width: 1.6; stroke-dasharray: 5 3; }
+.clinic-knee { fill: #fff; stroke: #2f6f4f; stroke-width: 2; }
+.clinic-marker { fill: var(--ink); }
+.clinic-legend { font-size: 10px; }
+.clinic-legend--goodput { fill: #2f6f4f; font-weight: 600; }
+.clinic-legend--pass { fill: #31688e; }
+.clinic-verdict { font-size: 0.95rem; line-height: 1.5; margin: 0 0 12px; }
+.clinic-verdict b { font-variant-numeric: tabular-nums; }
+.clinic-table td, .clinic-table th { font-variant-numeric: tabular-nums; }
+.clinic-miss { color: #b3261e; font-weight: 600; }
+.clinic-facts { margin: 12px 0 0; display: grid; gap: 4px; }
+.clinic-facts div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dotted var(--line); padding: 3px 0; }
+.clinic-facts dt { color: var(--muted); font-size: 0.78rem; }
+.clinic-facts dd { margin: 0; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+@media (max-width: 1080px) { .clinic-grid { grid-template-columns: 1fr; } }
+
+/* ---- Spec tornado (uncalibrated hardware error attribution) ------------------------------- */
+.spec-tornado { margin-top: 12px; display: grid; gap: 5px; }
+.spec-tornado-row { display: grid; grid-template-columns: 190px 1fr 52px; align-items: center; gap: 10px; }
+.spec-tornado-label { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.spec-tornado-track { display: block; height: 12px; background: transparent; border-left: 2px solid var(--ink); }
+.spec-tornado-track i { display: block; height: 100%; background: linear-gradient(90deg, var(--ink), #6b7280); border-radius: 0 3px 3px 0; }
+.spec-tornado-value { font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+@media (max-width: 720px) { .spec-tornado-row { grid-template-columns: 120px 1fr 46px; } }

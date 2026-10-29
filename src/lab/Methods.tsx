@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
+import verification from "../generated/verification.json";
 import { UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
+
+// "4.37e-16" -> mantissa "4.37", superscript exponent "−16" for the ×10<sup>…</sup> rendering.
+const WORST_DIFF = verification.verify.worstRelativeDiff.split("e");
+const WORST_DIFF_MANTISSA = WORST_DIFF[0] ?? "0";
+const WORST_DIFF_EXPONENT = (WORST_DIFF[1] ?? "0").replace("+", "").replace("-", "−");
 
 function Eq({ children, label }: { children: ReactNode; label: string }) {
   return (
@@ -145,7 +151,7 @@ export default function Methods() {
       <p>
         The engine in this page is a TypeScript port of the Python reference implementation. A test suite compares both on
         1,050 plans across seven problems, every best-trade-off set, every counterfactual and all 22 calibration predictions:
-        14,337 numbers agree to within 4.37×10<sup>−16</sup> (the limit of double-precision arithmetic), including
+        {verification.verify.checks.toLocaleString("en-US")} numbers agree to within {WORST_DIFF_MANTISSA}×10<sup>{WORST_DIFF_EXPONENT}</sup> (the limit of double-precision arithmetic), including
         product pack golden cases. The product estimators are still labelled example/user-input models until customer
         measurements are available.
       </p>

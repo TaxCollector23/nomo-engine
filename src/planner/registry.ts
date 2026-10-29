@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: Record<DomainId, Settings> = {
   llm_training: { model: "llama3-8b", cluster: "h100_nvlink_ib", seq_len: 4096, global_batch_tokens: 4194304, total_tokens: 1e12,
     device_counts: [64, 128, 256, 512], usable_memory: 0.92 },
   llm_inference: { model: "llama3-8b", cluster: "h100_nvlink_ib", prompt_tokens: 2048, output_tokens: 256, max_ms_per_token: 50,
-    max_quality_loss: 1.0, usable_memory: 0.9, batch_sizes: [1, 8, 32, 64, 128, 256] },
+    max_quality_loss: 1.0, usable_memory: 0.9, batch_sizes: [1, 8, 32, 64, 128, 256], paged_kv_block_tokens: 16 },
   arch_codesign: { train_cluster: "h100_nvlink_ib", serve_cluster: "h100_nvlink_ib", tokens_served: 1e12, prompt_tokens: 1024,
     output_tokens: 256, max_ms_per_token: 50, budget_usd: null, max_train_tokens: null, seq_len: 4096, vocab: 128256,
     scaling_law: "besiroglu2024", train_mfu: 0.4, layers: [16, 24, 32, 40, 48, 64, 80, 96, 120],
@@ -41,7 +41,8 @@ export function build(domain: DomainId, s0: Settings): Pack {
     if (!model || !cluster) throw new Error("unknown model or hardware");
     return new InferencePack({ model, cluster, promptTokens: num(s.prompt_tokens, 2048), outputTokens: num(s.output_tokens, 256),
       maxMsPerToken: opt(s.max_ms_per_token), maxQualityLoss: num(s.max_quality_loss, 1), usableMemory: num(s.usable_memory, 0.9),
-      batchSizes: (s.batch_sizes as number[]).map(Number), qualityLoss: (s.quality_loss as typeof DEFAULT_QUALITY_LOSS) ?? DEFAULT_QUALITY_LOSS });
+      batchSizes: (s.batch_sizes as number[]).map(Number), qualityLoss: (s.quality_loss as typeof DEFAULT_QUALITY_LOSS) ?? DEFAULT_QUALITY_LOSS,
+      pagedKvBlockTokens: num(s.paged_kv_block_tokens, 16) });
   }
   const tc = CLUSTERS[String(s.train_cluster)], sc = CLUSTERS[String(s.serve_cluster)];
   if (!tc || !sc) throw new Error("unknown hardware");

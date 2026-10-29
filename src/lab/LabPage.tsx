@@ -1,23 +1,30 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import verification from "../generated/verification.json";
 import { CALIBRATED, CALIBRATION_RESULTS } from "../planner/calibration";
 import { counterfactuals, sensitivity, summary, type Counterfactual } from "../planner/explain";
 import { buildExport } from "../planner/exporters";
 import { CLUSTERS, MODELS } from "../planner/hardware";
-import { DEFAULT_ATTENTION_PENALTY, DEFAULT_QUALITY_LOSS, SCALING_LAWS, feasible, type Choice } from "../planner/packs";
+import { DEFAULT_ATTENTION_PENALTY, DEFAULT_QUALITY_LOSS, SCALING_LAWS, feasible, type Choice, type InferencePack } from "../planner/packs";
 import { DEFAULT_SETTINGS, build, innerPack, withLocks, type DomainId, type Settings } from "../planner/registry";
 import { Planner, recommend, type Evaluated } from "../planner/search";
+import { specMcForPlan, type SpecMcResult } from "../planner/specUncertainty";
 import { safestPlan, uncertaintyForPlan, UNCERTAINTY_VALIDATION } from "../planner/uncertainty";
+import { RunReadiness } from "./RunReadiness";
+import { SpecTornado, specBandLine } from "./SpecTornado";
 import Anatomy from "./Anatomy";
 import Auditor from "./Auditor";
 import { Chips, Field, Info, LinSlider, LogSlider, Segmented, Select, Toggle, fmtNum, fmtTokens } from "./controls";
 import Evidence from "./Evidence";
 import ExportDialog from "./ExportDialog";
+import GpuShowdown from "./GpuShowdown";
 import LayerPlanner from "./LayerPlanner";
 import Methods, { Equations } from "./Methods";
 import ProductStudio from "./ProductStudio";
 import CostTracker from "./CostTracker";
 import ResearchLab from "./ResearchLab";
+import { CapacityClinic } from "./CapacityClinic";
+import { ServingSweep } from "./ServingSweep";
 import SimulationWorkbench, { SimulationEvidencePanel } from "./SimulationWorkbench";
 import TradeoffChart from "./TradeoffChart";
 import WorkspacePanel, { type CurrentWorkspaceRun, type WorkspaceRun } from "./WorkspacePanel";
@@ -55,12 +62,42 @@ const QUESTIONS: Record<DomainId, string> = {
 };
 
 const STORE = "nomo-lab-v1";
-const load = (): { mode: Mode; prefs: Prefs } => {
+const DEFAULT_AXES: Record<DomainId, [string, string]> = {
+  llm_training: ["days", "cost_usd"], llm_inference: ["usd_per_mtok", "ms_per_token"], arch_codesign: ["total_cost_usd", "loss"] };
+const load = (): { mode: Mode; prefs: Prefs; settings: Record<DomainId, Settings>; locks: Record<DomainId, Record<string, Choice>>; axes: Record<DomainId, [string, string]> } => {
+  const fallback = {
+    mode: "guided" as Mode, prefs: MODE_PREFS.guided, settings: { ...DEFAULT_SETTINGS },
+    locks: { llm_training: {}, llm_inference: {}, arch_codesign: {} } as Record<DomainId, Record<string, Choice>>,
+    axes: { ...DEFAULT_AXES } };
   try {
     const s = JSON.parse(localStorage.getItem(STORE) ?? "null");
-    if (s && s.mode in MODE_PREFS) return { mode: s.mode, prefs: { ...MODE_PREFS[s.mode as Mode], ...s.prefs } };
+    if (!s || typeof s !== "object") return fallback;
+    const mode: Mode = s.mode in MODE_PREFS ? s.mode : fallback.mode;
+    const prefs: Prefs = { ...MODE_PREFS[mode], ...(s.prefs && typeof s.prefs === "object" ? s.prefs : {}) };
+    // each saved piece restores independently — one bad field never nukes the rest
+    const pick = (raw: unknown, keys: DomainId[]) => {
+      const out: Record<string, Record<string, unknown>> = {};
+      for (const d of keys) out[d] = {};
+      if (raw && typeof raw === "object") for (const d of keys) {
+        const v = (raw as Record<string, unknown>)[d];
+        if (v && typeof v === "object" && !Array.isArray(v)) out[d] = v as Record<string, unknown>;
+      }
+      return out;
+    };
+    const domains: DomainId[] = ["llm_training", "llm_inference", "arch_codesign"];
+    const savedSettings = pick(s.settings, domains), savedLocks = pick(s.locks, domains);
+    const settings = { ...DEFAULT_SETTINGS };
+    for (const d of domains) settings[d] = { ...DEFAULT_SETTINGS[d], ...savedSettings[d] };
+    const locks = { llm_training: {}, llm_inference: {}, arch_codesign: {} } as Record<DomainId, Record<string, Choice>>;
+    for (const d of domains) locks[d] = { ...savedLocks[d] } as Record<string, Choice>;
+    const axes = { ...DEFAULT_AXES };
+    if (s.axes && typeof s.axes === "object") for (const d of domains) {
+      const a = (s.axes as Record<string, unknown>)[d];
+      if (Array.isArray(a) && a.length === 2 && typeof a[0] === "string" && typeof a[1] === "string") axes[d] = [a[0], a[1]];
+    }
+    return { mode, prefs, settings, locks, axes };
   } catch { /* first visit or storage blocked */ }
-  return { mode: "guided", prefs: MODE_PREFS.guided };
+  return fallback;
 };
 
 const modelOptions = Object.entries(MODELS).map(([k, m]) => ({ value: k, label: m.name }));
@@ -86,8 +123,8 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const [mode, setModeRaw] = useState<Mode>(init.mode);
   const [prefs, setPrefs] = useState<Prefs>(init.prefs);
   const [custOpen, setCustOpen] = useState(false);
-  const [settings, setSettings] = useState<Record<DomainId, Settings>>({ ...DEFAULT_SETTINGS });
-  const [locks, setLocks] = useState<Record<DomainId, Record<string, Choice>>>({ llm_training: {}, llm_inference: {}, arch_codesign: {} });
+  const [settings, setSettings] = useState<Record<DomainId, Settings>>(init.settings);
+  const [locks, setLocks] = useState<Record<DomainId, Record<string, Choice>>>(init.locks);
   const [weights, setWeights] = useState<Record<DomainId, number[] | null>>({ llm_training: null, llm_inference: null, arch_codesign: null });
   const [selKey, setSelKey] = useState<string | null>(null);
   const [ghost, setGhost] = useState<Evaluated | null>(null);
@@ -95,10 +132,9 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [simulationCurrent, setSimulationCurrent] = useState<CurrentWorkspaceRun | null>(null);
   const [simulationRestore, setSimulationRestore] = useState<Record<string, unknown> | null>(null);
-  const [axes, setAxes] = useState<Record<DomainId, [string, string]>>({
-    llm_training: ["days", "cost_usd"], llm_inference: ["usd_per_mtok", "ms_per_token"], arch_codesign: ["total_cost_usd", "loss"] });
+  const [axes, setAxes] = useState<Record<DomainId, [string, string]>>(init.axes);
 
-  useEffect(() => { localStorage.setItem(STORE, JSON.stringify({ mode, prefs })); }, [mode, prefs]);
+  useEffect(() => { localStorage.setItem(STORE, JSON.stringify({ mode, prefs, settings, locks, axes })); }, [mode, prefs, settings, locks, axes]);
   useEffect(() => {
     const on = () => setModule(moduleFromUrl());
     window.addEventListener("hashchange", on);
@@ -290,11 +326,16 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
   const objs = pack?.objectives() ?? [];
   const calib = pack?.calibration ?? null;
   const selectedUncertainty = selected && res ? uncertaintyForPlan(res.uncertainty, selected.plan) : null;
+  const specMc = useMemo<SpecMcResult | null>(() => {
+    // calibrated hardware ships posterior intervals; everyone else gets spec-range bands
+    if (!computed?.pack || !selected || selectedUncertainty) return null;
+    return specMcForPlan(computed.pack, selected.plan);
+  }, [computed, selected, selectedUncertainty]);
   const safe = useMemo(() => (res && computed?.pack ? safestPlan(res.uncertainty, res.front, computed.pack.objectives()) : null), [res, computed]);
   const reliability = domain === "llm_training"
     ? (calib ? (res?.uncertainty ? { cls: "warn", text: `Hardware calibrated on ${calib.observations} runs; 90% intervals covered ${UNCERTAINTY_VALIDATION.actual === null ? "n/a" : `${Math.round(UNCERTAINTY_VALIDATION.actual * UNCERTAINTY_VALIDATION.n!)} / ${UNCERTAINTY_VALIDATION.n}`} held-out runs` }
       : { cls: "ok", text: `Hardware calibrated on ${calib.observations} published runs (held-out error ${CALIBRATION_RESULTS.heldOutPtdMape}%)` })
-      : { cls: "warn", text: "Uncalibrated hardware numbers: compare plans, treat absolute values as indicative" })
+      : specMc ? { cls: "warn", text: `Datasheet-based estimate; 90% band from ${specMc.samples}-sample spec-range Monte Carlo` } : { cls: "warn", text: "Uncalibrated hardware numbers: compare plans, treat absolute values as indicative" })
       : domain === "llm_inference" ? { cls: "warn", text: "Uncalibrated upper bound; quality effects are assumptions" }
       : { cls: "warn", text: "Published scaling law; prices and attention quality effects are assumptions" };
   const workspaceCurrent = useMemo<CurrentWorkspaceRun | null>(() => {
@@ -349,7 +390,7 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
           </p>
         </div>
         <div className="lab-top-stats" aria-label="Lab facts">
-          <div className="lab-stat"><b>14,337</b><span>checks against the reference engine</span></div>
+          <div className="lab-stat"><b>{verification.verify.checks.toLocaleString("en-US")}</b><span>checks against the reference engine</span></div>
           <div className="lab-stat"><b>22</b><span>published runs used for calibration</span></div>
           <div className="lab-stat"><b>0</b><span>servers: everything runs in this page</span></div>
         </div>
@@ -480,6 +521,8 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                                   <b>{fmtNum(selected.metrics.objectives[o.name]!, o.unit)}</b><span>{o.label}</span>
                                   {selectedUncertainty?.objectives[o.name] ? (
                                     <small>90%: {fmtNum(selectedUncertainty.objectives[o.name]!.low, o.unit)}–{fmtNum(selectedUncertainty.objectives[o.name]!.high, o.unit)}</small>
+                                  ) : specMc && specBandLine(specMc, o.name) ? (
+                                    <small>{specBandLine(specMc, o.name)}</small>
                                   ) : null}
                                 </div>
                               ))}
@@ -495,6 +538,9 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                               {selected !== rec && <button type="button" className="lab-link" onClick={() => setSelKey(null)}>Back to the recommendation</button>}
                               {mode === "guided" && <button type="button" className="lab-link" onClick={() => setMode("explore")}>Explore the alternatives →</button>}
                             </div>
+                            {mode !== "guided" && specMc && objs.length > 0 && (
+                              <SpecTornado result={specMc} objective={objs[0]!.name} label={objs[0]!.label} />
+                            )}
                           </>
                         ) : (
                           <div role="alert">
@@ -503,6 +549,21 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                           </div>
                         )}
                       </Card>
+
+                      {domain === "llm_training" && selected && (
+                        <RunReadiness selected={selected} cluster={CLUSTERS[String(S.cluster)]} />
+                      )}
+
+                      {res.front.length > 0 && domain !== "arch_codesign" && (
+                        <GpuShowdown
+                          domain={domain}
+                          settings={settings[domain]}
+                          locks={locks[domain]}
+                          weights={w}
+                          activeCluster={String(S.cluster)}
+                          onPick={(k) => set("cluster", k)}
+                        />
+                      )}
 
                       {res.front.length > 0 && (
                         <Card title="Every plan, and the best trade-offs" aside={mode !== "guided" && objs.length > 2 ? (
@@ -520,6 +581,21 @@ export default function LabPage({ engineUrl }: { engineUrl: string }) {
                       )}
 
                       {prefs.anatomy && selected && <Card title="Anatomy of this plan"><Anatomy pack={innerPack(pack)} e={selected} /></Card>}
+
+                      {domain === "llm_inference" && pack && (
+                        <Card title="Concurrency sweep — how far can this batch go?">
+                          <ServingSweep pack={innerPack(pack) as InferencePack} selected={selected} />
+                        </Card>
+                      )}
+
+                      {domain === "llm_inference" && pack && selected && (
+                        <CapacityClinic
+                          pack={innerPack(pack) as InferencePack}
+                          selected={selected}
+                          settings={settings[domain]}
+                          cluster={CLUSTERS[String(S.cluster)]}
+                        />
+                      )}
                     </>
                   )}
                 </div>

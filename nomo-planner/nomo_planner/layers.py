@@ -282,6 +282,10 @@ class TrainingHardware:
     cpu_offload_bytes_s: float = 32e9
     overhead_bytes: float = 3e9
     usable_memory: float = 0.90
+    # Device HBM bandwidth for roofline classification (default: H100 HBM3 ~3.35 TB/s,
+    # NVIDIA H100 datasheet).  Only used by roofline_points; the step-time evaluator
+    # keeps its own constants unchanged.
+    memory_bandwidth_bytes_s: float = 3.35e12
 
 
 @dataclass(frozen=True)
@@ -390,7 +394,11 @@ def evaluate_plan(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: M
     for node, precision, recompute, offload, stage in zip(graph.nodes, plan.precision, plan.recompute, plan.offload, plan.stages):
         speed = PRECISION_SPEEDUP[precision]
         stage_times[stage] += node.forward_flops * RECOMPUTE_FLOP_MULTIPLIER[recompute] / (hardware.peak_flops * speed)
-        state_bytes = node.parameter_count * (1.0 if precision == "fp8" else 2.0 + 2.0 + 12.0)
+        # Training-state bytes per parameter. bf16 mixed precision: 2 (weights) + 2 (grads)
+        # + 4 (fp32 master) + 8 (Adam m,v) = 16. fp8 stores weights in 1 byte but gradients,
+        # the fp32 master copy, and optimizer states remain: 1 + 2 + 4 + 8 = 15.
+        # (The historical 1 B/param for fp8 silently dropped grads + optimizer states.)
+        state_bytes = node.parameter_count * (15.0 if precision == "fp8" else 2.0 + 2.0 + 12.0)
         activation_bytes = node.activation_bytes
         if offload:
             memory[stage] += state_bytes + activation_bytes * 0.15
@@ -440,6 +448,88 @@ def evaluate_plan(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: M
 
 def _feasible(metrics: LayerMetrics) -> bool:
     return all(value <= 0.0 for value in metrics.constraints.values())
+
+
+# ------------------------------------------------------------------ visualisation helpers
+# Both helpers reuse the evaluator's own work and memory definitions, so the charts
+# in the browser can never disagree with the numbers the planner reports.
+
+def roofline_points(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: Mapping[str, Mapping[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Per-node roofline points (Williams et al. 2009) on the evaluator's accounting.
+
+    `flops` is exactly the work `evaluate_plan` charges (`forward_flops` times the
+    recompute multiplier); `bytes_min` moves the training states once plus one pass
+    of activations.  The ridge point is peak effective FLOPs divided by device HBM
+    bandwidth; nodes below it are bandwidth-bound at the roofline's first level.
+    """
+    graph = problem.graph
+    plan = repair_plan(graph, plan, locks=locks)
+    hardware = problem.hardware
+    points: list[dict[str, Any]] = []
+    for node, precision, recompute, stage in zip(graph.nodes, plan.precision, plan.recompute, plan.stages):
+        speed = PRECISION_SPEEDUP[precision]
+        flops = node.forward_flops * RECOMPUTE_FLOP_MULTIPLIER[recompute]
+        state_bytes = node.parameter_count * (15.0 if precision == "fp8" else 16.0)
+        bytes_min = state_bytes + node.activation_bytes
+        intensity = flops / bytes_min
+        peak = hardware.peak_flops * speed
+        ridge = peak / hardware.memory_bandwidth_bytes_s
+        points.append({
+            "id": node.id, "kind": node.kind, "stage": stage, "precision": precision,
+            "flops": flops, "bytes_min": bytes_min, "intensity": intensity,
+            "peak_flops": peak, "ridge_flops": ridge,
+            "attainable_flops": min(peak, intensity * hardware.memory_bandwidth_bytes_s),
+            "bound": "memory" if intensity < ridge else "compute",
+        })
+    return points
+
+
+def memory_timeline(problem: TrainingProblem, plan: LayerTrainingPlan, *, locks: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
+    """Per-stage memory shape for one micro-batch lifecycle.
+
+    baseline = overhead + persistent training states (weights + grads + fp32 master +
+    Adam, charged for the whole step exactly as the evaluator does); the forward walk
+    accumulates activation residency (15% kept when the node offloads to CPU, same as
+    the evaluator), peaks at full forward, and returns to baseline after backward.
+
+    `forward_peak_bytes` equals `evaluate_plan().memory_by_stage[stage]` by
+    construction -- this helper adds the *shape*, never new memory terms.
+    """
+    graph = problem.graph
+    plan = repair_plan(graph, plan, locks=locks)
+    hardware = problem.hardware
+    stage_count = max(plan.stages) + 1
+    metrics = evaluate_plan(problem, plan, locks=locks)
+    stages: list[dict[str, Any]] = []
+    for stage in range(stage_count):
+        indices = [i for i, s in enumerate(plan.stages) if s == stage]
+        baseline = hardware.overhead_bytes + sum(
+            graph.nodes[i].parameter_count * (15.0 if plan.precision[i] == "fp8" else 16.0)
+            for i in indices
+        )
+        cumulative = 0.0
+        forward_peak = baseline
+        walk: list[dict[str, Any]] = []
+        for i in indices:
+            cumulative += graph.nodes[i].activation_bytes * (0.15 if plan.offload[i] else 1.0)
+            forward_peak = max(forward_peak, baseline + cumulative)
+            walk.append({"node": graph.nodes[i].id, "phase": "forward", "bytes_after": baseline + cumulative})
+        stages.append({
+            "stage": stage,
+            "baseline_bytes": baseline,
+            "forward_peak_bytes": forward_peak,
+            "end_bytes": baseline,
+            "evaluator_bytes": metrics.memory_by_stage[stage],
+            "forward_walk": walk,
+        })
+    return {
+        "stages": stages,
+        "micro_batches": max(1, problem.micro_batches),
+        "notes": [
+            "Gradients, the fp32 master copy and Adam moments are charged inside the persistent states for the whole step, matching evaluate_plan",
+            "Offloaded activations keep 15% resident, matching evaluate_plan's CPU-offload accounting",
+        ],
+    }
 
 
 def _vector(metrics: LayerMetrics) -> tuple[float, float, float]:

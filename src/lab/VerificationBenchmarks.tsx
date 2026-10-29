@@ -1,11 +1,25 @@
-const SEARCH_BENCHMARKS = [
-  { workload: "llm_training · default", plans: "7,680", search: "63 ms", explain: "1 ms" },
-  { workload: "llm_training · 64–4,096 devices", plans: "13,440", search: "150 ms", explain: "1 ms" },
-  { workload: "llm_inference · default", plans: "216", search: "2 ms", explain: "0 ms" },
-  { workload: "arch_codesign · $5M budget", plans: "1,215", search: "13 ms", explain: "0 ms" },
+import verification from "../generated/verification.json";
+
+/** Shape of src/generated/verification.json — regenerate with `npm run stats`. */
+interface VerificationSnapshot {
+  generatedAt: string;
+  verify: { checks: number; worstRelativeDiff: string };
+  pythonTests: { passed: number; seconds: number | null };
+  simulationGolden: { checks: number };
+  bench: { domain: string; plans: number; ms: number; explainMs: number }[];
+}
+
+const stats = verification as VerificationSnapshot;
+
+/** Descriptions of the four fixed `npm run bench` configurations, in scripts/bench.mjs output order. */
+const BENCH_WORKLOADS = [
+  "llm_training · default",
+  "llm_training · 64–4,096 devices",
+  "llm_inference · default",
+  "arch_codesign · $5M budget",
 ];
 
-/** Checked-in results from the repository's deterministic benchmark command. */
+/** Live numbers from the repository's own verification commands (see `npm run stats`). */
 export default function VerificationBenchmarks() {
   return (
     <section className="lab-card lab-benchmarks" aria-labelledby="verification-benchmarks-title">
@@ -14,21 +28,24 @@ export default function VerificationBenchmarks() {
           <p className="section-kicker">Measured checks</p>
           <h3 id="verification-benchmarks-title">Verification &amp; benchmarks</h3>
         </div>
-        <span className="lab-muted">local run · 2026-10-06</span>
+        <span className="lab-muted">snapshot generated {stats.generatedAt}</span>
       </div>
       <div className="lab-stat-row">
-        <div className="lab-stat"><b>134</b><span>Python planner tests passed</span></div>
-        <div className="lab-stat"><b>14,337</b><span>TypeScript parity checks passed</span></div>
-        <div className="lab-stat"><b>123</b><span>simulation golden checks passed</span></div>
+        <div className="lab-stat"><b>{stats.pythonTests.passed.toLocaleString("en-US")}</b><span>Python planner tests passed</span></div>
+        <div className="lab-stat"><b>{stats.verify.checks.toLocaleString("en-US")}</b><span>TypeScript parity checks passed</span></div>
+        <div className="lab-stat"><b>{stats.simulationGolden.checks.toLocaleString("en-US")}</b><span>simulation golden checks passed</span></div>
       </div>
       <div className="lab-table-scroll">
         <table className="lab-table lab-benchmark-table">
           <caption>Planner search benchmark from <code>npm run bench</code></caption>
           <thead><tr><th>Workload</th><th>Plans</th><th>Search</th><th>Explain</th></tr></thead>
           <tbody>
-            {SEARCH_BENCHMARKS.map((row) => (
-              <tr key={row.workload}>
-                <td>{row.workload}</td><td>{row.plans}</td><td>{row.search}</td><td>{row.explain}</td>
+            {stats.bench.map((row, index) => (
+              <tr key={`${row.domain}:${index}`}>
+                <td>{BENCH_WORKLOADS[index] ?? row.domain}</td>
+                <td>{row.plans.toLocaleString("en-US")}</td>
+                <td>{row.ms.toLocaleString("en-US")} ms</td>
+                <td>{row.explainMs.toLocaleString("en-US")} ms</td>
               </tr>
             ))}
           </tbody>

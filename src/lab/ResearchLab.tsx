@@ -3,8 +3,11 @@ import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   buildRunMatrix,
   CHECKLIST,
+  COMPARISON_NOTE,
   createResearchStudy,
+  executeRunMatrix,
   normalizeResearchStudy,
+  PLANNER_RUN_NOTE,
   protocolReadiness,
   studyCsv,
   studyManifest,
@@ -96,6 +99,7 @@ export default function ResearchLab() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<ResearchTab>("protocol");
   const [notice, setNotice] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
   const selectedId = activeId ?? studies[0]?.id ?? null;
   const active = studies.find((study) => study.id === selectedId) ?? null;
   const readiness = useMemo(() => active ? protocolReadiness(active) : null, [active]);
@@ -157,6 +161,30 @@ export default function ResearchLab() {
     setStudies((current) => current.filter((study) => study.id !== active.id));
     setActiveId(null);
     setNotice("Study removed from this browser. An exported copy is not affected.");
+  };
+
+  // Runs the planned (still-empty) rows through the in-browser planner. The
+  // computation is synchronous, so a short timeout lets the progress state
+  // paint first. Computed rows are labeled separately and never overwrite
+  // user-entered measurements.
+  const executeMatrix = () => {
+    if (!active || executing) return;
+    setExecuting(true);
+    window.setTimeout(() => {
+      try {
+        const before = active.runs.filter((run) => run.origin === "computed").length;
+        const next = executeRunMatrix(active);
+        const after = next.runs.filter((run) => run.origin === "computed").length;
+        if (next !== active) updateActive(() => next);
+        setNotice(after > before
+          ? `Run matrix executed: ${after - before} planned row${after - before === 1 ? "" : "s"} now hold planner-computed values. ${PLANNER_RUN_NOTE}`
+          : "No planned rows were computable. Rows with user-entered values are never overwritten; check that the study assumptions map to a known pack.");
+      } catch (error) {
+        setNotice(`Run matrix could not execute: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        setExecuting(false);
+      }
+    }, 30);
   };
 
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -243,9 +271,9 @@ export default function ResearchLab() {
 
             <div className="research-summary-strip" aria-label="Study summary">
               <Metric label="Protocol" value={`${readiness.checked}/${readiness.total}`} detail={readiness.ready ? "ready to preregister" : `${readiness.blocking.length} blocker${readiness.blocking.length === 1 ? "" : "s"}`} tone={readiness.ready ? "good" : "warn"} />
-              <Metric label="Run coverage" value={`${summary.measuredCount}/${active.runs.length}`} detail="rows with recorded status" />
+              <Metric label="Run coverage" value={`${summary.measuredCount}/${active.runs.length}`} detail={summary.computedCount ? `${summary.computedCount} planner-computed · not measurements` : "rows with recorded status"} />
               <Metric label="Baseline mean" value={formatNumber(summary.baseline.mean)} detail={active.protocol.primaryMetric || "primary metric"} />
-              <Metric label="Candidate mean" value={formatNumber(summary.candidate.mean)} detail={summary.evidence === "measured" ? "measured comparison" : "awaiting paired data"} />
+              <Metric label="Candidate mean" value={formatNumber(summary.candidate.mean)} detail={summary.evidence === "measured" ? "measured comparison" : summary.evidence === "computed" ? "planner-computed · not measurements" : "awaiting paired data"} />
             </div>
 
             <div className="research-tabs" role="tablist" aria-label="Study workspace">
@@ -253,7 +281,7 @@ export default function ResearchLab() {
             </div>
 
             {tab === "protocol" && <ProtocolView study={active} readiness={readiness} setProtocol={setProtocol} setChecklist={setChecklist} />}
-            {tab === "runs" && <RunsView study={active} summary={summary} setRun={setRun} />}
+            {tab === "runs" && <RunsView study={active} summary={summary} setRun={setRun} onExecute={executeMatrix} executing={executing} />}
             {tab === "results" && <ResultsView study={active} readiness={readiness} summary={summary} exportSelected={exportSelected} />}
           </>}
         </main>
@@ -329,14 +357,14 @@ function ProtocolView({
   </div>;
 }
 
-function RunsView({ study, summary, setRun }: { study: ResearchStudy; summary: ReturnType<typeof summarizeResearchRuns>; setRun: (id: string, patch: Partial<ResearchRun>) => void }) {
+function RunsView({ study, summary, setRun, onExecute, executing }: { study: ResearchStudy; summary: ReturnType<typeof summarizeResearchRuns>; setRun: (id: string, patch: Partial<ResearchRun>) => void; onExecute: () => void; executing: boolean }) {
   const baselineLabel = study.protocol.baseline || "Baseline";
   const candidateLabel = study.protocol.candidate || "Candidate";
   return <div className="research-view research-runs-view">
-    <div className="research-run-toolbar"><div><p className="section-kicker">Paired run matrix</p><h4>{study.protocol.repetitions} repetitions · {study.runs.length} planned rows</h4><p className="research-help">Rows share a seed by repetition so the baseline and candidate can be compared fairly. Empty fields mean unavailable, not zero.</p></div><div className="research-run-counts"><span><b>{summary.measuredCount}</b> measured</span><span><b>{summary.excludedCount}</b> excluded</span><span><b>{summary.plannedCount}</b> planned</span></div></div>
+    <div className="research-run-toolbar"><div><p className="section-kicker">Paired run matrix</p><h4>{study.protocol.repetitions} repetitions · {study.runs.length} planned rows</h4><p className="research-help">Rows share a seed by repetition so the baseline and candidate can be compared fairly. Empty fields mean unavailable, not zero.</p></div><div className="research-run-counts"><span><b>{summary.measuredCount}</b> measured</span><span><b>{summary.computedCount}</b> computed</span><span><b>{summary.excludedCount}</b> excluded</span><span><b>{summary.plannedCount}</b> planned</span></div><button type="button" className="ui-button ui-button--primary ui-button--default" onClick={onExecute} disabled={executing}>{executing ? "Computing…" : "Execute run matrix"}</button></div>
     <div className="research-table-wrap">
       <table className="research-table">
-        <thead><tr><th>Condition</th><th>Rep.</th><th>Seed</th><th>Status</th><th>{study.protocol.primaryMetric || "Primary metric"}</th><th>Energy (J)</th><th>Latency (ms)</th><th>Source / artifact</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Condition</th><th>Rep.</th><th>Seed</th><th>Status</th><th>{study.protocol.primaryMetric || "Primary metric"}</th><th>Energy (J)</th><th>Latency (ms)</th><th>Origin</th><th>Source / artifact</th><th>Notes</th></tr></thead>
         <tbody>{study.runs.map((run) => <tr key={run.id} className={run.condition === "candidate" ? "is-candidate" : ""}>
           <td><strong>{run.condition === "baseline" ? baselineLabel : candidateLabel}</strong><small>{run.condition}</small></td>
           <td>{run.repetition}</td><td>{run.seed}</td>
@@ -344,11 +372,13 @@ function RunsView({ study, summary, setRun }: { study: ResearchStudy; summary: R
           <td><input aria-label={`${run.condition} repetition ${run.repetition} primary metric`} type="number" step="any" value={run.metricValue ?? ""} onChange={(event) => setRun(run.id, { metricValue: numericValue(event.target.value) })} /></td>
           <td><input aria-label={`${run.condition} repetition ${run.repetition} energy`} type="number" step="any" value={run.energyJ ?? ""} onChange={(event) => setRun(run.id, { energyJ: numericValue(event.target.value) })} /></td>
           <td><input aria-label={`${run.condition} repetition ${run.repetition} latency`} type="number" step="any" value={run.latencyMs ?? ""} onChange={(event) => setRun(run.id, { latencyMs: numericValue(event.target.value) })} /></td>
+          <td>{run.origin === "computed" ? <span className="research-code" title={run.notes}>planner</span> : <span className="research-code">user</span>}</td>
           <td><input aria-label={`${run.condition} repetition ${run.repetition} source`} value={run.source} onChange={(event) => setRun(run.id, { source: event.target.value })} placeholder="trace, file, URL" /></td>
           <td><input aria-label={`${run.condition} repetition ${run.repetition} notes`} value={run.notes} onChange={(event) => setRun(run.id, { notes: event.target.value })} placeholder="optional" /></td>
         </tr>)}</tbody>
       </table>
     </div>
+    <div className="research-measurement-note"><strong>Computed rows</strong><span>{PLANNER_RUN_NOTE} {COMPARISON_NOTE} They are rendered next to — never instead of — user-measured columns, and entering your own value always wins over a computed one.</span></div>
     <div className="research-measurement-note"><strong>Measurement boundary</strong><span>Entering a value records a local observation. It does not calibrate the planner, certify the hardware, or establish task accuracy. Keep the source path or artifact identifier with every measured row.</span></div>
   </div>;
 }
@@ -369,7 +399,7 @@ function ResultsView({
   const candidateWidth = summary.candidate.mean === null ? 0 : Math.max(4, (summary.candidate.mean / maxValue) * 100);
   const resultTone = summary.thresholdMet === true ? "research-result--pass" : summary.thresholdMet === false ? "research-result--fail" : "research-result--neutral";
   return <div className="research-view research-results-view">
-    <section className={`research-result ${resultTone}`}><div><p className="section-kicker">Current interpretation</p><h4>{summary.conclusion}</h4><p>{summary.evidence === "measured" ? "Both sides have at least one measured primary-metric row. Inspect the raw rows and sources before making a broader claim." : "This is still a preview. Record measured baseline and candidate rows to calculate a comparison."}</p></div><span className="research-evidence-label">{summary.evidence === "measured" ? "Measured rows present" : "Preview"}</span></section>
+    <section className={`research-result ${resultTone}`}><div><p className="section-kicker">Current interpretation</p><h4>{summary.conclusion}</h4><p>{summary.evidence === "measured" ? "Both sides have at least one measured primary-metric row. Inspect the raw rows and sources before making a broader claim." : summary.evidence === "computed" ? `${PLANNER_RUN_NOTE} The comparison is between planner-selected operating points, not hardware measurements. Record measured rows to make the comparison evidence.` : "This is still a preview. Record measured baseline and candidate rows to calculate a comparison."}</p></div><span className="research-evidence-label">{summary.evidence === "measured" ? "Measured rows present" : summary.evidence === "computed" ? "Computed rows · not measurements" : "Preview"}</span></section>
 
     <div className="research-results-grid">
       <section className="research-panel"><div className="research-panel-head"><div><p className="section-kicker">Comparison</p><h4>Baseline versus candidate</h4></div><span className="research-code">MEAN OF RECORDED ROWS</span></div><div className="research-bar-list"><div className="research-bar-row"><span>{study.protocol.baseline || "Baseline"}</span><div><i style={{ width: `${baselineWidth}%` }} /></div><b>{formatNumber(summary.baseline.mean)}</b></div><div className="research-bar-row"><span>{study.protocol.candidate || "Candidate"}</span><div><i className="is-candidate" style={{ width: `${candidateWidth}%` }} /></div><b>{formatNumber(summary.candidate.mean)}</b></div></div><div className="research-result-facts"><Metric label="Improvement" value={summary.improvementPct === null ? "n/a" : `${summary.improvementPct.toFixed(1)}%`} detail={study.protocol.direction === "minimize" ? "lower metric is better" : "higher metric is better"} tone={summary.improvementPct !== null && summary.improvementPct >= 0 ? "good" : summary.improvementPct !== null ? "warn" : undefined} /><Metric label="Paired rows" value={String(summary.pairedCount)} detail="minimum measured count" /><Metric label="Threshold" value={study.protocol.successThreshold === null ? "not set" : `${study.protocol.successThreshold}%`} detail={summary.thresholdMet === null ? "no pass/fail yet" : summary.thresholdMet ? "met" : "not met"} /></div></section>

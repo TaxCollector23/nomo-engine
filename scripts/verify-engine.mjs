@@ -1,7 +1,7 @@
 // Verifies the browser engine against golden outputs from the Python engine (nomo-planner/studies/export_golden.py).
 // Run: node scripts/verify-engine.mjs   (bundles src/planner with esbuild, then compares every number)
 import { build as esbuild } from "esbuild";
-import { readFileSync, mkdtempSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,15 +10,19 @@ const dir = mkdtempSync(join(tmpdir(), "nomo-verify-"));
 const entry = join(dir, "entry.ts");
 const src = fileURLToPath(new URL("../src/planner/", import.meta.url)).replaceAll("\\", "/");
 await import("node:fs").then((fs) => fs.writeFileSync(entry, `
-  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}chipDesign"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration"; export * from "${src}research";`));
+  export * from "${src}registry"; export * from "${src}search"; export * from "${src}explain"; export * from "${src}calibration"; export * from "${src}layers"; export * from "${src}productModels"; export * from "${src}chipDesign"; export * from "${src}auditor"; export * from "${src}costTracker"; export * from "${src}customerCalibration"; export * from "${src}research"; export * from "${src}specUncertainty";`));
 await esbuild({ entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: join(dir, "engine.mjs"), logLevel: "error" });
 const E = await import(pathToFileURL(join(dir, "engine.mjs")).href);
+await esbuild({ entryPoints: [fileURLToPath(new URL("../src/simulation/serving-sim.ts", import.meta.url))], bundle: true, format: "esm", platform: "node", outfile: join(dir, "serving-sim.mjs"), logLevel: "error" });
+const S = await import(pathToFileURL(join(dir, "serving-sim.mjs")).href);
 // Python's json writes bare Infinity (unservable designs have infinite cost); JSON.parse needs it quoted
 const golden = JSON.parse(readFileSync(new URL("./golden.json", import.meta.url), "utf8").replace(/: (-?)Infinity/g, ': "$1Infinity"'),
   (_k, v) => (v === "Infinity" ? Infinity : v === "-Infinity" ? -Infinity : v));
 const layerGolden = JSON.parse(readFileSync(new URL("./layer-golden.json", import.meta.url), "utf8"));
 const productGolden = JSON.parse(readFileSync(new URL("./product-golden.json", import.meta.url), "utf8"));
 const auditorGolden = JSON.parse(readFileSync(new URL("./auditor-golden.json", import.meta.url), "utf8"));
+const servingGolden = JSON.parse(readFileSync(new URL("./serving-sim-golden.json", import.meta.url), "utf8"));
+const specMcGolden = JSON.parse(readFileSync(new URL("./spec-mc-golden.json", import.meta.url), "utf8"));
 
 let checks = 0, worst = 0;
 const fail = (msg) => { console.error("FAIL:", msg); process.exit(1); };
@@ -189,7 +193,8 @@ if (customerFit.intervalLevel !== 0.9 || !customerFit.intervalScope.includes("no
 checks += 2;
 try { E.parseCustomerCsv("run_id,cluster,predicted_step_s,observed_step_s\n,h100,1,1"); fail("customer calibration accepted missing run id"); } catch (error) { if (!String(error).includes("run_id")) fail("customer calibration missing-id error"); checks++; }
 if (E.PUBLIC_COST_COVERAGE.openModelTrainingRows !== 2 || E.PUBLIC_COST_COVERAGE.openModelServingRows !== 0) fail("cost coverage boundary");
-if (E.costSourceFreshness(E.PUBLIC_COST_ROWS.find((row) => row.item === "gpt-5.3-codex"), new Date("2026-10-06T00:00:00Z")).status !== "fresh") fail("cost freshness check");
+// Real published row (GPT-4o list price, checked 2024-08-02) must honestly read "stale" today.
+if (E.costSourceFreshness(E.PUBLIC_COST_ROWS.find((row) => row.item === "GPT-4o"), new Date("2026-10-06T00:00:00Z")).status !== "stale") fail("cost freshness check");
 checks += 2;
 console.log("ok  evidence boundaries: customer intervals, quoted CSV, and cost freshness/coverage");
 
@@ -205,6 +210,89 @@ for (const c of layerGolden.cases) {
   for (const [key, value] of Object.entries(c.global_objectives)) close(result.globalBest.metrics.objectives[objectiveKey(key)], value, `layers ${c.key} global ${key}`);
   close(result.precisionGainPct, c.precision_gain_pct, `layers ${c.key} precision gain`);
   close(result.perLayerGainPct, c.per_layer_gain_pct, `layers ${c.key} per-layer gain`);
+  // roofline + memory-timeline visualisation helpers must match Python exactly
+  const roof = E.rooflinePoints({ graph, pipelineStages: c.pipeline_stages, maxCandidates: c.max_candidates, totalSteps: c.total_steps, seed: c.seed }, result.best);
+  if (roof.length !== c.roofline.length) fail(`layers ${c.key} roofline count ${roof.length} vs ${c.roofline.length}`);
+  c.roofline.forEach((g, i) => {
+    const p = roof[i];
+    if (p.id !== g.id || p.kind !== g.kind || p.stage !== g.stage || p.precision !== g.precision) fail(`layers ${c.key} roofline[${i}] identity`);
+    close(p.flops, g.flops, `layers ${c.key} roofline flops`);
+    close(p.bytesMin, g.bytes_min, `layers ${c.key} roofline bytes`);
+    close(p.intensity, g.intensity, `layers ${c.key} roofline intensity`);
+    close(p.ridgeFlops, g.ridge_flops, `layers ${c.key} roofline ridge`);
+    close(p.attainableFlops, g.attainable_flops, `layers ${c.key} roofline attainable`);
+    if (p.bound !== g.bound) fail(`layers ${c.key} roofline[${i}] bound ${p.bound} vs ${g.bound}`);
+  });
+  const tl = E.memoryTimeline({ graph, pipelineStages: c.pipeline_stages, maxCandidates: c.max_candidates, totalSteps: c.total_steps, seed: c.seed }, result.best);
+  if (tl.stages.length !== c.timeline.stages.length) fail(`layers ${c.key} timeline stage count`);
+  c.timeline.stages.forEach((g, i) => {
+    const s = tl.stages[i];
+    close(s.baselineBytes, g.baseline_bytes, `layers ${c.key} timeline baseline`);
+    close(s.forwardPeakBytes, g.forward_peak_bytes, `layers ${c.key} timeline peak`);
+    close(s.endBytes, g.end_bytes, `layers ${c.key} timeline end`);
+    close(s.evaluatorBytes, g.evaluator_bytes, `layers ${c.key} timeline evaluator`);
+    if (Math.abs(s.forwardPeakBytes - s.evaluatorBytes) > 1e-6 * s.evaluatorBytes) fail(`layers ${c.key} timeline peak must equal evaluator memory`);
+  });
   console.log(`ok  layers ${c.key.padEnd(14)} seed ${c.seed}  best ${new Set(result.best.stages).size} stages`);
 }
+// serving-sim: the browser simulator must reproduce the Python reference request-for-request
+if (servingGolden.contract !== "serving-sim-golden-v1") fail("serving-sim golden contract mismatch");
+for (const c of servingGolden.cases) {
+  const assumptions = { ...c.assumptions };
+  const traceRows = c.trace_rows
+    ? c.trace_rows.map((row) => ({
+        requestId: row.request_id, arrivalS: row.arrival_s, promptTokens: row.prompt_tokens,
+        answerTokens: row.answer_tokens, prefixId: row.prefix_id ?? null, prefixTokens: row.prefix_tokens ?? null,
+      }))
+    : null;
+  const result = S.simulateServing(assumptions, traceRows ? { traceRows } : {});
+  for (const [key, value] of Object.entries(c.metrics)) close(result.metrics[key], value, `serving ${c.name} metric ${key}`);
+  if (result.requests.length !== c.requests.length) fail(`serving ${c.name}: request count ${result.requests.length} vs ${c.requests.length}`);
+  c.requests.forEach((g, i) => {
+    const r = result.requests[i];
+    close(r.ttftS, g.ttft_s, `serving ${c.name} req ${g.request_id} ttft`);
+    close(r.e2eS, g.e2e_s, `serving ${c.name} req ${g.request_id} e2e`);
+    close(r.outputTokens, g.output_tokens, `serving ${c.name} req ${g.request_id} output_tokens`);
+    close(r.preemptions, g.preemptions, `serving ${c.name} req ${g.request_id} preemptions`);
+    close(r.maxItlS, g.max_itl_s, `serving ${c.name} req ${g.request_id} max_itl`);
+  });
+  for (const [name, g] of Object.entries(c.distributions)) {
+    const d = result.distributions[name];
+    if (!d) fail(`serving ${c.name}: missing distribution ${name}`);
+    close(d.p50, g.p50, `serving ${c.name} dist ${name} p50`);
+    close(d.p90, g.p90, `serving ${c.name} dist ${name} p90`);
+    close(d.p99, g.p99, `serving ${c.name} dist ${name} p99`);
+    if (d.values.length < g.values.length) fail(`serving ${c.name} dist ${name}: values ${d.values.length} vs ${g.values.length}`);
+    g.values.forEach((v, i) => close(d.values[i], v, `serving ${c.name} dist ${name} value[${i}]`));
+  }
+  console.log(`ok  serving ${c.name.padEnd(24)} seed ${c.seed}  ${c.metrics.requests} requests, ttft_p99 ${c.metrics.ttft_p99_s === null ? "n/a" : c.metrics.ttft_p99_s.toFixed(4)}s`);
+}
+// spec-range Monte Carlo: uncalibrated hardware error bars must match Python exactly
+if (specMcGolden.contract !== "spec-mc-golden-v1") fail("spec-mc golden contract mismatch");
+for (const c of specMcGolden.cases) {
+  // rebuild the pack the way the UI does, then run specMcForPlan on the golden plan
+  const { build, specMcForPlan } = E;
+  const settings = { ...c.case_settings };
+  if (Array.isArray(settings.device_counts)) settings.device_counts = settings.device_counts.map(Number);
+  if (Array.isArray(settings.batch_sizes)) settings.batch_sizes = settings.batch_sizes.map(Number);
+  const pack = build(c.name.startsWith("train") ? "llm_training" : "llm_inference", settings);
+  const plan = Object.fromEntries(Object.entries(c.plan).map(([k, v]) => [k, typeof v === "number" ? (Number.isInteger(v) ? v : Number(v)) : v]));
+  const result = specMcForPlan(pack, plan);
+  if (!result || !result.available) fail(`spec-mc ${c.name}: TS returned no result`);
+  for (const [objName, interval] of Object.entries(c.intervals)) {
+    close(result.intervals[objName].p10, interval.p10, `spec-mc ${c.name} ${objName} p10`);
+    close(result.intervals[objName].p50, interval.p50, `spec-mc ${c.name} ${objName} p50`);
+    close(result.intervals[objName].p90, interval.p90, `spec-mc ${c.name} ${objName} p90`);
+    const rows = result.tornado[objName];
+    c.tornado[objName].forEach((g, i) => {
+      if (rows[i].name !== g.name) fail(`spec-mc ${c.name} ${objName} tornado order ${rows[i].name} vs ${g.name}`);
+      close(rows[i].swingPct, g.swingPct, `spec-mc ${c.name} ${objName} tornado ${g.name}`);
+    });
+  }
+  console.log(`ok  spec-mc ${c.name.padEnd(26)} ${c.samples} samples`);
+}
 console.log(`\nALL MATCH: ${checks} checks, worst relative difference ${worst.toExponential(2)}`);
+// Optional machine-readable summary for scripts/generate-stats.mjs (npm run stats); no effect on the check logic.
+if (process.env.NOMO_STATS_JSON) {
+  writeFileSync(process.env.NOMO_STATS_JSON, `${JSON.stringify({ verify: { checks, worstRelativeDiff: worst.toExponential(2) } }, null, 2)}\n`);
+}

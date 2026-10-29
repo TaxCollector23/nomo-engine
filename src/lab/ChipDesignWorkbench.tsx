@@ -99,10 +99,14 @@ function download(name: string, content: string, type: string): void {
 }
 
 function NumberInput({ label, value, unit, min = 0, step = "any", onChange }: { label: string; value: number; unit?: string; min?: number; step?: number | "any"; onChange: (value: number) => void }) {
+  // Display-value guard: drop binary-float noise (1e15 -> 999999986991104,
+  // 0.01 -> 0.009999999776482582) so engineers see the number they entered.
+  // The stored state keeps full precision; only the rendered text is cleaned.
+  const shown = Number.isFinite(value) ? Number(value.toPrecision(12)) : "";
   return (
     <label className="chip-field">
       <span><b>{label}</b>{unit && <small>{unit}</small>}</span>
-      <input type="number" min={min} step={step} value={Number.isFinite(value) ? value : ""} onChange={(event) => onChange(Number(event.target.value))} />
+      <input type="number" min={min} step={step} value={shown} onChange={(event) => onChange(Number(event.target.value))} />
     </label>
   );
 }

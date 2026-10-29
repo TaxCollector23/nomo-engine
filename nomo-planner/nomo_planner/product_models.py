@@ -148,17 +148,40 @@ class TrafficHour:
     p99_target_ms: float
 
 
-def size_fleet(traffic: Iterable[TrafficHour], *, target_utilization: float = 0.70, replica_hourly_cost: float = 1.0) -> list[dict[str, float]]:
+def size_fleet(traffic: Iterable[TrafficHour], *, target_utilization: float = 0.70, replica_hourly_cost: float = 1.0,
+               service_cv: float = 1.0) -> list[dict[str, float]]:
+    """Fleet sizing with a real queueing tail.
+
+    Response-time p99 uses the exact M/M/1 sojourn-time tail P(T > t) = exp(-(mu - lambda) t),
+    which is what the old 1000*ln(100)/spare formula approximated - but the old denominator
+    divided the fleet-wide spare capacity by nothing and understated p99 by a factor of the
+    replica count. With a service-time coefficient of variation cv > 1, the Pollaczek-Khinchine
+    (Kingman) mean-wait excess is added on top; cv = 1 reproduces M/M/1 exactly.
+    """
     if not 0 < target_utilization < 1:
         raise ValueError("target utilization must be between 0 and 1")
+    if service_cv <= 0:
+        raise ValueError("service coefficient of variation must be positive")
     result = []
     for row in traffic:
         if min(row.arrival_rps, row.service_rps_per_replica, row.p99_target_ms) <= 0:
             raise ValueError("traffic and latency inputs must be positive")
         replicas = max(1, math.ceil(row.arrival_rps / (row.service_rps_per_replica * target_utilization)))
-        spare_capacity = replicas * row.service_rps_per_replica - row.arrival_rps
-        p99 = math.inf if spare_capacity <= 0 else 1000 * math.log(100) / spare_capacity
-        result.append({"hour": row.hour, "replicas": replicas, "approx_p99_ms": p99, "hourly_cost_usd": replicas * replica_hourly_cost, "within_target": p99 <= row.p99_target_ms, "arrival_rps": row.arrival_rps})
+        per_replica_rps = row.arrival_rps / replicas
+        mu = row.service_rps_per_replica
+        rho = per_replica_rps / mu
+        if rho < 1.0:
+            mm1_p99_s = math.log(100.0) / (mu - per_replica_rps)
+            mean_wait_mg1 = rho * (1.0 + service_cv ** 2) / (2.0 * mu * (1.0 - rho))
+            mean_wait_mm1 = rho / (mu - per_replica_rps)
+            p99 = 1000.0 * (mm1_p99_s + max(0.0, mean_wait_mg1 - mean_wait_mm1))
+            queue_model = "M/M/1 sojourn tail" if service_cv == 1.0 else "M/G/1 tail (Pollaczek-Khinchine excess)"
+        else:
+            p99 = math.inf
+            queue_model = "saturated (rho >= 1)"
+        result.append({"hour": row.hour, "replicas": replicas, "approx_p99_ms": p99, "hourly_cost_usd": replicas * replica_hourly_cost,
+                       "within_target": p99 <= row.p99_target_ms, "arrival_rps": row.arrival_rps,
+                       "per_replica_utilization": rho, "queue_model": queue_model})
     return result
 
 
@@ -171,17 +194,53 @@ class FineTuneProblem:
     gpu_memory_bytes: float
     gpu_cost_per_hour: float
     quality_loss: Mapping[str, float]
+    adapter_param_fraction: float = 0.005  # share of weight matrices adapted (LoRA/QLoRA)
 
 
 def fine_tune_options(problem: FineTuneProblem) -> list[dict[str, object]]:
+    """Fine-tuning cost model from first principles, replacing invented factors.
+
+    Memory (per-parameter convention, matching nomo_planner.layers): full fine-tuning trains
+    everything: 2 B weights + 2 B grads + 4 B fp32 master + 8 B Adam states = 16 B/param plus
+    activations. LoRA freezes the base in bf16 (2 B/param) and trains adapters only
+    (adapter share f of params, each with the same 16 B/param training state) - Hu et al. 2021,
+    arXiv:2106.09685. QLoRA loads the base in NF4 (about 0.55 B/param including quantization
+    constants) - Dettmers et al. 2023, arXiv:2305.14314. Activations are shared by all modes
+    and are recovered from the user-supplied full fine-tune footprint.
+
+    Compute: full training costs about 6ND FLOPs (2 forward + 4 backward). LoRA skips the
+    frozen-weight gradient term: about 4ND FLOPs. QLoRA additionally pays an assumed ~10%
+    NF4 de-quantization overhead (4ND / 0.9). Quality remains a customer-supplied
+    assumption; the planner makes no quality claim.
+    """
     if min(problem.parameter_count, problem.training_tokens, problem.memory_bytes, problem.peak_tflops, problem.gpu_memory_bytes, problem.gpu_cost_per_hour) <= 0:
         raise ValueError("fine-tuning inputs must be positive")
-    modes = {"full": (16.0, 1.0), "lora": (0.08, 0.35), "qlora": (0.04, 0.25)}
+    if not 0 < problem.adapter_param_fraction <= 1:
+        raise ValueError("adapter_param_fraction must be in (0, 1]")
+    n = problem.parameter_count
+    full_states = 16.0 * n
+    activation_bytes = max(0.0, problem.memory_bytes - full_states)
+    adapter_states = 16.0 * n * problem.adapter_param_fraction
+    # FLOPs per token per parameter: full training 6ND (2 fwd + 4 bwd); LoRA skips the
+    # frozen-weight gradient term -> 4ND; QLoRA adds an assumed ~10% NF4 de-quantization
+    # overhead -> 4ND / 0.9.
+    flops_per_token = {"full": 6.0, "lora": 4.0, "qlora": 4.0 / 0.9}
+    memory_models = {
+        "full": (problem.memory_bytes, "16 B/param training state (2 weights + 2 grads + 4 master + 8 Adam) plus activations"),
+        "lora": (2.0 * n + adapter_states + activation_bytes,
+                 f"frozen bf16 base (2 B/param) + adapters ({problem.adapter_param_fraction:.3g} of params, 16 B/param state) + activations; compute ~4ND/6ND of full (Hu et al. 2021, arXiv:2106.09685)"),
+        "qlora": (0.55 * n + adapter_states + activation_bytes,
+                  f"NF4 base ~0.55 B/param incl. quantization constants (Dettmers et al. 2023, arXiv:2305.14314) + adapter states + activations; ~10% de-quantization overhead assumed"),
+    }
     rows = []
-    for mode, (memory_factor, compute_factor) in modes.items():
-        memory = problem.memory_bytes * memory_factor
-        seconds = 6 * problem.parameter_count * problem.training_tokens / (problem.peak_tflops * 1e12 * compute_factor)
-        rows.append({"mode": mode, "memory_bytes": memory, "time_hours": seconds / 3600, "cost_usd": seconds / 3600 * problem.gpu_cost_per_hour, "quality_loss": problem.quality_loss.get(mode, float("nan")), "feasible": memory <= problem.gpu_memory_bytes, "notes": "quality is a customer-supplied assumption"})
+    for mode in ("full", "lora", "qlora"):
+        memory, model_note = memory_models[mode]
+        seconds = flops_per_token[mode] * n * problem.training_tokens / (problem.peak_tflops * 1e12)
+        rows.append({"mode": mode, "memory_bytes": memory, "time_hours": seconds / 3600,
+                     "cost_usd": seconds / 3600 * problem.gpu_cost_per_hour,
+                     "quality_loss": problem.quality_loss.get(mode, float("nan")),
+                     "feasible": memory <= problem.gpu_memory_bytes,
+                     "notes": f"quality is a customer-supplied assumption; {model_note}"})
     return rows
 
 

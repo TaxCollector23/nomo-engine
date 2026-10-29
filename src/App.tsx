@@ -43,7 +43,9 @@ function Logo({ footer = false }: { footer?: boolean }) {
   return (
     <img
       className={footer ? "brand-image brand-image--footer" : "brand-image"}
-      src="/nomo-logo.png"
+      // BASE_URL keeps this correct in dev ("/") and when the built Lab is
+      // mounted at a sub-path ("/lab/") — a literal "/nomo-logo.png" 404s there.
+      src={`${import.meta.env.BASE_URL}nomo-logo.png`}
       alt="Nomo AI"
     />
   );
