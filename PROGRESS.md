@@ -4,6 +4,29 @@ Current release status: the serious simulation-core implementation and the cited
 implemented, tested, and deployed. Customer evidence, raw serving traces, and the neuromorphic compiler adapter remain
 explicitly Preview/open where the required artifacts or server contract are absent.
 
+## 2026-10-29 hardened engine release
+
+- Shipped the hardened build: the tri-domain search API now lives in this repository under `server/` (NSGA-II over
+  continuous/spiking/symbolic genomes, hardware profiles, copilot, telemetry FastAPI/WS server, export pipeline) with
+  its pinned `server/render.yaml` and `server/Dockerfile`.
+- Added `nomo-planner` domain modules, `pyproject.toml` packaging, a calibration-coverage study, and golden exporters for
+  product, layer, serving-sim, and spec Monte Carlo runs.
+- Added Lab modules for capacity clinic, GPU showdown, serving sweep, spec tornado, run readiness, and shared planner
+  visuals, plus a spec uncertainty model and browser workers for the clinic and serving simulator.
+- Verification: root `npm ci && npm run build` passed (Vite 7.3.6); `npm run verify` passed 35,556 checks with worst
+  relative difference `1.41e-14`; `python3 -m compileall` clean across `server/`, `nomo-planner/nomo_planner`, `tests`,
+  `studies`. The Python suites were not executed in this pass because pytest is not installed in the local interpreter.
+- Release: merged engine PR #6 as `8046d8a` and deployed Vercel production deployment `dpl_5MXabEnLoTns3x6pdkTsNxbNzQnh`
+  (`https://nomo-engine-9sxwpf4bb-rangan-alt.vercel.app/`). The project is not git-connected, so the deploy was CLI
+  driven. Both aliases resolve to it: `https://frontend-gray-ten-c3tj1luab7.vercel.app/` and
+  `https://nomo-engine-rangan-alt.vercel.app/`.
+- Post-deploy checks: root, stable alias, and `/lab` returned HTTP 200 with title `Nomo AI | Open science for physical
+  AI`; all three serve `index-B8s__urf.js` and `index-BlLdDs1v.css`; the served Lab chunk contains the capacity clinic
+  module. Interactive browser smoke was not run.
+- Remaining boundary: the hosted search API and the platform store are not deployed by this release. Rendering the
+  dashboard's search still requires a reachable `nomo-engine.onrender.com` (or `NEXT_PUBLIC_NOMO_API`), and the platform
+  store stays single-tenant until authentication, tenant isolation, backups, and monitoring are supplied.
+
 ## 2026-10-14 reproducible research lab
 
 - Added a browser-local **Research lab** module so Nomo can carry an experiment from question to reviewable evidence instead
