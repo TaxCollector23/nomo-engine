@@ -12,8 +12,9 @@ npm run build
 ```
 
 The root Vite app is the source for the `nomo-engine` Vercel project and the stable mode-shell alias
-`https://frontend-gray-ten-c3tj1luab7.vercel.app/`. The root `vercel.json` rewrites client-side Lab routes to
-`index.html`; it does not run the hosted search API.
+`https://frontend-gray-ten-c3tj1luab7.vercel.app/`. That project is connected to `TaxCollector23/nomo-engine` with
+production branch `main`: pushes to `main` deploy production, other branches and pull requests get preview deployments.
+The root `vercel.json` rewrites client-side Lab routes to `index.html`; it does not run the hosted search API.
 
 ## Neuromorphic dashboard
 

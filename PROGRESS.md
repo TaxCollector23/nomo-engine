@@ -17,9 +17,11 @@ explicitly Preview/open where the required artifacts or server contract are abse
   relative difference `1.41e-14`; `python3 -m compileall` clean across `server/`, `nomo-planner/nomo_planner`, `tests`,
   `studies`. The Python suites were not executed in this pass because pytest is not installed in the local interpreter.
 - Release: merged engine PR #6 as `8046d8a` and deployed Vercel production deployment `dpl_5MXabEnLoTns3x6pdkTsNxbNzQnh`
-  (`https://nomo-engine-9sxwpf4bb-rangan-alt.vercel.app/`). The project is not git-connected, so the deploy was CLI
-  driven. Both aliases resolve to it: `https://frontend-gray-ten-c3tj1luab7.vercel.app/` and
-  `https://nomo-engine-rangan-alt.vercel.app/`.
+  (`https://nomo-engine-9sxwpf4bb-rangan-alt.vercel.app/`). Both aliases resolve to it:
+  `https://frontend-gray-ten-c3tj1luab7.vercel.app/` and `https://nomo-engine-rangan-alt.vercel.app/`.
+- Connected the `nomo-engine` Vercel project to `TaxCollector23/nomo-engine` (production branch `main`) and proved the
+  path with a git-sourced deployment, `dpl_6zea8zxbFoejzN6wKEYUmxoMuZXV`, built by Vercel from commit `f2886fd`. Pushes
+  to `main` now deploy production without the CLI; branch pushes and pull requests produce previews.
 - Post-deploy checks: root, stable alias, and `/lab` returned HTTP 200 with title `Nomo AI | Open science for physical
   AI`; all three serve `index-B8s__urf.js` and `index-BlLdDs1v.css`; the served Lab chunk contains the capacity clinic
   module. Interactive browser smoke was not run.
